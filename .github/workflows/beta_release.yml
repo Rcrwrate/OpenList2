@@ -99,7 +99,7 @@ jobs:
           targets: ${{ matrix.target }}
           musl-target-format: $os-$musl-$arch
           out-dir: build
-          musl-base-url: "https://musl.cc"
+          musl-base-url: "https://github.com/OpenListTeam/musl-compilers/releases/download/2025-06-12/"
           x-flags: |
             github.com/alist-org/alist/v3/internal/conf.BuiltAt=$built_at
             github.com/alist-org/alist/v3/internal/conf.GitAuthor=OpenList
