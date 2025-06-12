@@ -121,7 +121,7 @@ jobs:
       - name: Upload assets
         uses: actions/upload-artifact@v4
         with:
-          name: beta builds
+          name: beta builds for ${{ matrix.target }}
           path: ${{ github.workspace }}/build/compress/*
           compression-level: 0
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
