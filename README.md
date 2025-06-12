@@ -113,7 +113,7 @@ Please go to our [discussion forum](https://github.com/orgs/OpenListTeam/discuss
 
 Thanks goes to these wonderful people:
 
-[![Contributors](https://contrib.rocks/image?repo=OpenListTeam/alist)](https://github.com/OpenListTeam/OpenList/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=OpenListTeam/OpenList)](https://github.com/OpenListTeam/OpenList/graphs/contributors)
 
 ## License
 
