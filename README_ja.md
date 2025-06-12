@@ -36,9 +36,6 @@
 > 本フォークはまだ安定していません。多数の外部リンクが未検証のコンテンツを指しており、ドキュメントサイトなどを含め、サプライチェーン攻撃のリスクがあります。信頼しないでください！
 > 
 > 現時点では、オリジナル作者の管理下にないことが確認されているリンク（例：`alistgo.com`）のみ削除されています。
-> 
-> プロジェクトの名称を決めるため、ぜひ投票にご参加ください：https://github.com/AlistTeam/alist/issues/4
-
 
 [English](./README.md) | [中文](./README_cn.md) | 日本語 | [Contributing](./CONTRIBUTING.md) | [CODE_OF_CONDUCT](./CODE_OF_CONDUCT.md)
 
@@ -109,17 +106,17 @@ N/A
 
 ## ディスカッション
 
-一般的なご質問は[ディスカッションフォーラム](https://github.com/AlistTeam/alist/discussions)をご利用ください。**問題はバグレポートと機能リクエストのみです。**
+一般的なご質問は[ディスカッションフォーラム](https://github.com/AlistTeam/openlist/discussions)をご利用ください。**問題はバグレポートと機能リクエストのみです。**
 
 ## コントリビューター
 
 これらの素晴らしい人々に感謝します:
 
-[![Contributors](https://contrib.rocks/image?repo=AlistTeam/alist)](https://github.com/AlistTeam/alist/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=AlistTeam/openlist)](https://github.com/AlistTeam/openlist/graphs/contributors)
 
 ## ライセンス
 
-`AList` は AGPL-3.0 ライセンスの下でライセンスされたオープンソースソフトウェアです。
+`OpenList` は AGPL-3.0 ライセンスの下でライセンスされたオープンソースソフトウェアです。
 
 ## 免責事項
 - このプログラムはフリーでオープンソースのプロジェクトです。ネットワークディスク上でファイルを共有するように設計されており、golang のダウンロードや学習に便利です。利用にあたっては関連法規を遵守し、悪用しないようお願いします;
