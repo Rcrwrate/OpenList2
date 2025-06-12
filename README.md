@@ -36,8 +36,6 @@
 > This fork is not yet stable. A large number of external links point to unaudited content, posing a supply chain attack risk, including related documentation websites, etc. Do not trust!
 >
 > Currently, only links confirmed to be outside the original author's control (such as `alistgo.com`) have been removed.
->
-> Please vote to determine the name: https://github.com/AlistTeam/alist/issues/4
 
 English | [中文](./README_cn.md) | [日本語](./README_ja.md) | [Contributing](./CONTRIBUTING.md) | [CODE_OF_CONDUCT](./CODE_OF_CONDUCT.md)
 
@@ -113,11 +111,11 @@ Please go to our [discussion forum](https://github.com/AlistTeam/alist/discussio
 
 Thanks goes to these wonderful people:
 
-[![Contributors](https://contrib.rocks/image?repo=AlistTeam/alist)](https://github.com/AlistTeam/alist/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=AlistTeam/openlist)](https://github.com/AlistTeam/openlist/graphs/contributors)
 
 ## License
 
-The `AList` is open-source software licensed under the AGPL-3.0 license.
+The `OpenList` is open-source software licensed under the AGPL-3.0 license.
 
 ## Disclaimer
 - This program is a free and open source project. It is designed to share files on the network disk, which is convenient for downloading and learning Golang. Please abide by relevant laws and regulations when using it, and do not abuse it;
