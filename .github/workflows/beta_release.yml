@@ -130,7 +130,7 @@ jobs:
       - name: Upload assets
         uses: actions/upload-artifact@v4
         with:
-          name: beta builds for ${{ env.clean_target_name }}
+          name: beta builds for ${{ env.cleaned_target }}
           path: ${{ github.workspace }}/build/compress/*
           compression-level: 0
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
