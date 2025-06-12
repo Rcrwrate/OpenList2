@@ -3,9 +3,9 @@ package bootstrap
 import (
 	"fmt"
 
-	"github.com/alist-org/alist/v3/internal/bootstrap/patch"
-	"github.com/alist-org/alist/v3/internal/conf"
-	"github.com/alist-org/alist/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v3/internal/bootstrap/patch"
+	"github.com/OpenListTeam/OpenList/v3/internal/conf"
+	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
 	"strings"
 )
 

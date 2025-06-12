@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"github.com/alist-org/alist/v3/internal/stream"
+	"github.com/OpenListTeam/OpenList/v3/internal/stream"
 	"github.com/gin-gonic/gin"
 	"io"
 )

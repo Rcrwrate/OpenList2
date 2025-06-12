@@ -1,12 +1,12 @@
 package op
 
 import (
-	"github.com/alist-org/alist/v3/internal/errs"
+	"github.com/OpenListTeam/OpenList/v3/internal/errs"
 	stdpath "path"
 	"strings"
 
-	"github.com/alist-org/alist/v3/internal/driver"
-	"github.com/alist-org/alist/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v3/internal/driver"
+	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -3,13 +3,13 @@ package seafile
 import (
 	"errors"
 	"fmt"
-	"github.com/alist-org/alist/v3/internal/errs"
-	"github.com/alist-org/alist/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v3/internal/errs"
+	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/alist-org/alist/v3/drivers/base"
+	"github.com/OpenListTeam/OpenList/v3/drivers/base"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -174,5 +174,3 @@ func (d *Seafile) decryptLibrary(repo *LibraryInfo) (err error) {
 	repo.decryptedSuccess = true
 	return nil
 }
-
-

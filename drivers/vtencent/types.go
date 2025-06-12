@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/alist-org/alist/v3/internal/model"
+	"github.com/OpenListTeam/OpenList/v3/internal/model"
 )
 
 type RespErr struct {
