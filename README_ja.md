@@ -127,4 +127,4 @@ N/A
 
 ---
 
-> [@GitHub](https://github.com/AlistTeam) · [@Temporary  TelegramGroup]( https://t.me/+BYuDkV2f-ds2ODE1)
+> [@GitHub](https://github.com/AlistTeam) · [@Temporary  TelegramGroup]( https://t.me/OpenListTeam)
