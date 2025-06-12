@@ -2,25 +2,25 @@
   <img width="100px" alt="logo" src="https://cdn.jsdelivr.net/gh/alist-org/logo@main/logo.svg"/></a>
   <p><em>🗂複数のストレージをサポートするファイルリストプログラムで、Gin と Solidjs を使用し、alist プロジェクトをフォークして開発されました。</em></p>
 <div>
-  <a href="https://goreportcard.com/report/github.com/AlistTeam/alist/v3">
-    <img src="https://goreportcard.com/badge/github.com/AlistTeam/alist/v3" alt="latest version" />
+  <a href="https://goreportcard.com/report/github.com/OpenListTeam/OpenList/v3">
+    <img src="https://goreportcard.com/badge/github.com/OpenListTeam/OpenList/v3" alt="latest version" />
   </a>
-  <a href="https://github.com/AlistTeam/alist/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/AlistTeam/alist" alt="License" />
+  <a href="https://github.com/OpenListTeam/OpenList/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/OpenListTeam/OpenList" alt="License" />
   </a>
-  <a href="https://github.com/AlistTeam/alist/actions?query=workflow%3ABuild">
-    <img src="https://img.shields.io/github/actions/workflow/status/AlistTeam/alist/build.yml?branch=main" alt="Build status" />
+  <a href="https://github.com/OpenListTeam/OpenList/actions?query=workflow%3ABuild">
+    <img src="https://img.shields.io/github/actions/workflow/status/OpenListTeam/OpenList/build.yml?branch=main" alt="Build status" />
   </a>
-  <a href="https://github.com/AlistTeam/alist/releases">
-    <img src="https://img.shields.io/github/release/AlistTeam/alist" alt="latest version" />
+  <a href="https://github.com/OpenListTeam/OpenList/releases">
+    <img src="https://img.shields.io/github/release/OpenListTeam/OpenList" alt="latest version" />
   </a>
 </div>
 <div>
-  <a href="https://github.com/AlistTeam/alist/discussions">
-    <img src="https://img.shields.io/github/discussions/AlistTeam/alist?color=%23ED8936" alt="discussions" />
+  <a href="https://github.com/OpenListTeam/OpenList/discussions">
+    <img src="https://img.shields.io/github/discussions/OpenListTeam/OpenList?color=%23ED8936" alt="discussions" />
   </a>
-  <a href="https://github.com/AlistTeam/alist/releases">
-    <img src="https://img.shields.io/github/downloads/AlistTeam/alist/total?color=%239F7AEA&logo=github" alt="Downloads" />
+  <a href="https://github.com/OpenListTeam/OpenList/releases">
+    <img src="https://img.shields.io/github/downloads/OpenListTeam/OpenList/total?color=%239F7AEA&logo=github" alt="Downloads" />
   </a>
 </div>
 </div>
@@ -106,13 +106,13 @@ N/A
 
 ## ディスカッション
 
-一般的なご質問は[ディスカッションフォーラム](https://github.com/AlistTeam/openlist/discussions)をご利用ください。**問題はバグレポートと機能リクエストのみです。**
+一般的なご質問は[ディスカッションフォーラム](https://github.com/OpenListTeam/OpenList/discussions)をご利用ください。**問題はバグレポートと機能リクエストのみです。**
 
 ## コントリビューター
 
 これらの素晴らしい人々に感謝します:
 
-[![Contributors](https://contrib.rocks/image?repo=AlistTeam/openlist)](https://github.com/AlistTeam/openlist/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=AlistTeam/openlist)](https://github.com/OpenListTeam/OpenList/graphs/contributors)
 
 ## ライセンス
 
@@ -123,8 +123,8 @@ N/A
 - このプログラムは、公式インターフェースの動作を破壊することなく、公式 sdk/インターフェースを呼び出すことで実装されています;
 - このプログラムは、302リダイレクト/トラフィック転送のみを行い、いかなるユーザーデータも傍受、保存、改ざんしません;
 - このプログラムを使用する前に、アカウントの禁止、ダウンロード速度の制限など、対応するリスクを理解し、負担する必要があります;
-- 権利侵害がある場合は、[AlistTeam](https://github.com/AlistTeam) までご連絡ください。チームが迅速に対応いたします。
+- 権利侵害がある場合は、[OpenListTeam](https://github.com/OpenListTeam) までご連絡ください。チームが迅速に対応いたします。
 
 ---
 
-> [@GitHub](https://github.com/AlistTeam) · [@Temporary  TelegramGroup]( https://t.me/OpenListTeam)
+> [@GitHub](https://github.com/OpenListTeam) · [@Temporary  TelegramGroup]( https://t.me/OpenListTeam)
