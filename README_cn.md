@@ -93,7 +93,7 @@
 
 ## 文档
 
-<https://alistteam.github.io/docs/> (临时)
+<https://OpenListTeam.github.io/docs/> (临时)
 
 ## Demo
 
@@ -122,4 +122,4 @@ N/A
 
 ---
 
-> [@GitHub](https://github.com/OpenListTeam) · [@Telegram临时群]( https://t.me/OpenListTeam)
+> [@GitHub](https://github.com/OpenListTeam) · [@Telegram 交流群]( https://t.me/OpenListTeam)
