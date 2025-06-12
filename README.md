@@ -97,7 +97,7 @@ English | [中文](./README_cn.md) | [日本語](./README_ja.md) | [Contributing
 
 ## Document
 
-<https://alistteam.github.io/docs/> (temporally)
+<https://OpenListTeam.github.io/docs/> (temporally)
 
 ## Demo
 
