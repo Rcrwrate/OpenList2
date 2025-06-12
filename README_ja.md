@@ -96,7 +96,7 @@
 
 ## ドキュメント
 
-<https://OpenListTeam.github.io/docs/> (temporally)
+<https://openlistteam.github.io/docs/> (temporally)
 再構築中
 
 ## デモ
