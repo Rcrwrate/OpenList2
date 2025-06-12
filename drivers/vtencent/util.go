@@ -22,14 +22,18 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func (d *Vtencent) request(url, method string, callback base.ReqCallback, resp interface{}) ([]byte, error) {
-	req := base.RestyClient.R()
+func (d *Vtencent) setDefaultHeaders(req *resty.Request) {
 	req.SetHeaders(map[string]string{
 		"cookie":       d.Cookie,
 		"content-type": "application/json",
 		"origin":       d.conf.origin,
 		"referer":      d.conf.referer,
 	})
+}
+
+func (d *Vtencent) request(url, method string, callback base.ReqCallback, resp any) ([]byte, error) {
+	req := base.RestyClient.R()
+	d.setDefaultHeaders(req)
 	if callback != nil {
 		callback(req)
 	} else {
@@ -44,27 +48,17 @@ func (d *Vtencent) request(url, method string, callback base.ReqCallback, resp i
 	}
 	code := utils.Json.Get(res.Body(), "Code").ToString()
 	if code != "Success" {
-		switch code {
-		case "AuthFailure.SessionInvalid":
-			if err != nil {
-				return nil, errors.New(code)
-			}
-		default:
-			return nil, errors.New(code)
+		if code == "AuthFailure.SessionInvalid" {
+			return d.request(url, method, callback, resp)
 		}
-		return d.request(url, method, callback, resp)
+		return nil, errors.New(code)
 	}
 	return res.Body(), nil
 }
 
 func (d *Vtencent) ugcRequest(url, method string, callback base.ReqCallback, resp interface{}) ([]byte, error) {
 	req := base.RestyClient.R()
-	req.SetHeaders(map[string]string{
-		"cookie":       d.Cookie,
-		"content-type": "application/json",
-		"origin":       d.conf.origin,
-		"referer":      d.conf.referer,
-	})
+	d.setDefaultHeaders(req)
 	if callback != nil {
 		callback(req)
 	} else {
@@ -80,7 +74,7 @@ func (d *Vtencent) ugcRequest(url, method string, callback base.ReqCallback, res
 	code := utils.Json.Get(res.Body(), "Code").ToInt()
 	if code != 0 {
 		message := utils.Json.Get(res.Body(), "message").ToString()
-		if len(message) == 0 {
+		if message == "" {
 			message = utils.Json.Get(res.Body(), "msg").ToString()
 		}
 		return nil, errors.New(message)
@@ -129,11 +123,19 @@ func (d *Vtencent) GetFiles(dirId string) ([]File, error) {
 	return res, nil
 }
 
-func (d *Vtencent) CreateUploadMaterial(classId int, fileName string, UploadSummaryKey string) (RspCreatrMaterial, error) {
+func (d *Vtencent) CreateUploadMaterial(classId int, fileName string, uploadSummaryKey string) (RspCreatrMaterial, error) {
 	api := "https://api.vs.tencent.com/PaaS/Material/CreateUploadMaterial"
-	form := base.Json{"Owner": base.Json{"Type": "PERSON", "Id": d.TfUid},
-		"MaterialType": "VIDEO", "Name": fileName, "ClassId": classId,
-		"UploadSummaryKey": UploadSummaryKey}
+	form := base.Json{
+		"Owner": base.Json{
+			"Type": "PERSON",
+			"Id":   d.TfUid,
+		},
+		"MaterialType":     "VIDEO",
+		"Name":             fileName,
+		"ClassId":          classId,
+		"UploadSummaryKey": uploadSummaryKey,
+	}
+
 	var resps RspCreatrMaterial
 	_, err := d.request(api, http.MethodPost, func(req *resty.Request) {
 		req.SetBody(form).ForceContentType("application/json")
@@ -162,7 +164,7 @@ func (d *Vtencent) ApplyUploadUGC(signature string, stream model.FileStreamer) (
 	return resps, nil
 }
 
-func (d *Vtencent) CommitUploadUGC(signature string, vodSessionKey string) (RspCommitUploadUGC, error) {
+func (d *Vtencent) CommitUploadUGC(signature, vodSessionKey string) (RspCommitUploadUGC, error) {
 	api := "https://vod2.qcloud.com/v3/index.php?Action=CommitUploadUGC"
 	form := base.Json{
 		"signature":     signature,
@@ -175,19 +177,20 @@ func (d *Vtencent) CommitUploadUGC(signature string, vodSessionKey string) (RspC
 	if err != nil {
 		return RspCommitUploadUGC{}, err
 	}
-	if len(resps.Data.Video.URL) == 0 {
+	if resps.Data.Video.URL == "" {
 		return RspCommitUploadUGC{}, errors.New(string(rsp))
 	}
 	return resps, nil
 }
 
-func (d *Vtencent) FinishUploadMaterial(SummaryKey string, VodVerifyKey string, UploadContext, VodFileId string) (RspFinishUpload, error) {
+func (d *Vtencent) FinishUploadMaterial(summaryKey, vodVerifyKey, uploadContext, vodFileId string) (RspFinishUpload, error) {
 	api := "https://api.vs.tencent.com/PaaS/Material/FinishUploadMaterial"
 	form := base.Json{
-		"UploadContext": UploadContext,
-		"VodVerifyKey":  VodVerifyKey,
-		"VodFileId":     VodFileId,
-		"UploadFullKey": SummaryKey}
+		"UploadContext": uploadContext,
+		"VodVerifyKey":  vodVerifyKey,
+		"VodFileId":     vodFileId,
+		"UploadFullKey": summaryKey,
+	}
 	var resps RspFinishUpload
 	rsp, err := d.request(api, http.MethodPost, func(req *resty.Request) {
 		req.SetBody(form).ForceContentType("application/json")
@@ -195,25 +198,26 @@ func (d *Vtencent) FinishUploadMaterial(SummaryKey string, VodVerifyKey string, 
 	if err != nil {
 		return RspFinishUpload{}, err
 	}
-	if len(resps.Data.MaterialID) == 0 {
+	if resps.Data.MaterialID == "" {
 		return RspFinishUpload{}, errors.New(string(rsp))
 	}
 	return resps, nil
 }
 
-func (d *Vtencent) FinishHashUploadMaterial(SummaryKey string, UploadContext string) (RspFinishUpload, error) {
+func (d *Vtencent) FinishHashUploadMaterial(summaryKey, uploadContext string) (RspFinishUpload, error) {
 	api := "https://api.vs.tencent.com/PaaS/Material/FinishUploadMaterial"
-	var resps RspFinishUpload
 	form := base.Json{
-		"UploadContext": UploadContext,
-		"UploadFullKey": SummaryKey}
+		"UploadContext": uploadContext,
+		"UploadFullKey": summaryKey,
+	}
+	var resps RspFinishUpload
 	rsp, err := d.request(api, http.MethodPost, func(req *resty.Request) {
 		req.SetBody(form).ForceContentType("application/json")
 	}, &resps)
 	if err != nil {
 		return RspFinishUpload{}, err
 	}
-	if len(resps.Data.MaterialID) == 0 {
+	if resps.Data.MaterialID == "" {
 		return RspFinishUpload{}, errors.New(string(rsp))
 	}
 	return resps, nil
@@ -233,34 +237,37 @@ func (d *Vtencent) FileUpload(ctx context.Context, dstDir model.Obj, stream mode
 	if err != nil {
 		return err
 	}
-	rspCreatrMaterial, err := d.CreateUploadMaterial(classId, stream.GetName(), chunkHash)
+	rspCreateMaterial, err := d.CreateUploadMaterial(classId, stream.GetName(), chunkHash)
 	if err != nil {
 		return err
 	}
-	if rspCreatrMaterial.Data.QuickUpload {
-		SummaryKey := stream.GetHash().GetHash(utils.SHA1)
-		if len(SummaryKey) < utils.SHA1.Width {
-			if SummaryKey, err = utils.HashReader(utils.SHA1, stream); err != nil {
+	if rspCreateMaterial.Data.QuickUpload {
+		summaryKey := stream.GetHash().GetHash(utils.SHA1)
+		if len(summaryKey) < utils.SHA1.Width {
+			if summaryKey, err = utils.HashReader(utils.SHA1, stream); err != nil {
 				return err
 			}
 		}
-		UploadContext := rspCreatrMaterial.Data.UploadContext
-		_, err = d.FinishHashUploadMaterial(SummaryKey, UploadContext)
+
+		_, err = d.FinishHashUploadMaterial(summaryKey, rspCreateMaterial.Data.UploadContext)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
+	return d.performActualUpload(ctx, stream, rspCreateMaterial, up)
+}
+
+func (d *Vtencent) performActualUpload(ctx context.Context, stream model.FileStreamer, rspCreateMaterial RspCreatrMaterial, up driver.UpdateProgress) error {
 	hash := sha1.New()
-	rspUGC, err := d.ApplyUploadUGC(rspCreatrMaterial.Data.VodUploadSign, stream)
+	rspUGC, err := d.ApplyUploadUGC(rspCreateMaterial.Data.VodUploadSign, stream)
 	if err != nil {
 		return err
 	}
 	params := rspUGC.Data
 	certificate := params.TempCertificate
 	cfg := &aws.Config{
-		HTTPClient: base.HttpClient,
-		// S3ForcePathStyle: aws.Bool(true),
+		HTTPClient:  base.HttpClient,
 		Credentials: credentials.NewStaticCredentials(certificate.SecretID, certificate.SecretKey, certificate.Token),
 		Region:      aws.String(params.StorageRegionV5),
 		Endpoint:    aws.String(fmt.Sprintf("cos.%s.myqcloud.com", params.StorageRegionV5)),
@@ -283,15 +290,13 @@ func (d *Vtencent) FileUpload(ctx context.Context, dstDir model.Obj, stream mode
 	if err != nil {
 		return err
 	}
-	rspCommitUGC, err := d.CommitUploadUGC(rspCreatrMaterial.Data.VodUploadSign, rspUGC.Data.VodSessionKey)
+	rspCommitUGC, err := d.CommitUploadUGC(rspCreateMaterial.Data.VodUploadSign, rspUGC.Data.VodSessionKey)
 	if err != nil {
 		return err
 	}
-	VodVerifyKey := rspCommitUGC.Data.Video.VerifyContent
-	VodFileId := rspCommitUGC.Data.FileID
-	UploadContext := rspCreatrMaterial.Data.UploadContext
-	SummaryKey := hex.EncodeToString(hash.Sum(nil))
-	_, err = d.FinishUploadMaterial(SummaryKey, VodVerifyKey, UploadContext, VodFileId)
+	summaryKey := hex.EncodeToString(hash.Sum(nil))
+	_, err = d.FinishUploadMaterial(summaryKey, rspCommitUGC.Data.Video.VerifyContent,
+		rspCreateMaterial.Data.UploadContext, rspCommitUGC.Data.FileID)
 	if err != nil {
 		return err
 	}
