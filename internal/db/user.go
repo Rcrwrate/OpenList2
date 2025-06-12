@@ -3,8 +3,8 @@ package db
 import (
 	"encoding/base64"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/internal/model"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/pkg/errors"
 )

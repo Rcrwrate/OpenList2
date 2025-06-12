@@ -8,9 +8,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	"github.com/OpenListTeam/OpenList/v3/internal/op"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/internal/model"
+	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/request"

@@ -1,8 +1,8 @@
 package dropbox
 
 import (
-	"github.com/OpenListTeam/OpenList/v3/internal/driver"
-	"github.com/OpenListTeam/OpenList/v3/internal/op"
+	"github.com/OpenListTeam/OpenList/internal/driver"
+	"github.com/OpenListTeam/OpenList/internal/op"
 )
 
 const (

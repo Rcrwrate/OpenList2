@@ -2,11 +2,12 @@ package febbox
 
 import (
 	"fmt"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
-	hash_extend "github.com/OpenListTeam/OpenList/v3/pkg/utils/hash"
 	"strconv"
 	"time"
+
+	"github.com/OpenListTeam/OpenList/internal/model"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
+	hash_extend "github.com/OpenListTeam/OpenList/pkg/utils/hash"
 )
 
 type ErrResp struct {

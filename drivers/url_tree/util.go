@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/drivers/base"
-	"github.com/OpenListTeam/OpenList/v3/internal/errs"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
+	"github.com/OpenListTeam/OpenList/drivers/base"
+	"github.com/OpenListTeam/OpenList/internal/errs"
+	"github.com/OpenListTeam/OpenList/internal/model"
 	log "github.com/sirupsen/logrus"
 )
 

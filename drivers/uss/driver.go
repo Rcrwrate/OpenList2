@@ -3,15 +3,16 @@ package uss
 import (
 	"context"
 	"fmt"
-	"github.com/OpenListTeam/OpenList/v3/internal/stream"
 	"net/url"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/driver"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/internal/stream"
+
+	"github.com/OpenListTeam/OpenList/internal/driver"
+	"github.com/OpenListTeam/OpenList/internal/model"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 	"github.com/upyun/go-sdk/v3/upyun"
 )
 

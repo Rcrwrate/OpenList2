@@ -9,10 +9,10 @@ import (
 	"math"
 	"os"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/errs"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	"github.com/OpenListTeam/OpenList/v3/pkg/http_range"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/internal/errs"
+	"github.com/OpenListTeam/OpenList/internal/model"
+	"github.com/OpenListTeam/OpenList/pkg/http_range"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"go4.org/readerutil"
 )

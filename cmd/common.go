@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/bootstrap"
-	"github.com/OpenListTeam/OpenList/v3/internal/bootstrap/data"
-	"github.com/OpenListTeam/OpenList/v3/internal/db"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/internal/bootstrap"
+	"github.com/OpenListTeam/OpenList/internal/bootstrap/data"
+	"github.com/OpenListTeam/OpenList/internal/db"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 

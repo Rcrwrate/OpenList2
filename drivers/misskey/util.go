@@ -8,11 +8,11 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"github.com/OpenListTeam/OpenList/v3/drivers/base"
-	"github.com/OpenListTeam/OpenList/v3/internal/driver"
-	"github.com/OpenListTeam/OpenList/v3/internal/errs"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/drivers/base"
+	"github.com/OpenListTeam/OpenList/internal/driver"
+	"github.com/OpenListTeam/OpenList/internal/errs"
+	"github.com/OpenListTeam/OpenList/internal/model"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 )
 
 // Base layer methods

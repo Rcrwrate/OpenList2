@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/OpenListTeam/OpenList/v3/cmd/flags"
-	"github.com/OpenListTeam/OpenList/v3/internal/conf"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/cmd/flags"
+	"github.com/OpenListTeam/OpenList/internal/conf"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 	"github.com/natefinch/lumberjack"
 	"github.com/sirupsen/logrus"
 )

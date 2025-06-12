@@ -10,14 +10,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/drivers/base"
-	"github.com/OpenListTeam/OpenList/v3/internal/driver"
-	"github.com/OpenListTeam/OpenList/v3/internal/errs"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	streamPkg "github.com/OpenListTeam/OpenList/v3/internal/stream"
-	"github.com/OpenListTeam/OpenList/v3/pkg/cron"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils/random"
+	"github.com/OpenListTeam/OpenList/drivers/base"
+	"github.com/OpenListTeam/OpenList/internal/driver"
+	"github.com/OpenListTeam/OpenList/internal/errs"
+	"github.com/OpenListTeam/OpenList/internal/model"
+	streamPkg "github.com/OpenListTeam/OpenList/internal/stream"
+	"github.com/OpenListTeam/OpenList/pkg/cron"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
+	"github.com/OpenListTeam/OpenList/pkg/utils/random"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -3,11 +3,11 @@ package op
 import (
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/db"
-	"github.com/OpenListTeam/OpenList/v3/internal/errs"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	"github.com/OpenListTeam/OpenList/v3/pkg/singleflight"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/internal/db"
+	"github.com/OpenListTeam/OpenList/internal/errs"
+	"github.com/OpenListTeam/OpenList/internal/model"
+	"github.com/OpenListTeam/OpenList/pkg/singleflight"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 	"github.com/Xhofe/go-cache"
 )
 

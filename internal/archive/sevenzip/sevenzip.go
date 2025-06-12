@@ -4,10 +4,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/archive/tool"
-	"github.com/OpenListTeam/OpenList/v3/internal/errs"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	"github.com/OpenListTeam/OpenList/v3/internal/stream"
+	"github.com/OpenListTeam/OpenList/internal/archive/tool"
+	"github.com/OpenListTeam/OpenList/internal/errs"
+	"github.com/OpenListTeam/OpenList/internal/model"
+	"github.com/OpenListTeam/OpenList/internal/stream"
 )
 
 type SevenZip struct{}

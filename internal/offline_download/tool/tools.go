@@ -2,8 +2,9 @@ package tool
 
 import (
 	"fmt"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
 	"sort"
+
+	"github.com/OpenListTeam/OpenList/internal/model"
 )
 
 var (

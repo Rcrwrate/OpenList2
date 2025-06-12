@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 )
 
 type ObjWrapName struct {

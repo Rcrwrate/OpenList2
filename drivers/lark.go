@@ -5,5 +5,5 @@
 package drivers
 
 import (
-	_ "github.com/OpenListTeam/OpenList/v3/drivers/lark"
+	_ "github.com/OpenListTeam/OpenList/drivers/lark"
 )

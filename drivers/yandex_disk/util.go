@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/OpenListTeam/OpenList/v3/drivers/base"
-	"github.com/OpenListTeam/OpenList/v3/internal/op"
+	"github.com/OpenListTeam/OpenList/drivers/base"
+	"github.com/OpenListTeam/OpenList/internal/op"
 	"github.com/go-resty/resty/v2"
 )
 

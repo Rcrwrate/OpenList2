@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/conf"
+	"github.com/OpenListTeam/OpenList/internal/conf"
 	"gorm.io/gorm"
 )
 

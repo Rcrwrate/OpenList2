@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 
-	_ "github.com/OpenListTeam/OpenList/v3/internal/model"
+	_ "github.com/OpenListTeam/OpenList/internal/model"
 )
 
 func (f *File) UnmarshalJSON(data []byte) error {

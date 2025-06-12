@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/drivers/base"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/drivers/base"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 	"github.com/go-resty/resty/v2"
 	jsoniter "github.com/json-iterator/go"
 )

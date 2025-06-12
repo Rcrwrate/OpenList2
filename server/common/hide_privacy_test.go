@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/conf"
+	"github.com/OpenListTeam/OpenList/internal/conf"
 )
 
 func TestHidePrivacy(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils"
+	"github.com/OpenListTeam/OpenList/pkg/utils"
 )
 
 // Tid生成

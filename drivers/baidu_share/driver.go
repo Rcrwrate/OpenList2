@@ -10,9 +10,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/driver"
-	"github.com/OpenListTeam/OpenList/v3/internal/errs"
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
+	"github.com/OpenListTeam/OpenList/internal/driver"
+	"github.com/OpenListTeam/OpenList/internal/errs"
+	"github.com/OpenListTeam/OpenList/internal/model"
 	"github.com/go-resty/resty/v2"
 )
 

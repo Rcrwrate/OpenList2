@@ -3,8 +3,8 @@ package virtual
 import (
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
-	"github.com/OpenListTeam/OpenList/v3/pkg/utils/random"
+	"github.com/OpenListTeam/OpenList/internal/model"
+	"github.com/OpenListTeam/OpenList/pkg/utils/random"
 )
 
 func (d *Virtual) genObj(dir bool) model.Obj {

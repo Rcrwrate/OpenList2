@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v3/internal/model"
+	"github.com/OpenListTeam/OpenList/internal/model"
 )
 
 type ShareResp struct {
