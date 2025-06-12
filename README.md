@@ -105,7 +105,7 @@ N/A
 
 ## Discussion
 
-Please go to our [discussion forum](https://github.com/AlistTeam/alist/discussions) for general questions, **issues are for bug reports and feature requests only.**
+Please go to our [discussion forum](https://github.com/AlistTeam/openlist/discussions) for general questions, **issues are for bug reports and feature requests only.**
 
 ## Contributors
 
