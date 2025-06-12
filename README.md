@@ -99,7 +99,7 @@ English | [中文](./README_cn.md) | [日本語](./README_ja.md) | [Contributing
 
 ## Document
 
-<https://alistteam.github.io/docs/> (temporally)
+<https://openlistteam.github.io/docs/> (temporally)
 
 ## Demo
 
@@ -107,13 +107,13 @@ N/A
 
 ## Discussion
 
-Please go to our [discussion forum](https://github.com/AlistTeam/alist/discussions) for general questions, **issues are for bug reports and feature requests only.**
+Please go to our [discussion forum](https://github.com/orgs/OpenListTeam/discussions) for general questions, **issues are for bug reports and feature requests only.**
 
 ## Contributors
 
 Thanks goes to these wonderful people:
 
-[![Contributors](https://contrib.rocks/image?repo=AlistTeam/alist)](https://github.com/AlistTeam/alist/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=OpenListTeam/alist)](https://github.com/OpenListTeam/OpenList/graphs/contributors)
 
 ## License
 
@@ -124,8 +124,8 @@ The `AList` is open-source software licensed under the AGPL-3.0 license.
 - This program is implemented by calling the official sdk/interface, without destroying the official interface behavior;
 - This program only does 302 redirect/traffic forwarding, and does not intercept, store, or tamper with any user data;
 - Before using this program, you should understand and bear the corresponding risks, including but not limited to account ban, download speed limit, etc., which is none of this program's business;
-- If there is any infringement, please contact [AlistTeam](https://github.com/AlistTeam), and it will be dealt with in time.
+- If there is any infringement, please contact [OpenListTeam](https://github.com/OpenListTeam), and it will be dealt with in time.
 
 ---
 
-> [@GitHub](https://github.com/AlistTeam) · [@Temporary  TelegramGroup]( https://t.me/+BYuDkV2f-ds2ODE1)
+> [@GitHub](https://github.com/OpenListTeam) · [@Temporary  TelegramGroup]( https://t.me/+BYuDkV2f-ds2ODE1)
