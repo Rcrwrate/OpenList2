@@ -93,7 +93,7 @@
 
 ## 文档
 
-<https://OpenListTeam.github.io/docs/> (临时)
+<https://openlistteam.github.io/docs/> (临时)
 
 ## Demo
 
