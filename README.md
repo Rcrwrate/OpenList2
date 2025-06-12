@@ -126,4 +126,4 @@ The `OpenList` is open-source software licensed under the AGPL-3.0 license.
 
 ---
 
-> [@GitHub](https://github.com/OpenListTeam) · [@Temporary  TelegramGroup]( https://t.me/OpenListTeam)
+> [@GitHub](https://github.com/OpenListTeam) · [@TelegramGroup]( https://t.me/OpenListTeam)
