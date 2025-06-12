@@ -95,7 +95,7 @@
 
 ## 文档
 
-<https://alistteam.github.io/docs/> (临时)
+<https://openlistteam.github.io/docs/> (临时)
 
 ## Demo
 
@@ -103,13 +103,13 @@ N/A
 
 ## 讨论
 
-一般问题请到[讨论论坛](https://github.com/AlistTeam/alist/discussions) ，**issue仅针对错误报告和功能请求。**
+一般问题请到[讨论论坛](https://github.com/orgs/OpenListTeam/discussions) ，**issue仅针对错误报告和功能请求。**
 
 ## 贡献者
 
 感谢这些开源作者们：
 
-[![Contributors](https://contrib.rocks/image?repo=AlistTeam/alist)](https://github.com/AlistTeam/alist/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=OpenListTeam/OpenList)](https://github.com/OpenListTeam/OpenList/graphs/contributors)
 
 ## 许可
 
@@ -120,8 +120,8 @@ N/A
 - 本程序通过调用官方sdk/接口实现，无破坏官方接口行为；
 - 本程序仅做302重定向/流量转发，不拦截、存储、篡改任何用户数据；
 - 在使用本程序之前，你应了解并承担相应的风险，包括但不限于账号被ban，下载限速等，与本程序无关；
-- 如有侵权，请联系[AlistTeam](https://github.com/AlistTeam)，团队会及时处理。
+- 如有侵权，请联系[OpenListTeam](https://github.com/OpenListTeam)，团队会及时处理。
 
 ---
 
-> [@GitHub](https://github.com/AlistTeam) · [@Telegram临时群]( https://t.me/+BYuDkV2f-ds2ODE1)
+> [@GitHub](https://github.com/OpenListTeam) · [@Telegram临时群]( https://t.me/+BYuDkV2f-ds2ODE1)
