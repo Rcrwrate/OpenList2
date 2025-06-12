@@ -122,4 +122,4 @@ N/A
 
 ---
 
-> [@GitHub](https://github.com/AlistTeam) · [@Telegram临时群]( https://t.me/+BYuDkV2f-ds2ODE1)
+> [@GitHub](https://github.com/AlistTeam) · [@Telegram临时群]( https://t.me/OpenListTeam)
