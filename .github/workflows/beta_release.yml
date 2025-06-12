@@ -94,11 +94,12 @@ jobs:
         run: bash build.sh dev web
 
       - name: Build
-        uses: go-cross/cgo-actions@v1
+        uses: go-cross/cgo-actions@454cfd6d20816878926b0253ca8f2dbbd2f7d731 # V1.1.0
         with:
           targets: ${{ matrix.target }}
           musl-target-format: $os-$musl-$arch
           out-dir: build
+          musl-base-url: "https://musl.cc"
           x-flags: |
             github.com/alist-org/alist/v3/internal/conf.BuiltAt=$built_at
             github.com/alist-org/alist/v3/internal/conf.GitAuthor=OpenList

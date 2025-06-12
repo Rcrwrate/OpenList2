@@ -1,4 +1,4 @@
-appName="alist"
+appName="openlist"
 builtAt="$(date +'%F %T %z')"
 gitAuthor="OpenList <github-workflow@noreply.example.com>"
 gitCommit=$(git log --pretty=format:"%h" -1)
@@ -10,8 +10,13 @@ elif [ "$1" = "beta" ]; then
   version="beta"
   webVersion="dev"
 else
-  git tag -d beta
-  version=$(git describe --abbrev=0 --tags)
+  git tag -d beta || true
+  # Always true if there's no tag
+  version=$(git describe --abbrev=0 --tags) || true
+  if [ -z "$version" ]; then
+    echo "version is empty, assign a default value ..."
+    version="0.0.1"
+  fi
   # TODO: Repleace this assets with our new frontend if needed
   webVersion=$(wget -qO- -t1 -T2 "https://api.github.com/repos/alist-org/alist-web/releases/latest" | grep "tag_name" | head -n 1 | awk -F ":" '{print $2}' | sed 's/\"//g;s/,//g;s/ //g')
 fi
@@ -80,16 +85,16 @@ BuildDev() {
     go build -o ./dist/$appName-$os_arch -ldflags="$muslflags" -tags=jsoniter .
   done
   xgo -targets=windows/amd64,darwin/amd64,darwin/arm64 -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
-  mv alist-* dist
+  mv "$appName"-* dist
   cd dist
-  cp ./alist-windows-amd64.exe ./alist-windows-amd64-upx.exe
-  upx -9 ./alist-windows-amd64-upx.exe
+  cp ./"$appName"-windows-amd64.exe ./"$appName"-windows-amd64-upx.exe
+  upx -9 ./"$appName"-windows-amd64-upx.exe
   find . -type f -print0 | xargs -0 md5sum >md5.txt
   cat md5.txt
 }
 
 BuildDocker() {
-  go build -o ./bin/alist -ldflags="$ldflags" -tags=jsoniter .
+  go build -o ./bin/"$appName" -ldflags="$ldflags" -tags=jsoniter .
 }
 
 PrepareBuildDockerMusl() {
@@ -125,7 +130,7 @@ BuildDockerMultiplatform() {
     export GOARCH=$arch
     export CC=${cgo_cc}
     echo "building for $os_arch"
-    go build -o build/$os/$arch/alist -ldflags="$docker_lflags" -tags=jsoniter .
+    go build -o build/$os/$arch/"$appName" -ldflags="$docker_lflags" -tags=jsoniter .
   done
 
   DOCKER_ARM_ARCHES=(linux-arm/v6 linux-arm/v7)
@@ -139,20 +144,20 @@ BuildDockerMultiplatform() {
     export GOARM=${GO_ARM[$i]}
     export CC=${cgo_cc}
     echo "building for $docker_arch"
-    go build -o build/${docker_arch%%-*}/${docker_arch##*-}/alist -ldflags="$docker_lflags" -tags=jsoniter .
+    go build -o build/${docker_arch%%-*}/${docker_arch##*-}/"$appName" -ldflags="$docker_lflags" -tags=jsoniter .
   done
 }
 
 BuildRelease() {
   rm -rf .git/
   mkdir -p "build"
-  BuildWinArm64 ./build/alist-windows-arm64.exe
+  BuildWinArm64 ./build/"$appName"-windows-arm64.exe
   xgo -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
   # why? Because some target platforms seem to have issues with upx compression
-  upx -9 ./alist-linux-amd64
-  cp ./alist-windows-amd64.exe ./alist-windows-amd64-upx.exe
-  upx -9 ./alist-windows-amd64-upx.exe
-  mv alist-* build
+  upx -9 ./"$appName"-linux-amd64
+  cp ./"$appName"-windows-amd64.exe ./"$appName"-windows-amd64-upx.exe
+  upx -9 ./"$appName"-windows-amd64-upx.exe
+  mv "$appName"-* build
 }
 
 BuildReleaseLinuxMusl() {
@@ -260,31 +265,34 @@ BuildReleaseFreeBSD() {
 
 MakeRelease() {
   cd build
+  if [ -d compress ]; then
+    rm -rv compress
+  fi
   mkdir compress
   for i in $(find . -type f -name "$appName-linux-*"); do
-    cp "$i" alist
-    tar -czvf compress/"$i".tar.gz alist
-    rm -f alist
+    cp "$i" "$appName"
+    tar -czvf compress/"$i".tar.gz "$appName"
+    rm -f "$appName"
   done
     for i in $(find . -type f -name "$appName-android-*"); do
-    cp "$i" alist
-    tar -czvf compress/"$i".tar.gz alist
-    rm -f alist
+    cp "$i" "$appName"
+    tar -czvf compress/"$i".tar.gz "$appName"
+    rm -f "$appName"
   done
   for i in $(find . -type f -name "$appName-darwin-*"); do
-    cp "$i" alist
-    tar -czvf compress/"$i".tar.gz alist
-    rm -f alist
+    cp "$i" "$appName"
+    tar -czvf compress/"$i".tar.gz "$appName"
+    rm -f "$appName"
   done
   for i in $(find . -type f -name "$appName-freebsd-*"); do
-    cp "$i" alist
-    tar -czvf compress/"$i".tar.gz alist
-    rm -f alist
+    cp "$i" "$appName"
+    tar -czvf compress/"$i".tar.gz "$appName"
+    rm -f "$appName"
   done
   for i in $(find . -type f -name "$appName-windows-*"); do
-    cp "$i" alist.exe
-    zip compress/$(echo $i | sed 's/\.[^.]*$//').zip alist.exe
-    rm -f alist.exe
+    cp "$i" "$appName".exe
+    zip compress/$(echo $i | sed 's/\.[^.]*$//').zip "$appName".exe
+    rm -f "$appName".exe
   done
   cd compress
   find . -type f -print0 | xargs -0 md5sum >"$1"
