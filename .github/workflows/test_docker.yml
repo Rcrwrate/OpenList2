@@ -64,6 +64,9 @@ jobs:
     needs: build_binary
     name: Release Docker image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         image: ["latest", "ffmpeg", "aria2", "aio"]
