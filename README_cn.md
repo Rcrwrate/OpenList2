@@ -34,8 +34,6 @@
 > 我们诚挚地感谢原作者 [xhofe/alist](https://github.com/xhofe/alist) 为原项目做出的重大贡献。
 >
 > 本 Fork 尚未稳定, 大量外部链接指向的内容尚未得到审计, 存在投毒风险, 含相关文档网站等. 切勿盲目信任!
->
-> 请您为确认本 Fork 新名字投票: https://github.com/AlistTeam/alist/issues/4
 
 [English](./README.md) | 中文 | [日本語](./README_ja.md) | [Contributing](./CONTRIBUTING.md) | [CODE_OF_CONDUCT](./CODE_OF_CONDUCT.md)
 
@@ -103,13 +101,13 @@ N/A
 
 ## 讨论
 
-一般问题请到[讨论论坛](https://github.com/AlistTeam/alist/discussions) ，**issue仅针对错误报告和功能请求。**
+一般问题请到[讨论论坛](https://github.com/AlistTeam/openlist/discussions) ，**issue仅针对错误报告和功能请求。**
 
 ## 贡献者
 
 感谢这些开源作者们：
 
-[![Contributors](https://contrib.rocks/image?repo=AlistTeam/alist)](https://github.com/AlistTeam/alist/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=AlistTeam/openlist)](https://github.com/AlistTeam/openlist/graphs/contributors)
 
 ## 许可
 
