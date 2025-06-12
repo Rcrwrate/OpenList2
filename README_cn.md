@@ -2,25 +2,25 @@
   <img width="100px" alt="logo" src="https://cdn.jsdelivr.net/gh/alist-org/logo@main/logo.svg"/></a>
   <p><em>🗂一个支持多存储的文件列表程序，使用 Gin 和 Solidjs，基于 alist 项目 fork 开发</em></p>
 <div>
-  <a href="https://goreportcard.com/report/github.com/AlistTeam/alist/v3">
-    <img src="https://goreportcard.com/badge/github.com/AlistTeam/alist/v3" alt="latest version" />
+  <a href="https://goreportcard.com/report/github.com/OpenListTeam/OpenList/v3">
+    <img src="https://goreportcard.com/badge/github.com/OpenListTeam/OpenList/v3" alt="latest version" />
   </a>
-  <a href="https://github.com/AlistTeam/alist/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/AlistTeam/alist" alt="License" />
+  <a href="https://github.com/OpenListTeam/OpenList/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/OpenListTeam/OpenList" alt="License" />
   </a>
-  <a href="https://github.com/AlistTeam/alist/actions?query=workflow%3ABuild">
-    <img src="https://img.shields.io/github/actions/workflow/status/AlistTeam/alist/build.yml?branch=main" alt="Build status" />
+  <a href="https://github.com/OpenListTeam/OpenList/actions?query=workflow%3ABuild">
+    <img src="https://img.shields.io/github/actions/workflow/status/OpenListTeam/OpenList/build.yml?branch=main" alt="Build status" />
   </a>
-  <a href="https://github.com/AlistTeam/alist/releases">
-    <img src="https://img.shields.io/github/release/AlistTeam/alist" alt="latest version" />
+  <a href="https://github.com/OpenListTeam/OpenList/releases">
+    <img src="https://img.shields.io/github/release/OpenListTeam/OpenList" alt="latest version" />
   </a>
 </div>
 <div>
-  <a href="https://github.com/AlistTeam/alist/discussions">
-    <img src="https://img.shields.io/github/discussions/AlistTeam/alist?color=%23ED8936" alt="discussions" />
+  <a href="https://github.com/OpenListTeam/OpenList/discussions">
+    <img src="https://img.shields.io/github/discussions/OpenListTeam/OpenList?color=%23ED8936" alt="discussions" />
   </a>
-  <a href="https://github.com/AlistTeam/alist/releases">
-    <img src="https://img.shields.io/github/downloads/AlistTeam/alist/total?color=%239F7AEA&logo=github" alt="Downloads" />
+  <a href="https://github.com/OpenListTeam/OpenList/releases">
+    <img src="https://img.shields.io/github/downloads/OpenListTeam/OpenList/total?color=%239F7AEA&logo=github" alt="Downloads" />
   </a>
 </div>
 </div>
@@ -34,8 +34,6 @@
 > 我们诚挚地感谢原作者 [xhofe/alist](https://github.com/xhofe/alist) 为原项目做出的重大贡献。
 >
 > 本 Fork 尚未稳定, 大量外部链接指向的内容尚未得到审计, 存在投毒风险, 含相关文档网站等. 切勿盲目信任!
->
-> 请您为确认本 Fork 新名字投票: https://github.com/AlistTeam/alist/issues/4
 
 [English](./README.md) | 中文 | [日本語](./README_ja.md) | [Contributing](./CONTRIBUTING.md) | [CODE_OF_CONDUCT](./CODE_OF_CONDUCT.md)
 
@@ -95,7 +93,7 @@
 
 ## 文档
 
-<https://alistteam.github.io/docs/> (临时)
+<https://openlistteam.github.io/docs/> (临时)
 
 ## Demo
 
@@ -103,25 +101,25 @@ N/A
 
 ## 讨论
 
-一般问题请到[讨论论坛](https://github.com/AlistTeam/alist/discussions) ，**issue仅针对错误报告和功能请求。**
+一般问题请到[讨论论坛](https://github.com/OpenListTeam/OpenList/discussions) ，**issue仅针对错误报告和功能请求。**
 
 ## 贡献者
 
 感谢这些开源作者们：
 
-[![Contributors](https://contrib.rocks/image?repo=AlistTeam/alist)](https://github.com/AlistTeam/alist/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=OpenListTeam/OpenList)](https://github.com/OpenListTeam/OpenList/graphs/contributors)
 
 ## 许可
 
-`AList` 是在 AGPL-3.0 许可下许可的开源软件。
+`OpenList` 是在 AGPL-3.0 许可下许可的开源软件。
 
 ## 免责声明
 - 本程序为免费开源项目，旨在分享网盘文件，方便下载以及学习golang，使用时请遵守相关法律法规，请勿滥用；
 - 本程序通过调用官方sdk/接口实现，无破坏官方接口行为；
 - 本程序仅做302重定向/流量转发，不拦截、存储、篡改任何用户数据；
 - 在使用本程序之前，你应了解并承担相应的风险，包括但不限于账号被ban，下载限速等，与本程序无关；
-- 如有侵权，请联系[AlistTeam](https://github.com/AlistTeam)，团队会及时处理。
+- 如有侵权，请联系[OpenListTeam](https://github.com/OpenListTeam)，团队会及时处理。
 
 ---
 
-> [@GitHub](https://github.com/AlistTeam) · [@Telegram临时群]( https://t.me/+BYuDkV2f-ds2ODE1)
+> [@GitHub](https://github.com/OpenListTeam) · [@Telegram 交流群]( https://t.me/OpenListTeam)
