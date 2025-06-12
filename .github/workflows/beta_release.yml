@@ -101,7 +101,7 @@ jobs:
           out-dir: build
           x-flags: |
             github.com/alist-org/alist/v3/internal/conf.BuiltAt=$built_at
-            github.com/alist-org/alist/v3/internal/conf.GitAuthor=Xhofe
+            github.com/alist-org/alist/v3/internal/conf.GitAuthor=OpenList
             github.com/alist-org/alist/v3/internal/conf.GitCommit=$git_commit
             github.com/alist-org/alist/v3/internal/conf.Version=$tag
             github.com/alist-org/alist/v3/internal/conf.WebVersion=dev
@@ -118,10 +118,19 @@ jobs:
       #     prerelease: true
       #     tag_name: beta
 
+      - name: Clean illegal characters from matrix.target
+        id: clean_target_name
+        run: |
+          ILLEGAL_CHARS_REGEX='[":<>|*?\\/\r\n]'
+          CLEANED_TARGET=$(echo "${{ matrix.target }}" | sed -E "s/$ILLEGAL_CHARS_REGEX//g")
+          echo "Original target: ${{ matrix.target }}"
+          echo "Cleaned target: $CLEANED_TARGET"
+          echo "cleaned_target=$CLEANED_TARGET" >> $GITHUB_ENV
+
       - name: Upload assets
         uses: actions/upload-artifact@v4
         with:
-          name: beta builds for ${{ matrix.target }}
+          name: beta builds for ${{ env.clean_target_name }}
           path: ${{ github.workspace }}/build/compress/*
           compression-level: 0
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`

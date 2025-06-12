@@ -1,7 +1,7 @@
 name: auto_lang
 
 on:
-  # Disable tranlation generation, enable it after everythis is setup.
+  # Disable translation generation, enable it after everything is setup.
   # push:
   #   branches:
   #     - 'main'
