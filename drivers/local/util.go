@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/OpenListTeam/OpenList/internal/conf"
 	"github.com/OpenListTeam/OpenList/internal/model"
@@ -151,17 +150,4 @@ func (d *Local) getThumb(file model.Obj) (*bytes.Buffer, *string, error) {
 		}
 	}
 	return &buf, nil, nil
-}
-
-func isHiddenOnWindows(f fs.FileInfo, fullPath string) bool {
-	filePath := filepath.Join(fullPath, f.Name())
-	namePtr, err := syscall.UTF16PtrFromString(filePath)
-	if err != nil {
-		return false
-	}
-	attrs, err := syscall.GetFileAttributes(namePtr)
-	if err != nil {
-		return false
-	}
-	return attrs&syscall.FILE_ATTRIBUTE_HIDDEN != 0
 }
