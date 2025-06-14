@@ -63,14 +63,13 @@ func (d *Pan123) List(ctx context.Context, dir model.Obj, args model.ListArgs) (
 
 func (d *Pan123) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
 	if f, ok := file.(File); ok {
-		//var resp DownResp
 		var headers map[string]string
 		if !utils.IsLocalIPAddr(args.IP) {
 			headers = map[string]string{
-				//"X-Real-IP":       "1.1.1.1",
 				"X-Forwarded-For": args.IP,
 			}
 		}
+
 		data := base.Json{
 			"driveId":   0,
 			"etag":      f.Etag,
@@ -80,49 +79,73 @@ func (d *Pan123) Link(ctx context.Context, file model.Obj, args model.LinkArgs) 
 			"size":      f.Size,
 			"type":      f.Type,
 		}
-		resp, err := d.Request(DownloadInfo, http.MethodPost, func(req *resty.Request) {
 
+		resp, err := d.Request(DownloadInfo, http.MethodPost, func(req *resty.Request) {
 			req.SetBody(data).SetHeaders(headers)
 		}, nil)
 		if err != nil {
 			return nil, err
 		}
+
 		downloadUrl := utils.Json.Get(resp, "data", "DownloadUrl").ToString()
 		u, err := url.Parse(downloadUrl)
 		if err != nil {
 			return nil, err
 		}
-		nu := u.Query().Get("params")
-		if nu != "" {
-			du, _ := base64.StdEncoding.DecodeString(nu)
-			u, err = url.Parse(string(du))
+
+		origin := u.Scheme + "://" + u.Host
+		params := u.Query().Get("params")
+
+		if strings.Contains(origin, "web-pro") && params != "" {
+			decoded, err := base64.StdEncoding.DecodeString(params)
 			if err != nil {
 				return nil, err
 			}
+			directURL, err := url.Parse(string(decoded))
+			if err != nil {
+				return nil, err
+			}
+			directURL.Query().Set("auto_redirect", "0")
+			u.Query().Set("params", base64.StdEncoding.EncodeToString([]byte(directURL.String())))
+			downloadUrl = u.String()
+		} else {
+			// 非 web-pro 的 origin：将整个原始 URL 打包进 web-pro2 地址中
+			u.Query().Set("auto_redirect", "0")
+			repack := &url.URL{
+				Scheme: "https",
+				Host:   "web-pro2.123952.com",
+				Path:   "/download-v2/",
+			}
+			q := repack.Query()
+			q.Set("params", base64.StdEncoding.EncodeToString([]byte(url.QueryEscape(u.String()))))
+			q.Set("is_s3", "0")
+			repack.RawQuery = q.Encode()
+			downloadUrl, _ = url.QueryUnescape(repack.String())
 		}
-		u_ := u.String()
-		log.Debug("download url: ", u_)
-		res, err := base.NoRedirectClient.R().SetHeader("Referer", "https://www.123pan.com/").Get(u_)
+
+		log.Debug("final download url (after patch): ", downloadUrl)
+		res, err := base.NoRedirectClient.R().SetHeader("Referer", "https://www.123pan.com/").Get(downloadUrl)
 		if err != nil {
 			return nil, err
 		}
-		log.Debug(res.String())
+
 		link := model.Link{
-			URL: u_,
+			URL: downloadUrl,
+			Header: http.Header{
+				"Referer": []string{"https://www.123pan.com/"},
+			},
 		}
-		log.Debugln("res code: ", res.StatusCode())
+
 		if res.StatusCode() == 302 {
 			link.URL = res.Header().Get("location")
 		} else if res.StatusCode() < 300 {
 			link.URL = utils.Json.Get(res.Body(), "data", "redirect_url").ToString()
 		}
-		link.Header = http.Header{
-			"Referer": []string{"https://www.123pan.com/"},
-		}
+
 		return &link, nil
-	} else {
-		return nil, fmt.Errorf("can't convert obj")
 	}
+
+	return nil, fmt.Errorf("can't convert obj")
 }
 
 func (d *Pan123) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) error {
