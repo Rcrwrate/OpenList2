@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	ftpserver "github.com/KirCute/ftpserverlib-pasvportmap"
 	"github.com/OpenListTeam/OpenList/cmd/flags"
 	"github.com/OpenListTeam/OpenList/internal/bootstrap"
 	"github.com/OpenListTeam/OpenList/internal/conf"
@@ -21,6 +20,7 @@ import (
 	"github.com/OpenListTeam/OpenList/pkg/utils"
 	"github.com/OpenListTeam/OpenList/server"
 	"github.com/OpenListTeam/sftpd-openlist"
+	ftpserver "github.com/fclairamb/ftpserverlib"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
