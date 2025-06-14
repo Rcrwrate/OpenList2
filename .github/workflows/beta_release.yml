@@ -42,14 +42,13 @@ jobs:
           git tag -l
           npx changelogithub --output CHANGELOG.md
 
-      # Disable this right now, use github workflow assets for easier manipulation
-      # - name: Upload assets
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     body_path: "See CHANGELOG.md"
-      #     files: CHANGELOG.md
-      #     prerelease: true
-      #     tag_name: beta
+      - name: Upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: "See CHANGELOG.md"
+          files: CHANGELOG.md
+          prerelease: true
+          tag_name: beta
       - name: Upload assets
         uses: actions/upload-artifact@v4
         with:
@@ -94,7 +93,7 @@ jobs:
         run: bash build.sh dev web
 
       - name: Build
-        uses: go-cross/cgo-actions@454cfd6d20816878926b0253ca8f2dbbd2f7d731 # V1.1.0
+        uses: OpenListTeam/cgo-actions@v1.1.1
         with:
           targets: ${{ matrix.target }}
           musl-target-format: $os-$musl-$arch
@@ -113,12 +112,12 @@ jobs:
           bash build.sh zip ${{ matrix.hash }}
 
       # See above           
-      # - name: Upload assets
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: build/compress/*
-      #     prerelease: true
-      #     tag_name: beta
+      - name: Upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/compress/*
+          prerelease: true
+          tag_name: beta
 
       - name: Clean illegal characters from matrix.target
         id: clean_target_name
@@ -136,31 +135,3 @@ jobs:
           path: ${{ github.workspace }}/build/compress/*
           compression-level: 0
           if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
-
-  # TODO: We do not have desktop clients right now.        
-  # desktop:
-  #   needs:
-  #     - release
-  #   name: Beta Release Desktop
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout repo
-  #       uses: actions/checkout@v4
-  #       with:
-  #         repository: alist-org/desktop-release
-  #         ref: main
-  #         persist-credentials: false
-  #         fetch-depth: 0
-
-  #     - name: Commit
-  #       run: |
-  #         git config --local user.email "bot@nn.ci"
-  #         git config --local user.name "IlaBot"
-  #         git commit --allow-empty -m "Trigger build for ${{ github.sha }}"
-
-  #     - name: Push commit
-  #       uses: ad-m/github-push-action@master
-  #       with:
-  #         github_token: ${{ secrets.MY_TOKEN }}
-  #         branch: main
-  #         repository: alist-org/desktop-release
