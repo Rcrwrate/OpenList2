@@ -136,7 +136,7 @@ func (d *Alias) MakeDir(ctx context.Context, parentDir model.Obj, dirName string
 	reqPath, err := d.getReqPath(ctx, parentDir, true)
 	if err == nil {
 		for _, path := range reqPath {
-			err = errors.Join(fs.MakeDir(ctx, stdpath.Join(*path, dirName)))
+			err = errors.Join(err, fs.MakeDir(ctx, stdpath.Join(*path, dirName)))
 		}
 		return err
 	}
@@ -166,7 +166,7 @@ func (d *Alias) Move(ctx context.Context, srcObj, dstDir model.Obj) error {
 	}
 	if len(srcPath) == len(dstPath) {
 		for i := range srcPath {
-			err = errors.Join(fs.Move(ctx, *srcPath[i], *dstPath[i]))
+			err = errors.Join(err, fs.Move(ctx, *srcPath[i], *dstPath[i]))
 		}
 		return err
 	} else {
@@ -181,7 +181,7 @@ func (d *Alias) Rename(ctx context.Context, srcObj model.Obj, newName string) er
 	reqPath, err := d.getReqPath(ctx, srcObj, false)
 	if err == nil {
 		for _, path := range reqPath {
-			err = errors.Join(fs.Rename(ctx, *path, newName))
+			err = errors.Join(err, fs.Rename(ctx, *path, newName))
 		}
 		return err
 	}
@@ -212,13 +212,13 @@ func (d *Alias) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
 	if len(srcPath) == len(dstPath) {
 		for i := range srcPath {
 			_, e := fs.Copy(ctx, *srcPath[i], *dstPath[i])
-			err = errors.Join(e)
+			err = errors.Join(err, e)
 		}
 		return err
 	} else if len(srcPath) == 1 || !d.ProtectSameName {
 		for _, path := range dstPath {
 			_, e := fs.Copy(ctx, *srcPath[0], *path)
-			err = errors.Join(e)
+			err = errors.Join(err, e)
 		}
 		return err
 	} else {
@@ -233,7 +233,7 @@ func (d *Alias) Remove(ctx context.Context, obj model.Obj) error {
 	reqPath, err := d.getReqPath(ctx, obj, false)
 	if err == nil {
 		for _, path := range reqPath {
-			err = errors.Join(fs.Remove(ctx, *path))
+			err = errors.Join(err, fs.Remove(ctx, *path))
 		}
 		return err
 	}
@@ -258,7 +258,7 @@ func (d *Alias) Put(ctx context.Context, dstDir model.Obj, s model.FileStreamer,
 				return err
 			}
 			for _, path := range reqPath {
-				err = errors.Join(fs.PutDirectly(ctx, *path, &stream.FileStream{
+				err = errors.Join(err, fs.PutDirectly(ctx, *path, &stream.FileStream{
 					Obj:          s,
 					Mimetype:     s.GetMimetype(),
 					WebPutAsTask: s.NeedStore(),
@@ -285,7 +285,7 @@ func (d *Alias) PutURL(ctx context.Context, dstDir model.Obj, name, url string) 
 	reqPath, err := d.getReqPath(ctx, dstDir, true)
 	if err == nil {
 		for _, path := range reqPath {
-			err = errors.Join(fs.PutURL(ctx, *path, name, url))
+			err = errors.Join(err, fs.PutURL(ctx, *path, name, url))
 		}
 		return err
 	}
@@ -372,13 +372,13 @@ func (d *Alias) ArchiveDecompress(ctx context.Context, srcObj, dstDir model.Obj,
 	if len(srcPath) == len(dstPath) {
 		for i := range srcPath {
 			_, e := fs.ArchiveDecompress(ctx, *srcPath[i], *dstPath[i], args)
-			err = errors.Join(e)
+			err = errors.Join(err, e)
 		}
 		return err
 	} else if len(srcPath) == 1 || !d.ProtectSameName {
 		for _, path := range dstPath {
 			_, e := fs.ArchiveDecompress(ctx, *srcPath[0], *path, args)
-			err = errors.Join(e)
+			err = errors.Join(err, e)
 		}
 		return err
 	} else {
