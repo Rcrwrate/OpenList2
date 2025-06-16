@@ -14,9 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-##  ORG_NAME: openlistteam
-  ORG_NAME: suyunjing-su
-  ORG_NAME_1: cloudlinksu
+  ORG_NAME: openlistteam
   IMAGE_NAME: openlist-git
   IMAGE_NAME_DOCKERHUB: openlist
   REGISTRY: ghcr.io
@@ -124,7 +122,7 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.ORG_NAME }}/${{ env.IMAGE_NAME }}
-            ${{ env.ORG_NAME_1 }}/${{ env.IMAGE_NAME_DOCKERHUB }}
+            ${{ env.ORG_NAME }}/${{ env.IMAGE_NAME_DOCKERHUB }}
           tags: ${{ env.IMAGE_TAGS_BETA }}
           flavor: |
             ${{ matrix.tag_favor }}
