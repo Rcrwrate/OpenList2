@@ -53,7 +53,7 @@ jobs:
       - name: Copy lang file
         run: |
           cp -f ./OpenList/lang/*.json ./OpenList-Frontend/src/lang/en/ 2>/dev/null || :
-          
+
       - name: Commit git
         run: |
           cd OpenList-Frontend
