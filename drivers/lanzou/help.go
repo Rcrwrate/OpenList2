@@ -97,7 +97,7 @@ func RemoveJSComment(data string) string {
 			i++
 			continue
 		}
-		if inComment || inSingleLineComment{
+		if inComment || inSingleLineComment {
 			continue
 		}
 		if v == '/' && i+1 < len(data) {
