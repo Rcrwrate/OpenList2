@@ -10,7 +10,6 @@ import (
 	"os"
 	stdpath "path"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -129,21 +128,9 @@ func (d *Local) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([
 	}
 	var files []model.Obj
 	for _, f := range rawFiles {
-		if !d.ShowHidden {
-			fileName := f.Name()
-			if runtime.GOOS == "windows" {
-				if isHiddenOnWindows(f, fullPath) {
-					continue
-				}
-			} else {
-				if strings.HasPrefix(fileName, ".") {
-					continue
-				}
-			}
+		if d.ShowHidden || !isHidden(f, fullPath) {
+			files = append(files, d.FileInfoToObj(ctx, f, args.ReqPath, fullPath))
 		}
-
-		file := d.FileInfoToObj(ctx, f, args.ReqPath, fullPath)
-		files = append(files, file)
 	}
 	return files, nil
 }

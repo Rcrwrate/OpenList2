@@ -2,8 +2,11 @@
 
 package local
 
-import "io/fs"
+import (
+	"io/fs"
+	"strings"
+)
 
-func isHiddenOnWindows(_ fs.FileInfo, _ string) bool {
-	return false
+func isHidden(f fs.FileInfo, _ string) bool {
+	return strings.HasPrefix(f.Name(), ".")
 }
