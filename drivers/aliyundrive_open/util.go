@@ -19,7 +19,15 @@ import (
 
 // do others that not defined in Driver interface
 
-func (d *AliyundriveOpen) _refreshToken() (string, string, error) {
+func (d *AliyundriveOpen) refreshToken() error {
+	err := d._refreshToken()
+	if err != nil && errors.Is(err, errs.EmptyToken) {
+		err = d._refreshToken()
+	}
+	return err
+}
+
+func (d *AliyundriveOpen) _refreshToken() error {
 	// 使用在线API刷新Token，无需ClientID和ClientSecret
 	if d.UseOnlineAPI && len(d.APIAddress) > 0 {
 		u := d.APIAddress
