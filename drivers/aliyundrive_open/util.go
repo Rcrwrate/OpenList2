@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/OpenListTeam/OpenList/drivers/base"
-	"github.com/OpenListTeam/OpenList/internal/errs"
 	"github.com/OpenListTeam/OpenList/internal/model"
 	"github.com/OpenListTeam/OpenList/internal/op"
 	"github.com/OpenListTeam/OpenList/pkg/utils"
@@ -20,15 +19,7 @@ import (
 
 // do others that not defined in Driver interface
 
-func (d *AliyundriveOpen) refreshToken() error {
-	err := d._refreshToken()
-	if err != nil && errors.Is(err, errs.EmptyToken) {
-		err = d._refreshToken()
-	}
-	return err
-}
-
-func (d *AliyundriveOpen) _refreshToken() error {
+func (d *AliyundriveOpen) _refreshToken() (string, string, error) {
 	// 使用在线API刷新Token，无需ClientID和ClientSecret
 	if d.UseOnlineAPI && len(d.APIAddress) > 0 {
 		u := d.APIAddress
@@ -45,19 +36,19 @@ func (d *AliyundriveOpen) _refreshToken() error {
 			}).
 			Get(u)
 		if err != nil {
-			return err
+			return "", "", err
 		}
 		if resp.RefreshToken == "" || resp.AccessToken == "" {
-			return fmt.Errorf("empty token returned from official API")
+			return "", "", fmt.Errorf("empty token returned from official API")
 		}
 		d.AccessToken = resp.AccessToken
 		d.RefreshToken = resp.RefreshToken
 		op.MustSaveDriverStorage(d)
-		return nil
+		return "", "", nil
 	}
 	// 使用本地客户端的情况下检查是否为空
 	if d.ClientID == "" || d.ClientSecret == "" {
-		return fmt.Errorf("empty ClientID or ClientSecret")
+		return "", "", fmt.Errorf("empty ClientID or ClientSecret")
 	}
 	// 走原有的刷新逻辑
 	url := API_URL + "/oauth/access_token"
