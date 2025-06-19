@@ -44,11 +44,11 @@ func (d *AliyundriveOpen) _refreshToken() (string, string, error) {
 		d.AccessToken = resp.AccessToken
 		d.RefreshToken = resp.RefreshToken
 		op.MustSaveDriverStorage(d)
-		return "", "", nil
+		return nil
 	}
 	// 使用本地客户端的情况下检查是否为空
 	if d.ClientID == "" || d.ClientSecret == "" {
-		return "", "", fmt.Errorf("empty ClientID or ClientSecret")
+		return fmt.Errorf("empty ClientID or ClientSecret")
 	}
 	// 走原有的刷新逻辑
 	url := API_URL + "/oauth/access_token"
