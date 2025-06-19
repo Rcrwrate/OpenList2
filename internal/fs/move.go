@@ -50,6 +50,12 @@ func (t *MoveTask) Run() error {
 	if err != nil {
 		return errors.WithMessage(err, "failed get storage")
 	}
+
+	// Check if destination storage supports upload before starting the move
+	if t.dstStorage.Config().NoUpload {
+		return errors.WithStack(errs.MoveToReadOnlyStorage)
+	}
+
 	return moveBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
 }
 
@@ -130,7 +136,7 @@ func moveFileBetween2Storages(tsk *MoveTask, srcStorage, dstStorage driver.Drive
 
 	err := copyBetween2Storages(copyTask, srcStorage, dstStorage, srcFilePath, dstDirPath)
 	if err != nil {
-		return errors.WithMessagef(err, "failed to copy [%s] to destination", srcFilePath)
+		return errors.WithMessagef(err, "failed to copy [%s] to destination storage [%s]", srcFilePath, dstStorage.GetStorage().MountPath)
 	}
 	
 	tsk.SetProgress(50)
@@ -138,7 +144,7 @@ func moveFileBetween2Storages(tsk *MoveTask, srcStorage, dstStorage driver.Drive
 	tsk.Status = "deleting source file"
 	err = op.Remove(tsk.Ctx(), srcStorage, srcFilePath)
 	if err != nil {
-		return errors.WithMessagef(err, "failed to delete src [%s] file after copy", srcFilePath)
+		return errors.WithMessagef(err, "failed to delete src [%s] file from storage [%s] after successful copy", srcFilePath, srcStorage.GetStorage().MountPath)
 	}
 	
 	tsk.SetProgress(100)
@@ -155,6 +161,13 @@ func _move(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 	dstStorage, dstDirActualPath, err := op.GetStorageAndActualPath(dstDirPath)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed get dst storage")
+	}
+
+	// Check if destination storage supports upload (for cross-storage moves)
+	if srcStorage.GetStorage() != dstStorage.GetStorage() {
+		if dstStorage.Config().NoUpload {
+			return nil, errors.WithStack(errs.MoveToReadOnlyStorage)
+		}
 	}
 
 	if srcStorage.GetStorage() == dstStorage.GetStorage() {
