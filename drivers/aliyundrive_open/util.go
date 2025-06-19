@@ -36,7 +36,7 @@ func (d *AliyundriveOpen) _refreshToken() (string, string, error) {
 			}).
 			Get(u)
 		if err != nil {
-			return "", "", err
+			return err
 		}
 		if resp.RefreshToken == "" || resp.AccessToken == "" {
 			return "", "", fmt.Errorf("empty token returned from official API")
