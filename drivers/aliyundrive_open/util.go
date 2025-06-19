@@ -20,7 +20,7 @@ import (
 // do others that not defined in Driver interface
 
 func (d *AliyundriveOpen) _refreshToken() (string, string, error) {
-	if d.UseOfficialAPI && d.APIAddress != "" {
+	if d.UseOnlineAPI && d.APIAddress != "" {
 		u := d.APIAddress
 		var resp struct {
 			RefreshToken string `json:"refresh_token"`
