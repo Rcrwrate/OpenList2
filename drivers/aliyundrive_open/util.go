@@ -32,7 +32,7 @@ func (d *AliyundriveOpen) _refreshToken() (string, string, error) {
 			SetQueryParams(map[string]string{
 				"refresh_ui": d.RefreshToken,
 				"server_use": "true",
-				"driver_txt": "alicloud_go",
+				"driver_txt": "alicloud_qr",
 			}).
 			Get(u)
 		if err != nil {
