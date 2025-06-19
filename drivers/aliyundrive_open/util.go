@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
 
@@ -20,8 +21,10 @@ import (
 // do others that not defined in Driver interface
 
 func (d *AliyundriveOpen) _refreshToken() (string, string, error) {
+	field, _ := reflect.TypeOf(d).Elem().FieldByName("APIAddress")
+	defaultVal := field.Tag.Get("default")
 	// 使用在线API刷新Token，无需ClientID和ClientSecret
-	if d.UseOnlineAPI && len(d.APIAddress) > 0 {
+	if d.UseOnlineAPI && len(d.APIAddress) > 0 && defaultVal == d.APIAddress {
 		u := d.APIAddress
 		var resp struct {
 			RefreshToken string `json:"refresh_token"`
@@ -46,12 +49,12 @@ func (d *AliyundriveOpen) _refreshToken() (string, string, error) {
 		op.MustSaveDriverStorage(d)
 		return "", "", nil
 	}
-	// 使用本地客户端的情况下检查是否为空
-	if d.ClientID == "" || d.ClientSecret == "" {
-		return "", "", fmt.Errorf("empty ClientID or ClientSecret")
-	}
+
 	// 走原有的刷新逻辑
 	url := API_URL + "/oauth/access_token"
+	if d.APIAddress != "" && d.ClientID == "" {
+		url = d.APIAddress
+	}
 	//var resp base.TokenResp
 	var e ErrResp
 	res, err := base.RestyClient.R().
