@@ -51,11 +51,6 @@ func (t *MoveTask) Run() error {
 		return errors.WithMessage(err, "failed get storage")
 	}
 
-	// Check if destination storage supports upload before starting the move
-	if t.dstStorage.Config().NoUpload {
-		return errors.WithStack(errs.MoveToReadOnlyStorage)
-	}
-
 	return moveBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
 }
 
@@ -80,7 +75,11 @@ func moveBetween2Storages(t *MoveTask, srcStorage, dstStorage driver.Driver, src
 		t.Status = "creating destination directory"
 		err = op.MakeDir(t.Ctx(), dstStorage, dstObjPath)
 		if err != nil {
-			return errors.WithMessagef(err, "failed create dst [%s] dir", dstObjPath)
+			// Check if this is an upload-related error and provide a clearer message
+			if errors.Is(err, errs.UploadNotSupported) {
+				return errors.WithMessagef(err, "destination storage [%s] does not support creating directories", dstStorage.GetStorage().MountPath)
+			}
+			return errors.WithMessagef(err, "failed to create destination directory [%s] in storage [%s]", dstObjPath, dstStorage.GetStorage().MountPath)
 		}
 		
 		for _, obj := range objs {
@@ -136,6 +135,10 @@ func moveFileBetween2Storages(tsk *MoveTask, srcStorage, dstStorage driver.Drive
 
 	err := copyBetween2Storages(copyTask, srcStorage, dstStorage, srcFilePath, dstDirPath)
 	if err != nil {
+		// Check if this is an upload-related error and provide a clearer message
+		if errors.Is(err, errs.UploadNotSupported) {
+			return errors.WithMessagef(err, "destination storage [%s] does not support file uploads", dstStorage.GetStorage().MountPath)
+		}
 		return errors.WithMessagef(err, "failed to copy [%s] to destination storage [%s]", srcFilePath, dstStorage.GetStorage().MountPath)
 	}
 	
@@ -161,13 +164,6 @@ func _move(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 	dstStorage, dstDirActualPath, err := op.GetStorageAndActualPath(dstDirPath)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed get dst storage")
-	}
-
-	// Check if destination storage supports upload (for cross-storage moves)
-	if srcStorage.GetStorage() != dstStorage.GetStorage() {
-		if dstStorage.Config().NoUpload {
-			return nil, errors.WithStack(errs.MoveToReadOnlyStorage)
-		}
 	}
 
 	if srcStorage.GetStorage() == dstStorage.GetStorage() {

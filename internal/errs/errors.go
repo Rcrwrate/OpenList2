@@ -14,7 +14,6 @@ var (
 
 	MoveBetweenTwoStorages = errors.New("can't move files between two storages, try to copy")
 	UploadNotSupported     = errors.New("upload not supported")
-	MoveToReadOnlyStorage  = errors.New("can't move files to read-only storage")
 
 	MetaNotFound     = errors.New("meta not found")
 	StorageNotFound  = errors.New("storage not found")
