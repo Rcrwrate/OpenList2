@@ -93,7 +93,7 @@
 
 ## 文档
 
-<https://docs.openlist.team>
+<https://docs.openlist.team/zh/>
 
 ## Demo
 
