@@ -95,7 +95,8 @@ English | [中文](./README_cn.md) | [日本語](./README_ja.md) | [Contributing
 
 ## Document
 
-<https://docs.openlist.team>
+- https://docs.oplist.org
+- https://docs.openlist.team
 
 ## Demo
 

@@ -94,7 +94,8 @@
 
 ## ドキュメント
 
-<https://docs.openlist.team>
+- https://docs.oplist.org
+- https://docs.openlist.team
 
 ## デモ
 
