@@ -56,6 +56,35 @@ func (d *QuarkOrUC) request(pathname string, method string, callback base.ReqCal
 	return res.Body(), nil
 }
 
+func (d *QuarkOrUC) getDirSize(fid string) (int64, error) {
+	var resp struct {
+		Status  int    `json:"status"`
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    struct {
+			IncludeItemsSize string `json:"include_items_size"`
+		} `json:"data"`
+	}
+	_, err := d.request("/dir/detail", http.MethodGet, func(req *resty.Request) {
+		req.SetQueryParams(map[string]string{
+			"fid":       fid,
+			"fetch_by_path": "1",
+			"scene":     "pc_dir_detail",
+			"pr":        d.conf.pr,
+			"fr":        "pc",
+			"namespace": "0",
+		})
+	}, &resp)
+	if err != nil {
+		return 0, err
+	}
+	size, err := strconv.ParseInt(resp.Data.IncludeItemsSize, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
+}
+
 func (d *QuarkOrUC) GetFiles(parent string) ([]File, error) {
 	files := make([]File, 0)
 	page := 1
@@ -82,6 +111,16 @@ func (d *QuarkOrUC) GetFiles(parent string) ([]File, error) {
 			break
 		}
 		page++
+	}
+	for i := range files {
+		if !files[i].File {
+			size, err := d.getDirSize(files[i].Fid)
+			if err == nil {
+				files[i].Size = size
+			} else {
+				log.Warnf("getDirSize failed for %s: %v", files[i].Fid, err)
+			}
+		}
 	}
 	return files, nil
 }
