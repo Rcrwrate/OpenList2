@@ -23,6 +23,7 @@ import (
 // there is a storage in each driver,
 // so it should actually be a storage, just wrapped by the driver
 var storagesMap generic_sync.MapOf[string, driver.Driver]
+var reconnectCancelFuncs generic_sync.MapOf[string, context.CancelFunc] // 用于存储重连goroutine的取消函数
 
 func GetAllStorages() []driver.Driver {
 	return storagesMap.Values()
@@ -86,19 +87,41 @@ func LoadStorage(ctx context.Context, storage model.Storage) error {
 
 	// Add auto-reconnect logic
 	if err != nil && storage.AutoReconnectInterval > 0 {
-		go func() {
+		// 如果已经存在重连goroutine，先取消旧的
+		if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
+			cancel()
+		}
+
+		reconnectCtx, cancel := context.WithCancel(context.Background())
+		reconnectCancelFuncs.Store(storage.MountPath, cancel)
+
+		go func(ctx context.Context) {
 			ticker := time.NewTicker(time.Duration(storage.AutoReconnectInterval) * time.Minute)
 			defer ticker.Stop()
-			for range ticker.C {
-				log.Infof("Attempting to reconnect storage: %s", storage.MountPath)
-				reconnectErr := initStorage(context.Background(), storage, storageDriver)
-				if reconnectErr == nil {
-					log.Infof("Successfully reconnected storage: %s", storage.MountPath)
-					break // Stop retrying on success
+			for {
+				select {
+				case <-ctx.Done():
+					log.Infof("Auto-reconnect for storage %s stopped.", storage.MountPath)
+					return
+				case <-ticker.C:
+					log.Infof("Attempting to reconnect storage: %s", storage.MountPath)
+					reconnectErr := initStorage(context.Background(), storage, storageDriver)
+					if reconnectErr == nil {
+						log.Infof("Successfully reconnected storage: %s", storage.MountPath)
+						// 成功重连后，取消当前goroutine的context，并从map中删除
+						cancel()
+						reconnectCancelFuncs.Delete(storage.MountPath)
+						return
+					}
+					log.Errorf("Failed to reconnect storage %s: %+v", storage.MountPath, reconnectErr)
 				}
-				log.Errorf("Failed to reconnect storage %s: %+v", storage.MountPath, reconnectErr)
 			}
-		}()
+		}(reconnectCtx)
+	} else {
+		// 如果AutoReconnectInterval <= 0，确保没有重连goroutine在运行
+		if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
+			cancel()
+		}
 	}
 	return err
 }
@@ -205,6 +228,9 @@ func DisableStorage(ctx context.Context, id uint) error {
 		return errors.WithMessage(err, "failed update storage in db")
 	}
 	storagesMap.Delete(storage.MountPath)
+	if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
+		cancel() // 取消重连goroutine
+	}
 	go callStorageHooks("del", storageDriver)
 	return nil
 }
@@ -264,6 +290,9 @@ func DeleteStorageById(ctx context.Context, id uint) error {
 		}
 		// delete the storage in the memory
 		storagesMap.Delete(storage.MountPath)
+		if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
+			cancel() // 取消重连goroutine
+		}
 		go callStorageHooks("del", storageDriver)
 	}
 	// delete the storage in the database
