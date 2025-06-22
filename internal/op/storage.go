@@ -86,7 +86,7 @@ func LoadStorage(ctx context.Context, storage model.Storage) error {
 	log.Debugf("storage %+v is created", storageDriver)
 
 	// Add auto-reconnect logic
-	if err != nil && storage.AutoReconnectInterval > 0 {
+	if err != nil && storage.AutoReconnectEnabled { // 检查是否启用自动重连
 		// 如果已经存在重连goroutine，先取消旧的
 		if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
 			cancel()
@@ -95,16 +95,28 @@ func LoadStorage(ctx context.Context, storage model.Storage) error {
 		reconnectCtx, cancel := context.WithCancel(context.Background())
 		reconnectCancelFuncs.Store(storage.MountPath, cancel)
 
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(time.Duration(storage.AutoReconnectInterval) * time.Minute)
-			defer ticker.Stop()
-			for {
+		go func(ctx context.Context, storage model.Storage, storageDriver driver.Driver) {
+			initialInterval := time.Duration(storage.AutoReconnectInitialInterval) * time.Second
+			maxAttempts := storage.AutoReconnectMaxAttempts
+			if initialInterval <= 0 {
+				initialInterval = 30 * time.Second // 默认初始间隔30秒
+			}
+			if maxAttempts <= 0 {
+				maxAttempts = 10 // 默认最大尝试次数10次
+			}
+
+			currentInterval := initialInterval
+			for i := 0; i < maxAttempts; i++ {
+				// 引入随机抖动，避免惊群效应
+				jitter := time.Duration(utils.RandInt(0, int(currentInterval.Seconds()/10))) * time.Second
+				sleepDuration := currentInterval + jitter
+
 				select {
 				case <-ctx.Done():
 					log.Infof("Auto-reconnect for storage %s stopped.", storage.MountPath)
 					return
-				case <-ticker.C:
-					log.Infof("Attempting to reconnect storage: %s", storage.MountPath)
+				case <-time.After(sleepDuration):
+					log.Infof("Attempting to reconnect storage: %s (attempt %d/%d, next retry in %s)", storage.MountPath, i+1, maxAttempts, sleepDuration)
 					reconnectErr := initStorage(context.Background(), storage, storageDriver)
 					if reconnectErr == nil {
 						log.Infof("Successfully reconnected storage: %s", storage.MountPath)
@@ -114,11 +126,17 @@ func LoadStorage(ctx context.Context, storage model.Storage) error {
 						return
 					}
 					log.Errorf("Failed to reconnect storage %s: %+v", storage.MountPath, reconnectErr)
+
+					// 指数退避，间隔翻倍
+					currentInterval *= 2
 				}
 			}
-		}(reconnectCtx)
+			log.Warnf("Max auto-reconnect attempts reached for storage %s. Stopping retries.", storage.MountPath)
+			cancel() // 达到最大重试次数，停止重连
+			reconnectCancelFuncs.Delete(storage.MountPath)
+		}(reconnectCtx, storage, storageDriver) // 传递 storage 和 storageDriver
 	} else {
-		// 如果AutoReconnectInterval <= 0，确保没有重连goroutine在运行
+		// 如果AutoReconnectEnabled 为 false，确保没有重连goroutine在运行
 		if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
 			cancel()
 		}

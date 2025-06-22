@@ -17,7 +17,9 @@ type Storage struct {
 	Disabled        bool      `json:"disabled"` // if disabled
 	DisableIndex    bool      `json:"disable_index"`
 	EnableSign      bool      `json:"enable_sign"`
-	AutoReconnectInterval int       `json:"auto_reconnect_interval"` // 自动重连时间间隔，单位分钟
+	AutoReconnectEnabled    bool      `json:"auto_reconnect_enabled"`     // 是否启用自动重连
+	AutoReconnectInitialInterval int       `json:"auto_reconnect_initial_interval"` // 自动重连初始间隔，单位秒
+	AutoReconnectMaxAttempts int       `json:"auto_reconnect_max_attempts"` // 自动重连最大尝试次数
 	Sort
 	Proxy
 }
