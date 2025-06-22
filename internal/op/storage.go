@@ -25,6 +25,132 @@ import (
 var storagesMap generic_sync.MapOf[string, driver.Driver]
 var reconnectCancelFuncs generic_sync.MapOf[string, context.CancelFunc] // 用于存储重连goroutine的取消函数
 
+// ReconnectTask 存储重连任务的状态
+type ReconnectTask struct {
+	Storage     model.Storage
+	Driver      driver.Driver
+	RetryCount  int
+	NextRetryAt time.Time
+	Cancel      context.CancelFunc // 用于取消单个任务的重连
+}
+
+// reconnectScheduler 全局重连调度器
+type reconnectScheduler struct {
+	tasks generic_sync.MapOf[string, *ReconnectTask] // mountPath -> ReconnectTask
+	queue chan string                               // 待处理的mountPath
+	ctx   context.Context
+	cancel context.CancelFunc
+}
+
+var globalReconnectScheduler *reconnectScheduler
+
+func init() {
+	globalReconnectScheduler = newReconnectScheduler()
+	go globalReconnectScheduler.Start()
+}
+
+func newReconnectScheduler() *reconnectScheduler {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &reconnectScheduler{
+		tasks:  generic_sync.MapOf[string, *ReconnectTask]{},
+		queue:  make(chan string, 100), // 缓冲通道，避免阻塞
+		ctx:    ctx,
+		cancel: cancel,
+	}
+}
+
+func (s *reconnectScheduler) Start() {
+	log.Info("Reconnect scheduler started.")
+	ticker := time.NewTicker(1 * time.Second) // 每秒检查一次
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			log.Info("Reconnect scheduler stopped.")
+			return
+		case mountPath := <-s.queue:
+			s.processReconnectTask(mountPath)
+		case <-ticker.C:
+			s.checkAndScheduleRetries()
+		}
+	}
+}
+
+func (s *reconnectScheduler) AddOrUpdateTask(storage model.Storage, storageDriver driver.Driver) {
+	task, loaded := s.tasks.Load(storage.MountPath)
+	if loaded {
+		// 如果任务已存在，更新其信息并重置重试计数
+		task.Storage = storage
+		task.Driver = storageDriver
+		task.RetryCount = 0
+		task.NextRetryAt = time.Now() // 立即重试
+		task.Cancel() // 取消旧的重试，重新开始
+	} else {
+		// 新任务
+		task = &ReconnectTask{
+			Storage:    storage,
+			Driver:     storageDriver,
+			RetryCount: 0,
+		}
+	}
+	s.tasks.Store(storage.MountPath, task)
+	s.queue <- storage.MountPath // 将任务加入队列
+}
+
+func (s *reconnectScheduler) RemoveTask(mountPath string) {
+	if task, loaded := s.tasks.LoadAndDelete(mountPath); loaded {
+		if task.Cancel != nil {
+			task.Cancel() // 取消正在进行的重试
+		}
+		log.Infof("Removed reconnect task for storage: %s", mountPath)
+	}
+}
+
+func (s *reconnectScheduler) processReconnectTask(mountPath string) {
+	task, loaded := s.tasks.Load(mountPath)
+	if !loaded {
+		return
+	}
+
+	reconnectErr := initStorage(context.Background(), task.Storage, task.Driver)
+	if reconnectErr == nil {
+		log.Infof("Successfully reconnected storage: %s", task.Storage.MountPath)
+		s.RemoveTask(mountPath) // 成功后移除任务
+		return
+	}
+	log.Errorf("Failed to reconnect storage %s: %+v", task.Storage.MountPath, reconnectErr)
+
+	task.RetryCount++
+	if task.RetryCount >= task.Storage.AutoReconnectMaxAttempts {
+		log.Warnf("Max auto-reconnect attempts reached for storage %s. Stopping retries.", task.Storage.MountPath)
+		s.RemoveTask(mountPath) // 达到最大重试次数，停止重连
+		return
+	}
+
+	// 计算下一次重试间隔（指数退避 + 抖动）
+	initialInterval := time.Duration(task.Storage.AutoReconnectInitialInterval) * time.Second
+	if initialInterval <= 0 {
+		initialInterval = 30 * time.Second // 默认初始间隔30秒
+	}
+	currentInterval := initialInterval * time.Duration(1<<task.RetryCount) // 指数增长
+	jitter := time.Duration(utils.RandInt(0, int(currentInterval.Seconds()/10))) * time.Second
+	sleepDuration := currentInterval + jitter
+
+	task.NextRetryAt = time.Now().Add(sleepDuration)
+	log.Infof("Scheduling next reconnect for storage %s in %s (attempt %d/%d)", task.Storage.MountPath, sleepDuration, task.RetryCount+1, task.Storage.AutoReconnectMaxAttempts)
+}
+
+func (s *reconnectScheduler) checkAndScheduleRetries() {
+	now := time.Now()
+	s.tasks.Range(func(mountPath string, task *ReconnectTask) bool {
+		if now.After(task.NextRetryAt) {
+			s.queue <- mountPath // 将到期的任务重新加入队列
+		}
+		return true
+	})
+}
+
 func GetAllStorages() []driver.Driver {
 	return storagesMap.Values()
 }
@@ -87,59 +213,10 @@ func LoadStorage(ctx context.Context, storage model.Storage) error {
 
 	// Add auto-reconnect logic
 	if err != nil && storage.AutoReconnectEnabled { // 检查是否启用自动重连
-		// 如果已经存在重连goroutine，先取消旧的
-		if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
-			cancel()
-		}
-
-		reconnectCtx, cancel := context.WithCancel(context.Background())
-		reconnectCancelFuncs.Store(storage.MountPath, cancel)
-
-		go func(ctx context.Context, storage model.Storage, storageDriver driver.Driver) {
-			initialInterval := time.Duration(storage.AutoReconnectInitialInterval) * time.Second
-			maxAttempts := storage.AutoReconnectMaxAttempts
-			if initialInterval <= 0 {
-				initialInterval = 30 * time.Second // 默认初始间隔30秒
-			}
-			if maxAttempts <= 0 {
-				maxAttempts = 10 // 默认最大尝试次数10次
-			}
-
-			currentInterval := initialInterval
-			for i := 0; i < maxAttempts; i++ {
-				// 引入随机抖动，避免惊群效应
-				jitter := time.Duration(utils.RandInt(0, int(currentInterval.Seconds()/10))) * time.Second
-				sleepDuration := currentInterval + jitter
-
-				select {
-				case <-ctx.Done():
-					log.Infof("Auto-reconnect for storage %s stopped.", storage.MountPath)
-					return
-				case <-time.After(sleepDuration):
-					log.Infof("Attempting to reconnect storage: %s (attempt %d/%d, next retry in %s)", storage.MountPath, i+1, maxAttempts, sleepDuration)
-					reconnectErr := initStorage(context.Background(), storage, storageDriver)
-					if reconnectErr == nil {
-						log.Infof("Successfully reconnected storage: %s", storage.MountPath)
-						// 成功重连后，取消当前goroutine的context，并从map中删除
-						cancel()
-						reconnectCancelFuncs.Delete(storage.MountPath)
-						return
-					}
-					log.Errorf("Failed to reconnect storage %s: %+v", storage.MountPath, reconnectErr)
-
-					// 指数退避，间隔翻倍
-					currentInterval *= 2
-				}
-			}
-			log.Warnf("Max auto-reconnect attempts reached for storage %s. Stopping retries.", storage.MountPath)
-			cancel() // 达到最大重试次数，停止重连
-			reconnectCancelFuncs.Delete(storage.MountPath)
-		}(reconnectCtx, storage, storageDriver) // 传递 storage 和 storageDriver
+		globalReconnectScheduler.AddOrUpdateTask(storage, storageDriver)
 	} else {
-		// 如果AutoReconnectEnabled 为 false，确保没有重连goroutine在运行
-		if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
-			cancel()
-		}
+		// 如果AutoReconnectEnabled 为 false，确保没有重连任务在调度器中
+		globalReconnectScheduler.RemoveTask(storage.MountPath)
 	}
 	return err
 }
@@ -246,9 +323,7 @@ func DisableStorage(ctx context.Context, id uint) error {
 		return errors.WithMessage(err, "failed update storage in db")
 	}
 	storagesMap.Delete(storage.MountPath)
-	if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
-		cancel() // 取消重连goroutine
-	}
+	globalReconnectScheduler.RemoveTask(storage.MountPath) // 移除重连任务
 	go callStorageHooks("del", storageDriver)
 	return nil
 }
@@ -308,9 +383,7 @@ func DeleteStorageById(ctx context.Context, id uint) error {
 		}
 		// delete the storage in the memory
 		storagesMap.Delete(storage.MountPath)
-		if cancel, loaded := reconnectCancelFuncs.LoadAndDelete(storage.MountPath); loaded {
-			cancel() // 取消重连goroutine
-		}
+		globalReconnectScheduler.RemoveTask(storage.MountPath) // 移除重连任务
 		go callStorageHooks("del", storageDriver)
 	}
 	// delete the storage in the database
