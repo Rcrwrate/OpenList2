@@ -145,7 +145,12 @@ func (s *reconnectScheduler) checkAndScheduleRetries() {
 	now := time.Now()
 	s.tasks.Range(func(mountPath string, task *ReconnectTask) bool {
 		if now.After(task.NextRetryAt) {
-			s.queue <- mountPath // 将到期的任务重新加入队列
+			select {
+			case s.queue <- mountPath: // 将到期的任务重新加入队列
+				// Successfully added to the queue
+			default:
+				log.Warnf("Queue is full, unable to schedule reconnect task for storage: %s", mountPath)
+			}
 		}
 		return true
 	})
