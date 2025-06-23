@@ -56,21 +56,20 @@ func (t *MoveTask) Run() error {
 
 var MoveTaskManager *tache.Manager[*MoveTask]
 
-
 func moveBetween2Storages(t *MoveTask, srcStorage, dstStorage driver.Driver, srcObjPath, dstDirPath string) error {
 	t.Status = "getting src object"
 	srcObj, err := op.Get(t.Ctx(), srcStorage, srcObjPath)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", srcObjPath)
 	}
-	
+
 	if srcObj.IsDir() {
 		t.Status = "src object is dir, listing objs"
 		objs, err := op.List(t.Ctx(), srcStorage, srcObjPath, model.ListArgs{})
 		if err != nil {
 			return errors.WithMessagef(err, "failed list src [%s] objs", srcObjPath)
 		}
-		
+
 		dstObjPath := stdpath.Join(dstDirPath, srcObj.GetName())
 		t.Status = "creating destination directory"
 		err = op.MakeDir(t.Ctx(), dstStorage, dstObjPath)
@@ -81,7 +80,7 @@ func moveBetween2Storages(t *MoveTask, srcStorage, dstStorage driver.Driver, src
 			}
 			return errors.WithMessagef(err, "failed to create destination directory [%s] in storage [%s]", dstObjPath, dstStorage.GetStorage().MountPath)
 		}
-		
+
 		for _, obj := range objs {
 			if utils.IsCanceled(t.Ctx()) {
 				return nil
@@ -100,23 +99,23 @@ func moveBetween2Storages(t *MoveTask, srcStorage, dstStorage driver.Driver, src
 			})
 		}
 
-		t.Status = "cleaning up source directory"
-		err = op.Remove(t.Ctx(), srcStorage, srcObjPath)
-		if err != nil {
-			t.Status = "completed (source directory cleanup pending)"
-		} else {
-			t.Status = "completed"
-		}
+		t.Status = "Uploading (Don't look here, it's incorrect.)"
+
+		// err = op.Remove(t.Ctx(), srcStorage, srcObjPath)
+		// if err != nil {
+		// 	t.Status = "completed (source directory cleanup pending)"
+		// } else {
+		// 	t.Status = "completed"
+		// }
 		return nil
 	} else {
 		return moveFileBetween2Storages(t, srcStorage, dstStorage, srcObjPath, dstDirPath)
 	}
 }
 
-
 func moveFileBetween2Storages(tsk *MoveTask, srcStorage, dstStorage driver.Driver, srcFilePath, dstDirPath string) error {
 	tsk.Status = "copying file to destination"
-	
+
 	copyTask := &CopyTask{
 		TaskExtension: task.TaskExtension{
 			Creator: tsk.GetCreator(),
@@ -128,10 +127,8 @@ func moveFileBetween2Storages(tsk *MoveTask, srcStorage, dstStorage driver.Drive
 		SrcStorageMp: srcStorage.GetStorage().MountPath,
 		DstStorageMp: dstStorage.GetStorage().MountPath,
 	}
-	
 
 	copyTask.SetCtx(tsk.Ctx())
-	
 
 	err := copyBetween2Storages(copyTask, srcStorage, dstStorage, srcFilePath, dstDirPath)
 	if err != nil {
@@ -141,20 +138,19 @@ func moveFileBetween2Storages(tsk *MoveTask, srcStorage, dstStorage driver.Drive
 		}
 		return errors.WithMessagef(err, "failed to copy [%s] to destination storage [%s]", srcFilePath, dstStorage.GetStorage().MountPath)
 	}
-	
+
 	tsk.SetProgress(50)
-	
+
 	tsk.Status = "deleting source file"
 	err = op.Remove(tsk.Ctx(), srcStorage, srcFilePath)
 	if err != nil {
 		return errors.WithMessagef(err, "failed to delete src [%s] file from storage [%s] after successful copy", srcFilePath, srcStorage.GetStorage().MountPath)
 	}
-	
+
 	tsk.SetProgress(100)
 	tsk.Status = "completed"
 	return nil
 }
-
 
 func _move(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool) (task.TaskExtensionInfo, error) {
 	srcStorage, srcObjActualPath, err := op.GetStorageAndActualPath(srcObjPath)
