@@ -6,6 +6,7 @@ import (
 
 type Storage struct {
 	ID              uint      `json:"id" gorm:"primaryKey"`                        // unique key
+	ServerID        string    `json:"server_id"`                                   // server id used to identify the server when multi server use the same database(e.g.MySQL)
 	MountPath       string    `json:"mount_path" gorm:"unique" binding:"required"` // must be standardized
 	Order           int       `json:"order"`                                       // use to sort
 	Driver          string    `json:"driver"`                                      // driver used
