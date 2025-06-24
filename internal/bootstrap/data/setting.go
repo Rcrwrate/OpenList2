@@ -104,8 +104,8 @@ func InitialSettings() []model.SettingItem {
 		{Key: conf.AllowMounted, Value: "true", Type: conf.TypeBool, Group: model.SITE},
 		{Key: conf.RobotsTxt, Value: "User-agent: *\nAllow: /", Type: conf.TypeText, Group: model.SITE},
 		// style settings
-		{Key: conf.Logo, Value: "https://cdn.oplist.org/gh/OpenListTeam/Logo@main/OpenList.svg", Type: conf.TypeText, Group: model.STYLE},
-		{Key: conf.Favicon, Value: "https://cdn.oplist.org/gh/OpenListTeam/Logo@main/OpenList.svg", Type: conf.TypeString, Group: model.STYLE},
+		{Key: conf.Logo, Value: "https://cdn.oplist.org/gh/OpenListTeam/Logo@main/logo.svg", Type: conf.TypeText, Group: model.STYLE},
+		{Key: conf.Favicon, Value: "https://cdn.oplist.org/gh/OpenListTeam/Logo@main/logo.svg", Type: conf.TypeString, Group: model.STYLE},
 		{Key: conf.MainColor, Value: "#1890ff", Type: conf.TypeString, Group: model.STYLE},
 		{Key: "home_icon", Value: "🏠", Type: conf.TypeString, Group: model.STYLE},
 		{Key: "home_container", Value: "max_980px", Type: conf.TypeSelect, Options: "max_980px,hope_container", Group: model.STYLE},
@@ -125,10 +125,10 @@ func InitialSettings() []model.SettingItem {
 		"Google":"https://docs.google.com/gview?url=$e_url&embedded=true"
 	},
 	"pdf": {
-		"PDF.js":"//res.oplist.org/pdf.js/web/viewer.html?url=$e_url"
+		"PDF.js":"https://res.oplist.org/pdf.js/web/viewer.html?file=$e_url"
 	},
 	"epub": {
-		"EPUB.js":"//res.oplist.org/epub.js/viewer.html?url=$e_url"
+		"EPUB.js":"https://res.oplist.org/epub.js/viewer.html?url=$e_url"
 	}
 }`, Type: conf.TypeText, Group: model.PREVIEW},
 		//		{Key: conf.OfficeViewers, Value: `{
@@ -136,9 +136,9 @@ func InitialSettings() []model.SettingItem {
 		//	"Google":"https://docs.google.com/gview?url=$url&embedded=true",
 		//}`, Type: conf.TypeText, Group: model.PREVIEW},
 		//		{Key: conf.PdfViewers, Value: `{
-		//	"pdf.js":"https://alist-org.github.io/pdf.js/web/viewer.html?file=$url"
+		//	"pdf.js":"https://openlistteam.github.io/pdf.js/web/viewer.html?file=$url"
 		//}`, Type: conf.TypeText, Group: model.PREVIEW},
-		{Key: "audio_cover", Value: "https://cdn.oplist.org/gh/OpenListTeam/Logo@main/OpenList.svg", Type: conf.TypeString, Group: model.PREVIEW},
+		{Key: "audio_cover", Value: "https://cdn.oplist.org/gh/OpenListTeam/Logo@main/logo.svg", Type: conf.TypeString, Group: model.PREVIEW},
 		{Key: conf.AudioAutoplay, Value: "true", Type: conf.TypeBool, Group: model.PREVIEW},
 		{Key: conf.VideoAutoplay, Value: "true", Type: conf.TypeBool, Group: model.PREVIEW},
 		{Key: conf.PreviewArchivesByDefault, Value: "true", Type: conf.TypeBool, Group: model.PREVIEW},
@@ -158,7 +158,7 @@ func InitialSettings() []model.SettingItem {
 		{Key: conf.OcrApi, Value: "https://api.example.com/ocr/file/json", Type: conf.TypeString, Group: model.GLOBAL}, // TODO: This can be replace by a community-hosted endpoint, see https://github.com/xhofe/ocr_api_server
 		{Key: conf.FilenameCharMapping, Value: `{"/": "|"}`, Type: conf.TypeText, Group: model.GLOBAL},
 		{Key: conf.ForwardDirectLinkParams, Value: "false", Type: conf.TypeBool, Group: model.GLOBAL},
-		{Key: conf.IgnoreDirectLinkParams, Value: "sign,alist_ts", Type: conf.TypeString, Group: model.GLOBAL},
+		{Key: conf.IgnoreDirectLinkParams, Value: "sign,openlist_ts", Type: conf.TypeString, Group: model.GLOBAL},
 		{Key: conf.WebauthnLoginEnabled, Value: "false", Type: conf.TypeBool, Group: model.GLOBAL, Flag: model.PUBLIC},
 
 		// single settings

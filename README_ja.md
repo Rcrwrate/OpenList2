@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="100px" alt="logo" src="https://raw.githubusercontent.com/OpenListTeam/Logo/main/OpenList.svg"/></a>
+  <img width="100px" alt="logo" src="https://raw.githubusercontent.com/OpenListTeam/Logo/main/logo.svg"/></a>
   <p><em>🗂複数のストレージをサポートするファイルリストプログラムで、Gin と SolidJS を使用し、AList プロジェクトをフォークして開発されました。</em></p>
 <div>
   <a href="https://goreportcard.com/report/github.com/OpenListTeam/OpenList/v3">
@@ -94,7 +94,8 @@
 
 ## ドキュメント
 
-<https://docs.openlist.team>
+- https://docs.oplist.org
+- https://docs.openlist.team
 
 ## デモ
 
@@ -124,4 +125,4 @@ N/A （再構築中）
 
 ---
 
-> [@GitHub](https://github.com/OpenListTeam) · [Telegram Group](https://t.me/OpenListTeam)
+> [@GitHub](https://github.com/OpenListTeam) · [Telegram Group](https://t.me/OpenListTeam) · [Telegram Channel](https://t.me/OpenListOfficial)

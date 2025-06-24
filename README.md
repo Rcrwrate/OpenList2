@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="100px" alt="logo" src="https://raw.githubusercontent.com/OpenListTeam/Logo/main/OpenList.svg"/></a>
+  <img width="100px" alt="logo" src="https://raw.githubusercontent.com/OpenListTeam/Logo/main/logo.svg"/></a>
   <p><em>🗂️A file list program that supports multiple storages, powered by Gin and SolidJS, fork of AList.</em></p>
 <div>
   <a href="https://goreportcard.com/report/github.com/OpenListTeam/OpenList/v3">
@@ -95,7 +95,8 @@ English | [中文](./README_cn.md) | [日本語](./README_ja.md) | [Contributing
 
 ## Document
 
-<https://docs.openlist.team>
+- https://docs.oplist.org
+- https://docs.openlist.team
 
 ## Demo
 
@@ -125,4 +126,4 @@ The `OpenList` is open-source software licensed under the AGPL-3.0 license.
 
 ---
 
-> [@GitHub](https://github.com/OpenListTeam) · [Telegram Group](https://t.me/OpenListTeam)
+> [@GitHub](https://github.com/OpenListTeam) · [Telegram Group](https://t.me/OpenListTeam) · [Telegram Channel](https://t.me/OpenListOfficial)

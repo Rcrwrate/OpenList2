@@ -165,6 +165,10 @@ func (d *downloader) download() (io.ReadCloser, error) {
 	if maxPart < d.cfg.Concurrency {
 		d.cfg.Concurrency = maxPart
 	}
+	if d.params.Range.Length == 0 {
+		d.cfg.Concurrency = 1
+	}
+
 	log.Debugf("cfgConcurrency:%d", d.cfg.Concurrency)
 
 	if d.cfg.Concurrency == 1 {
@@ -353,7 +357,7 @@ func (d *downloader) downloadChunk(ch *chunk) error {
 		if e, ok := err.(*errNeedRetry); ok {
 			err = e.Unwrap()
 			if n > 0 {
-				// 测试：下载时 断开 alist向云盘发起的下载连接
+				// 测试：下载时 断开openlist向云盘发起的下载连接
 				// 校验：下载完后校验文件哈希值 一致
 				d.incrWritten(n)
 				ch.start += n
