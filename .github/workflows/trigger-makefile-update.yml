@@ -1,9 +1,15 @@
 name: Trigger OpenWRT Update
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to trigger update for'
+        required: true
+        type: string
 
 jobs:
   trigger-makefile-update:
@@ -18,9 +24,9 @@ jobs:
           client-payload: |
             {
               "source_repository": "${{ github.repository }}",
-              "release_tag": "${{ github.event.release.tag_name || 'manual-trigger' }}",
-              "release_name": "${{ github.event.release.name || 'Manual Trigger' }}",
-              "release_url": "${{ github.event.release.html_url || github.server_url }}/${{ github.repository }}",
+              "release_tag": "${{ inputs.tag || github.ref_name }}",
+              "release_name": "${{ inputs.tag || github.ref_name }}",
+              "release_url": "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ inputs.tag || github.ref_name }}",
               "triggered_by": "${{ github.actor }}",
               "trigger_reason": "${{ github.event_name }}"
             }
@@ -29,6 +35,6 @@ jobs:
         run: |
           echo "🚀 Successfully triggered Makefile hash update"
           echo "📦 Target repository: OpenListTeam/OpenWrt-Packages"
-          echo "🏷️ Release tag: ${{ github.event.release.tag_name || 'manual-trigger' }}"
+          echo "🏷️ Tag: ${{ inputs.tag || github.ref_name }}"
           echo "👤 Triggered by: ${{ github.actor }}"
           echo "📅 Trigger time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
