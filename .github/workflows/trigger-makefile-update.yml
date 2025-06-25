@@ -34,7 +34,7 @@ jobs:
       - name: Log trigger information
         run: |
           echo "🚀 Successfully triggered Makefile hash update"
-          echo "📦 Target repository: OpenListTeam/OpenWrt-Packages"
+          echo "📦 Target repository: OpenListTeam/luci-app-openlist"
           echo "🏷️ Tag: ${{ inputs.tag || github.ref_name }}"
           echo "👤 Triggered by: ${{ github.actor }}"
           echo "📅 Trigger time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
