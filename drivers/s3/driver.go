@@ -3,7 +3,9 @@ package s3
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"net/url"
 	stdpath "path"
 	"strings"
 	"time"
