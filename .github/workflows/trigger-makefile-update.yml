@@ -13,7 +13,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.EXTERNAL_REPO_TOKEN }}
-          repository: ${{ vars.SYNC_LANG_ENV_BACKEND_REPOSITORY || 'OpenListTeam/luci-app-openlist' }}
+          repository: ${{ vars.HOOK_REPO || 'OpenListTeam/luci-app-openlist' }}
           event-type: update-hashes
           client-payload: |
             {
