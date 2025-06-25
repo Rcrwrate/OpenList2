@@ -81,18 +81,20 @@ func (d *S3) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([]mo
 func (d *S3) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
 	path := getKey(file.GetPath(), false)
 	fileName := stdpath.Base(path)
-	disposition := ``
-	if d.AddFilenameToDisposition {
-		disposition = utils.GenerateContentDisposition(fileName)
-	}
 	input := &s3.GetObjectInput{
 		Bucket: &d.Bucket,
 		Key:    &path,
 		//ResponseContentDisposition: &disposition,
 	}
+
 	if d.CustomHost == "" {
+		disposition := fmt.Sprintf(`attachment; filename*=UTF-8''%s`, url.PathEscape(fileName))
+		if d.AddFilenameToDisposition {
+			disposition = utils.GenerateContentDisposition(fileName)
+		}
 		input.ResponseContentDisposition = &disposition
 	}
+
 	req, _ := d.linkClient.GetObjectRequest(input)
 	var link model.Link
 	var err error
