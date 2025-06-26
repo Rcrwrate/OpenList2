@@ -8,7 +8,7 @@ githubAuthHeader=""
 githubAuthValue=""
 if [ -n "$GITHUB_TOKEN" ]; then
   githubAuthHeader="--header"
-  githubAuthValue="Authorization: Bearer $GITHUB_TOKEN"
+  githubAuthValue="\"Authorization: Bearer $GITHUB_TOKEN\""
 fi
 
 if [ "$1" = "dev" ]; then
