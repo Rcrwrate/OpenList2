@@ -70,7 +70,7 @@ BuildWinArm64() {
   export GOARCH=arm64
   export CC=$(pwd)/wrapper/zcc-arm64
   export CXX=$(pwd)/wrapper/zcxx-arm64
-  export CGO_ENABLED=1
+  export CGO_ENABLED=0
   go build -o "$1" -ldflags="$ldflags" -tags=jsoniter .
 }
 
@@ -94,7 +94,7 @@ BuildDev() {
     export GOOS=${os_arch%%-*}
     export GOARCH=${os_arch##*-}
     export CC=${cgo_cc}
-    export CGO_ENABLED=1
+    export CGO_ENABLED=0
     go build -o ./dist/$appName-$os_arch -ldflags="$muslflags" -tags=jsoniter .
   done
   xgo -targets=windows/amd64,darwin/amd64,darwin/arm64 -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
@@ -130,7 +130,7 @@ BuildDockerMultiplatform() {
   export PATH=$PATH:$PWD/build/musl-libs/bin
 
   docker_lflags="--extldflags '-static -fpic' $ldflags"
-  export CGO_ENABLED=1
+  export CGO_ENABLED=0
 
   OS_ARCHES=(linux-amd64 linux-arm64 linux-386 linux-s390x linux-riscv64 linux-ppc64le)
   CGO_ARGS=(x86_64-linux-musl-gcc aarch64-linux-musl-gcc i486-linux-musl-gcc s390x-linux-musl-gcc riscv64-linux-musl-gcc powerpc64le-linux-musl-gcc)
@@ -194,7 +194,7 @@ BuildReleaseLinuxMusl() {
     export GOOS=${os_arch%%-*}
     export GOARCH=${os_arch##*-}
     export CC=${cgo_cc}
-    export CGO_ENABLED=1
+    export CGO_ENABLED=0
     go build -o ./build/$appName-$os_arch -ldflags="$muslflags" -tags=jsoniter .
   done
 }
@@ -222,7 +222,7 @@ BuildReleaseLinuxMuslArm() {
     export GOOS=linux
     export GOARCH=arm
     export CC=${cgo_cc}
-    export CGO_ENABLED=1
+    export CGO_ENABLED=0
     export GOARM=${arm}
     go build -o ./build/$appName-$os_arch -ldflags="$muslflags" -tags=jsoniter .
   done
@@ -243,7 +243,7 @@ BuildReleaseAndroid() {
     export GOOS=android
     export GOARCH=${os_arch##*-}
     export CC=${cgo_cc}
-    export CGO_ENABLED=1
+    export CGO_ENABLED=0
     go build -o ./build/$appName-android-$os_arch -ldflags="$ldflags" -tags=jsoniter .
     android-ndk-r26b/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip ./build/$appName-android-$os_arch
   done
@@ -283,7 +283,7 @@ BuildReleaseFreeBSD() {
     export GOOS=freebsd
     export GOARCH=${GO_ARCHES[$i]}
     export CC=${cgo_cc}
-    export CGO_ENABLED=1
+    export CGO_ENABLED=0
     export CGO_LDFLAGS="-fuse-ld=lld"
     go build -o ./build/$appName-freebsd-$os_arch -ldflags="$ldflags" -tags=jsoniter .
   done
