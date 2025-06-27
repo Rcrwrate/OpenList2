@@ -620,8 +620,8 @@ type Buf struct {
 	off    int
 	rw     sync.Mutex
 
-	dataAvailable chan struct{}
-	waitRead      bool
+	readSignal  chan struct{}
+	readPending bool
 }
 
 // NewBuf is a buffer that can have 1 read & 1 write at the same time.
@@ -632,7 +632,7 @@ func NewBuf(ctx context.Context, maxSize int) *Buf {
 		buffer: bytes.NewBuffer(make([]byte, 0, maxSize)),
 		size:   maxSize,
 
-		dataAvailable: make(chan struct{}, 1),
+		readSignal: make(chan struct{}, 1),
 	}
 }
 func (br *Buf) Reset(size int) {
@@ -672,13 +672,13 @@ func (br *Buf) Read(p []byte) (n int, err error) {
 			return n, nil
 		}
 		br.rw.Lock()
-		br.waitRead = true
+		br.readPending = true
 		br.rw.Unlock()
 		// n==0, err==io.EOF
 		select {
 		case <-br.ctx.Done():
 			return 0, br.ctx.Err()
-		case _, ok := <-br.dataAvailable:
+		case _, ok := <-br.readSignal:
 			if !ok {
 				return 0, io.ErrClosedPipe
 			}
@@ -694,13 +694,13 @@ func (br *Buf) Write(p []byte) (n int, err error) {
 	br.rw.Lock()
 	defer br.rw.Unlock()
 	if br.buffer == nil {
-		return 0, io.EOF
+		return 0, io.ErrClosedPipe
 	}
 	n, err = br.buffer.Write(p)
-	if br.waitRead {
-		br.waitRead = false
+	if br.readPending {
+		br.readPending = false
 		select {
-		case br.dataAvailable <- struct{}{}:
+		case br.readSignal <- struct{}{}:
 		default:
 		}
 	}
@@ -711,5 +711,5 @@ func (br *Buf) Close() {
 	br.rw.Lock()
 	defer br.rw.Unlock()
 	br.buffer = nil
-	close(br.dataAvailable)
+	close(br.readSignal)
 }
