@@ -3,9 +3,6 @@ package strm
 import (
 	"context"
 	"fmt"
-	"github.com/OpenListTeam/OpenList/pkg/http_range"
-	"github.com/OpenListTeam/OpenList/server/common"
-	"io"
 
 	stdpath "path"
 	"strings"
@@ -14,6 +11,7 @@ import (
 	"github.com/OpenListTeam/OpenList/internal/model"
 	"github.com/OpenListTeam/OpenList/internal/sign"
 	"github.com/OpenListTeam/OpenList/pkg/utils"
+	"github.com/OpenListTeam/OpenList/server/common"
 )
 
 func (d *Strm) listRoot() []model.Obj {
@@ -59,20 +57,19 @@ func (d *Strm) get(ctx context.Context, path string, dst, sub string) (model.Obj
 	if err != nil {
 		return nil, err
 	}
+	size := int64(0)
+	if !obj.IsDir() {
+		if utils.Ext(obj.GetName()) == "strm" {
+			size = obj.GetSize()
+		} else {
+			file := stdpath.Join(reqPath, obj.GetName())
+			size = int64(len(d.getLink(ctx, file)))
+		}
+	}
 	return &model.Object{
-		Path: path,
-		Name: obj.GetName(),
-		Size: func() int64 {
-			if obj.IsDir() {
-				return 0
-			}
-			if utils.Ext(obj.GetName()) == "strm" {
-				return obj.GetSize()
-			}
-			path := stdpath.Join(reqPath, obj.GetName())
-			_, size := getLink(ctx, path, d)
-			return size
-		}(),
+		Path:     path,
+		Name:     obj.GetName(),
+		Size:     size,
 		Modified: obj.ModTime(),
 		IsFolder: obj.IsDir(),
 		HashInfo: obj.GetHash(),
@@ -88,32 +85,30 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 
 	var validObjs []model.Obj
 	for _, obj := range objs {
-		fileName := obj.GetName()
-		ext := utils.Ext(fileName)
-		if _, ok := supportSuffix[ext]; !ok && !obj.IsDir() {
-			continue
+		if !obj.IsDir() {
+			ext := strings.ToLower(utils.Ext(obj.GetName()))
+			if _, ok := supportSuffix[ext]; !ok {
+				continue
+			}
 		}
 		validObjs = append(validObjs, obj)
 	}
 	return utils.SliceConvert(validObjs, func(obj model.Obj) (model.Obj, error) {
 		name := obj.GetName()
+		size := int64(0)
 		if !obj.IsDir() {
 			ext := utils.Ext(name)
 			name = strings.TrimSuffix(name, ext) + "strm"
+			if ext == "strm" {
+				size = obj.GetSize()
+			} else {
+				file := stdpath.Join(reqPath, obj.GetName())
+				size = int64(len(d.getLink(ctx, file)))
+			}
 		}
 		objRes := model.Object{
-			Name: name,
-			Size: func() int64 {
-				if obj.IsDir() {
-					return 0
-				}
-				if utils.Ext(obj.GetName()) == "strm" {
-					return obj.GetSize()
-				}
-				path := stdpath.Join(reqPath, obj.GetName())
-				_, size := getLink(ctx, path, d)
-				return size
-			}(),
+			Name:     name,
+			Size:     size,
 			Modified: obj.ModTime(),
 			IsFolder: obj.IsDir(),
 			Path:     stdpath.Join(sub, obj.GetName()),
@@ -131,39 +126,26 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 	})
 }
 
-func (d *Strm) link(ctx context.Context, dst, sub string, args model.LinkArgs) (*model.Link, error) {
+func (d *Strm) link(ctx context.Context, dst, sub string) (*model.Link, error) {
 	reqPath := stdpath.Join(dst, sub)
 	_, err := fs.Get(ctx, reqPath, &fs.GetArgs{NoLog: true})
 	if err != nil {
 		return nil, err
 	}
-	link, _ := getLink(ctx, reqPath, d)
-	return link, nil
+	return &model.Link{
+		MFile: model.NewNopMFile(strings.NewReader(d.getLink(ctx, reqPath))),
+	}, nil
 }
 
-func getLink(ctx context.Context, path string, d *Strm) (*model.Link, int64) {
+func (d *Strm) getLink(ctx context.Context, path string) string {
 	apiUrl := d.SiteUrl
-	if apiUrl != "" {
-		if strings.HasSuffix(path, "/") {
-			apiUrl = strings.TrimSuffix(apiUrl, "/")
-		}
+	if len(apiUrl) > 0 {
+		apiUrl = strings.TrimSuffix(apiUrl, "/")
 	} else {
 		apiUrl = common.GetApiUrl(ctx)
 	}
-	finalUrl := fmt.Sprintf("%s/d%s?sign=%s",
+	return fmt.Sprintf("%s/d%s?sign=%s",
 		apiUrl,
 		utils.EncodePath(path, true),
 		sign.Sign(path))
-	reader := strings.NewReader(finalUrl)
-	return &model.Link{
-		RangeReadCloser: &model.RangeReadCloser{
-			RangeReader: func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
-				if httpRange.Length < 0 {
-					return io.NopCloser(reader), nil
-				}
-				sr := io.NewSectionReader(reader, httpRange.Start, httpRange.Length)
-				return io.NopCloser(sr), nil
-			},
-		},
-	}, int64(reader.Len())
 }

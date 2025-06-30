@@ -29,8 +29,6 @@ func (d *Strm) GetAddition() driver.Additional {
 }
 
 func (d *Strm) Init(ctx context.Context) error {
-	// 强制使用本地代理
-	d.Storage.Proxy.WebdavPolicy = "native_proxy"
 	if d.Paths == "" {
 		return errors.New("paths is required")
 	}
@@ -120,7 +118,7 @@ func (d *Strm) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*
 		return nil, errs.ObjectNotFound
 	}
 	for _, dst := range dsts {
-		link, err := d.link(ctx, dst, sub, args)
+		link, err := d.link(ctx, dst, sub)
 		if err == nil {
 			return link, nil
 		}

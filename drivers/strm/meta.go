@@ -13,22 +13,17 @@ type Addition struct {
 }
 
 var config = driver.Config{
-	Name:             "Strm",
-	LocalSort:        true,
-	NoCache:          true,
-	NoUpload:         true,
-	DefaultRoot:      "/",
-	OnlyLocal:        true,
-	OnlyProxy:        false,
-	ProxyRangeOption: false,
+	Name:        "Strm",
+	LocalSort:   true,
+	NoCache:     true,
+	NoUpload:    true,
+	DefaultRoot: "/",
+	OnlyLocal:   true,
+	OnlyProxy:   true,
 }
 
 func init() {
 	op.RegisterDriver(func() driver.Driver {
-		return &Strm{
-			Addition: Addition{
-				ProtectSameName: true,
-			},
-		}
+		return &Strm{}
 	})
 }
