@@ -108,7 +108,18 @@ func (d *S3) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*mo
 			link.URL = req.HTTPRequest.URL.String()
 		}
 		if d.RemoveBucket {
-			link.URL = strings.Replace(link.URL, "/"+d.Bucket, "", 1)
+			if parsedURL, parseErr := url.Parse(link.URL); parseErr == nil {
+				path := parsedURL.Path
+				bucketPrefix := "/" + d.Bucket
+				if strings.HasPrefix(path, bucketPrefix) {
+					path = strings.TrimPrefix(path, bucketPrefix)
+					if path == "" {
+						path = "/"
+					}
+				}
+				parsedURL.Path = path
+				link.URL = parsedURL.String()
+			}
 		}
 	} else {
 		if common.ShouldProxy(d, fileName) {
