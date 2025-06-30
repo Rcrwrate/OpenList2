@@ -152,6 +152,21 @@ type FileUploadResp struct {
 	Credential     string        `json:"credential,omitempty"`      // for local
 }
 
+type FileDeleteResp struct {
+	Resp
+	Data []struct {
+		Path  string `json:"path"`
+		Token string `json:"token"`
+		// Owner struct {
+		// 	Owner       string `json:"owner"`
+		// 	Application struct {
+		// 		Type string `json:"type"`
+		// 	} `json:"application"`
+		// } `json:"owner"`
+		Type int `json:"type"`
+	} `json:"data,omitempty"`
+}
+
 type FileThumbResp struct {
 	URL     string    `json:"url"`
 	Expires time.Time `json:"expires"`
