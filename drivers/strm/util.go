@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/OpenListTeam/OpenList/pkg/http_range"
+	"github.com/OpenListTeam/OpenList/server/common"
 	"io"
 
 	stdpath "path"
@@ -69,7 +70,7 @@ func (d *Strm) get(ctx context.Context, path string, dst, sub string) (model.Obj
 				return obj.GetSize()
 			}
 			path := stdpath.Join(reqPath, obj.GetName())
-			_, size := getLink(path, d)
+			_, size := getLink(ctx, path, d)
 			return size
 		}(),
 		Modified: obj.ModTime(),
@@ -110,7 +111,7 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 					return obj.GetSize()
 				}
 				path := stdpath.Join(reqPath, obj.GetName())
-				_, size := getLink(path, d)
+				_, size := getLink(ctx, path, d)
 				return size
 			}(),
 			Modified: obj.ModTime(),
@@ -136,17 +137,21 @@ func (d *Strm) link(ctx context.Context, dst, sub string, args model.LinkArgs) (
 	if err != nil {
 		return nil, err
 	}
-	link, _ := getLink(reqPath, d)
+	link, _ := getLink(ctx, reqPath, d)
 	return link, nil
 }
 
-func getLink(path string, d *Strm) (*model.Link, int64) {
-	url := d.SiteUrl
-	if strings.HasSuffix(path, "/") {
-		url = strings.TrimSuffix(url, "/")
+func getLink(ctx context.Context, path string, d *Strm) (*model.Link, int64) {
+	apiUrl := d.SiteUrl
+	if apiUrl != "" {
+		if strings.HasSuffix(path, "/") {
+			apiUrl = strings.TrimSuffix(apiUrl, "/")
+		}
+	} else {
+		apiUrl = common.GetApiUrl(ctx)
 	}
 	finalUrl := fmt.Sprintf("%s/d%s?sign=%s",
-		url,
+		apiUrl,
 		utils.EncodePath(path, true),
 		sign.Sign(path))
 	reader := strings.NewReader(finalUrl)
