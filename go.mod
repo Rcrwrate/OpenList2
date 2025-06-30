@@ -10,7 +10,7 @@ require (
 	github.com/OpenListTeam/sftpd-openlist v1.0.1
 	github.com/OpenListTeam/tache v0.2.0
 	github.com/OpenListTeam/times v0.1.0
-	github.com/OpenListTeam/wopan-sdk-go v0.2.0
+	github.com/OpenListTeam/wopan-sdk-go v0.1.5
 	github.com/ProtonMail/go-crypto v1.0.0
 	github.com/SheltonZhu/115driver v1.0.34
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
