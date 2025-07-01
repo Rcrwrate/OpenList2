@@ -22,6 +22,7 @@ import (
 
 var listCache = cache.NewMemCache(cache.WithShards[[]model.Obj](64))
 var listG singleflight.Group[[]model.Obj]
+var needFreshPath = cache.NewMemCache(cache.WithShards[struct{}](64))
 
 func updateCacheObj(storage driver.Driver, path string, oldObj model.Obj, newObj model.Obj) {
 	key := Key(storage, path)
@@ -115,7 +116,9 @@ func List(ctx context.Context, storage driver.Driver, path string, args model.Li
 	path = utils.FixAndCleanPath(path)
 	log.Debugf("op.List %s", path)
 	key := Key(storage, path)
-	if !args.Refresh {
+	_, needFresh := needFreshPath.Get(key)
+	needFreshPath.Del(key)
+	if !args.Refresh && !needFresh {
 		if files, ok := listCache.Get(key); ok {
 			log.Debugf("use cache when list %s", path)
 			return files, nil
@@ -339,8 +342,12 @@ func MakeDir(ctx context.Context, storage driver.Driver, path string, lazyCache 
 					}
 				case driver.Mkdir:
 					err = s.MakeDir(ctx, parentDir, dirName)
-					if err == nil && !utils.IsBool(lazyCache...) {
-						ClearCache(storage, parentPath)
+					if err == nil {
+						if !utils.IsBool(lazyCache...) {
+							ClearCache(storage, parentPath)
+						} else {
+							needFreshPath.Set(Key(storage, parentPath), struct{}{}, cache.WithEx[struct{}](time.Minute*time.Duration(storage.GetStorage().CacheExpiration)))
+						}
 					}
 				default:
 					return nil, errs.NotImplement
@@ -394,6 +401,8 @@ func Move(ctx context.Context, storage driver.Driver, srcPath, dstDirPath string
 			delCacheObj(storage, srcDirPath, srcRawObj)
 			if !utils.IsBool(lazyCache...) {
 				ClearCache(storage, dstDirPath)
+			} else {
+				needFreshPath.Set(Key(storage, dstDirPath), struct{}{}, cache.WithEx[struct{}](time.Minute*time.Duration(storage.GetStorage().CacheExpiration)))
 			}
 		}
 	default:
@@ -465,8 +474,12 @@ func Copy(ctx context.Context, storage driver.Driver, srcPath, dstDirPath string
 		}
 	case driver.Copy:
 		err = s.Copy(ctx, srcObj, dstDir)
-		if err == nil && !utils.IsBool(lazyCache...) {
-			ClearCache(storage, dstDirPath)
+		if err == nil {
+			if !utils.IsBool(lazyCache...) {
+				ClearCache(storage, dstDirPath)
+			} else {
+				needFreshPath.Set(Key(storage, dstDirPath), struct{}{}, cache.WithEx[struct{}](time.Minute*time.Duration(storage.GetStorage().CacheExpiration)))
+			}
 		}
 	default:
 		return errs.NotImplement
@@ -573,8 +586,12 @@ func Put(ctx context.Context, storage driver.Driver, dstDirPath string, file mod
 		}
 	case driver.Put:
 		err = s.Put(ctx, parentDir, file, up)
-		if err == nil && !utils.IsBool(lazyCache...) {
-			ClearCache(storage, dstDirPath)
+		if err == nil {
+			if !utils.IsBool(lazyCache...) {
+				ClearCache(storage, dstDirPath)
+			} else {
+				needFreshPath.Set(Key(storage, dstDirPath), struct{}{}, cache.WithEx[struct{}](time.Minute*time.Duration(storage.GetStorage().CacheExpiration)))
+			}
 		}
 	default:
 		return errs.NotImplement
@@ -631,8 +648,12 @@ func PutURL(ctx context.Context, storage driver.Driver, dstDirPath, dstName, url
 		}
 	case driver.PutURL:
 		err = s.PutURL(ctx, dstDir, dstName, url)
-		if err == nil && !utils.IsBool(lazyCache...) {
-			ClearCache(storage, dstDirPath)
+		if err == nil {
+			if !utils.IsBool(lazyCache...) {
+				ClearCache(storage, dstDirPath)
+			} else {
+				needFreshPath.Set(Key(storage, dstDirPath), struct{}{}, cache.WithEx[struct{}](time.Minute*time.Duration(storage.GetStorage().CacheExpiration)))
+			}
 		}
 	default:
 		return errs.NotImplement
