@@ -42,7 +42,7 @@ func (t *TransferTask) Run() error {
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
 	if t.SrcStorage == nil {
-		if t.DeletePolicy == StreamPut {
+		if t.DeletePolicy == UploadDownloadStream {
 			rrc, err := stream.GetRangeReadCloserFromLink(t.GetTotalBytes(), &model.Link{URL: t.Url})
 			if err != nil {
 				return err

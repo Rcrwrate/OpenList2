@@ -54,7 +54,7 @@ func (s SimpleHttp) Run(task *tool.DownloadTask) error {
 	if err != nil {
 		return err
 	}
-	streamPut := task.DeletePolicy == tool.StreamPut
+	streamPut := task.DeletePolicy == tool.UploadDownloadStream
 	method := http.MethodGet
 	if streamPut {
 		method = http.MethodHead

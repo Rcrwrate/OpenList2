@@ -173,7 +173,7 @@ func (t *DownloadTask) Transfer() error {
 		}
 		return nil
 	}
-	if t.DeletePolicy == StreamPut {
+	if t.DeletePolicy == UploadDownloadStream {
 		dstStorage, dstDirActualPath, err := op.GetStorageAndActualPath(t.DstDirPath)
 		if err != nil {
 			return errors.WithMessage(err, "failed get dst storage")

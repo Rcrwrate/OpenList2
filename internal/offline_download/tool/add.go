@@ -29,7 +29,7 @@ const (
 	DeleteOnUploadFailed  DeletePolicy = "delete_on_upload_failed"
 	DeleteNever           DeletePolicy = "delete_never"
 	DeleteAlways          DeletePolicy = "delete_always"
-	StreamPut             DeletePolicy = "stream_put"
+	UploadDownloadStream  DeletePolicy = "upload_download_stream"
 )
 
 type AddURLArgs struct {
