@@ -47,12 +47,11 @@ func (t *TransferTask) Run() error {
 			if err != nil {
 				return err
 			}
-			name := t.SrcObjPath
-			t.SrcObjPath = t.Url
 			r, err := rrc.RangeRead(t.Ctx(), http_range.Range{Length: t.GetTotalBytes()})
 			if err != nil {
 				return err
 			}
+			name := t.SrcObjPath
 			mimetype := utils.GetMimeType(name)
 			s := &stream.FileStream{
 				Ctx: nil,
@@ -76,6 +75,9 @@ func (t *TransferTask) Run() error {
 }
 
 func (t *TransferTask) GetName() string {
+	if t.DeletePolicy == UploadDownloadStream {
+		return fmt.Sprintf("upload [%s](%s) to [%s](%s)", t.SrcObjPath, t.Url, t.DstStorageMp, t.DstDirPath)
+	}
 	return fmt.Sprintf("transfer [%s](%s) to [%s](%s)", t.SrcStorageMp, t.SrcObjPath, t.DstStorageMp, t.DstDirPath)
 }
 
