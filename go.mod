@@ -47,7 +47,7 @@ require (
 	github.com/kdomanski/iso9660 v0.4.0
 	github.com/maruel/natural v1.1.1
 	github.com/meilisearch/meilisearch-go v0.27.2
-	github.com/mholt/archives v0.1.0
+	github.com/mholt/archives v0.1.3
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/ncw/swift/v2 v2.0.3
 	github.com/pkg/errors v0.9.1
@@ -66,7 +66,6 @@ require (
 	github.com/yeka/zip v0.0.0-20231116150916-03d6312748a9
 	github.com/zzzhr1990/go-common-entity v0.0.0-20250202070650-1a200048f0d3
 	golang.org/x/crypto v0.36.0
-	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e
 	golang.org/x/image v0.19.0
 	golang.org/x/net v0.38.0
 	golang.org/x/oauth2 v0.22.0
@@ -83,6 +82,8 @@ require (
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/mikelolasagasti/xz v1.0.1 // indirect
+	github.com/minio/minlz v1.0.0 // indirect
 	github.com/minio/xxml v0.0.3 // indirect
 )
 
@@ -93,7 +94,7 @@ require (
 	github.com/blevesearch/go-faiss v1.0.20 // indirect
 	github.com/blevesearch/zapx/v16 v16.1.5 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
-	github.com/bodgit/sevenzip v1.6.0
+	github.com/bodgit/sevenzip v1.6.1
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/charmbracelet/x/ansi v0.2.3 // indirect
@@ -113,7 +114,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/matoous/go-nanoid/v2 v2.1.0 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27
-	github.com/nwaples/rardecode/v2 v2.0.0-beta.4.0.20241112120701-034e449c6e78
+	github.com/nwaples/rardecode/v2 v2.1.0
 	github.com/sorairolake/lzip-go v0.3.5 // indirect
 	github.com/taruti/bytepool v0.0.0-20160310082835-5e3a9ea56543 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
@@ -130,7 +131,7 @@ require (
 	github.com/abbot/go-http-auth v0.4.0 // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/andreburgaud/crypt2go v1.8.0 // indirect
-	github.com/andybalholm/brotli v1.1.1 // indirect
+	github.com/andybalholm/brotli v1.1.2-0.20250424173009-453214e765f3 // indirect
 	github.com/axgle/mahonia v0.0.0-20180208002826-3358181d7394
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
@@ -224,7 +225,7 @@ require (
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/otiai10/copy v1.14.0
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
-	github.com/pierrec/lz4/v4 v4.1.21 // indirect
+	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
