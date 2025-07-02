@@ -14,10 +14,11 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
+	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/OpenListTeam/tache"
 )
 
 type TransferTask struct {
@@ -30,6 +31,7 @@ type TransferTask struct {
 	SrcStorageMp string        `json:"src_storage_mp"`
 	DstStorageMp string        `json:"dst_storage_mp"`
 	DeletePolicy DeletePolicy  `json:"delete_policy"`
+	Url          string        `json:"-"`
 }
 
 func (t *TransferTask) Run() error {
@@ -40,6 +42,33 @@ func (t *TransferTask) Run() error {
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
 	if t.SrcStorage == nil {
+		if t.DeletePolicy == StreamPut {
+			rrc, err := stream.GetRangeReadCloserFromLink(t.GetTotalBytes(), &model.Link{URL: t.Url})
+			if err != nil {
+				return err
+			}
+			name := t.SrcObjPath
+			t.SrcObjPath = t.Url
+			r, err := rrc.RangeRead(t.Ctx(), http_range.Range{Length: t.GetTotalBytes()})
+			if err != nil {
+				return err
+			}
+			mimetype := utils.GetMimeType(name)
+			s := &stream.FileStream{
+				Ctx: nil,
+				Obj: &model.Object{
+					Name:     name,
+					Size:     t.GetTotalBytes(),
+					Modified: time.Now(),
+					IsFolder: false,
+				},
+				Reader:   r,
+				Mimetype: mimetype,
+				Closers:  utils.NewClosers(rrc),
+			}
+			defer s.Close()
+			return op.Put(t.Ctx(), t.DstStorage, t.DstDirPath, s, t.SetProgress)
+		}
 		return transferStdPath(t)
 	} else {
 		return transferObjPath(t)
