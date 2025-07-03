@@ -119,7 +119,7 @@ func (d *ILanZou) List(ctx context.Context, dir model.Obj, args model.ListArgs) 
 		return nil, err
 	}
 
-	if d.OrderDirection != "default" {
+	if d.OrderDirection != "Default" {
 		var folderObjs, fileObjs []model.Obj
 		var folderNames, fileNames []string
 
@@ -157,7 +157,7 @@ func (d *ILanZou) List(ctx context.Context, dir model.Obj, args model.ListArgs) 
 			}
 		}
 
-		if d.OrderDirection == "desc" {
+		if d.OrderDirection == "Desc" {
 			reverse(sortedFolders)
 			reverse(sortedFiles)
 		}
