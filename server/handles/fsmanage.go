@@ -176,6 +176,11 @@ func FsCopy(c *gin.Context) {
 
 	// Return immediately with task information
 	if len(addedTasks) > 0 {
+		go func() {
+			fs.WaitALLAndDo(addedTasks, func() {
+				fs.RefreshDirAfterCopy(c, addedTasks)
+			})
+		}()
 		common.SuccessResp(c, gin.H{
 			"message": fmt.Sprintf("Successfully created %d copy task(s)", len(addedTasks)),
 			"tasks":   getTaskInfos(addedTasks),

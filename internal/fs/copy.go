@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	stdpath "path"
+	"sort"
 	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
@@ -29,6 +30,7 @@ type CopyTask struct {
 	dstStorage   driver.Driver `json:"-"`
 	SrcStorageMp string        `json:"src_storage_mp"`
 	DstStorageMp string        `json:"dst_storage_mp"`
+	ChildTasks   []task.TaskExtensionInfo
 }
 
 func (t *CopyTask) GetName() string {
@@ -56,7 +58,9 @@ func (t *CopyTask) Run() error {
 	if err != nil {
 		return errors.WithMessage(err, "failed get storage")
 	}
-	return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+	err = copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+	WaitALL(t.ChildTasks)
+	return err
 }
 
 var CopyTaskManager *tache.Manager[*CopyTask]
@@ -140,7 +144,7 @@ func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, src
 			}
 			srcObjPath := stdpath.Join(srcObjPath, obj.GetName())
 			dstObjPath := stdpath.Join(dstDirPath, srcObj.GetName())
-			CopyTaskManager.Add(&CopyTask{
+			childTask := CopyTask{
 				TaskExtension: task.TaskExtension{
 					Creator: t.GetCreator(),
 					ApiUrl:  t.ApiUrl,
@@ -151,7 +155,9 @@ func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, src
 				DstDirPath:   dstObjPath,
 				SrcStorageMp: srcStorage.GetStorage().MountPath,
 				DstStorageMp: dstStorage.GetStorage().MountPath,
-			})
+			}
+			CopyTaskManager.Add(&childTask)
+			t.ChildTasks = append(t.ChildTasks, &childTask)
 		}
 		t.Status = "src object is dir, added all copy tasks of objs"
 		return nil
@@ -181,4 +187,25 @@ func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Drive
 		return errors.WithMessagef(err, "failed get [%s] stream", srcFilePath)
 	}
 	return op.Put(tsk.Ctx(), dstStorage, dstDirPath, ss, tsk.SetProgress, true)
+}
+
+func RefreshDirAfterCopy(ctx context.Context, tasks []task.TaskExtensionInfo) {
+	refreshedPaths := make(map[string]driver.Driver)
+	for _, t := range tasks {
+		if t.GetState() == tache.StateSucceeded {
+			if c, ok := t.(*CopyTask); ok {
+				refreshedPaths[c.DstDirPath] = c.dstStorage
+			}
+		}
+	}
+	var paths []string
+	for path := range refreshedPaths {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	for _, path := range paths {
+		storage := refreshedPaths[path]
+		op.ClearCache(storage, path)
+		_, _ = op.List(ctx, storage, path, model.ListArgs{Refresh: true})
+	}
 }
