@@ -256,8 +256,9 @@ func (d *Crypt) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 	}
 	resultRangeReadCloser := &model.RangeReadCloser{}
 	resultRangeReadCloser.TryAdd(remoteLink.MFile)
-	if remoteLink.RangeReadCloser != nil {
-		resultRangeReadCloser.AddClosers(remoteLink.RangeReadCloser.GetClosers())
+	remoteRangeReadCloser := remoteLink.RangeReadCloser
+	if remoteRangeReadCloser != nil {
+		resultRangeReadCloser.AddClosers(remoteRangeReadCloser.GetClosers())
 	}
 	remoteFileSize := remoteFile.GetSize()
 	rangeReaderFunc := func(ctx context.Context, underlyingOffset, underlyingLength int64) (io.ReadCloser, error) {
@@ -273,18 +274,16 @@ func (d *Crypt) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 			//keep reuse same MFile and close at last.
 			return io.NopCloser(remoteLink.MFile), nil
 		}
-		rrc := remoteLink.RangeReadCloser
-		if rrc == nil && len(remoteLink.URL) > 0 {
+		if remoteRangeReadCloser == nil && len(remoteLink.URL) > 0 {
 			var err error
-			rrc, err = stream.GetRangeReadCloserFromLink(remoteFileSize, remoteLink)
+			remoteRangeReadCloser, err = stream.GetRangeReadCloserFromLink(remoteFileSize, remoteLink)
 			if err != nil {
 				return nil, err
 			}
-			resultRangeReadCloser.AddClosers(rrc.GetClosers())
-			remoteLink.RangeReadCloser = rrc
+			resultRangeReadCloser.AddClosers(remoteRangeReadCloser.GetClosers())
 		}
-		if rrc != nil {
-			remoteReader, err := rrc.RangeRead(ctx, http_range.Range{Start: underlyingOffset, Length: length})
+		if remoteRangeReadCloser != nil {
+			remoteReader, err := remoteRangeReadCloser.RangeRead(ctx, http_range.Range{Start: underlyingOffset, Length: length})
 			if err != nil {
 				return nil, err
 			}
