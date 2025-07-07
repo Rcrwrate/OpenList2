@@ -27,7 +27,6 @@ func init() {
 		return &QuarkOrUC{
 			config: driver.Config{
 				Name:              "Quark",
-				OnlyLocal:         false,
 				DefaultRoot:       "0",
 				NoOverwriteUpload: true,
 			},

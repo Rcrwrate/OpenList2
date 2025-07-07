@@ -19,7 +19,7 @@ var config = driver.Config{
 	Name:      "Mega_nz",
 	LocalSort: true,
 	OnlyProxy: true,
-	NoUrl:     true,
+	NoLinkURL: true,
 }
 
 func init() {

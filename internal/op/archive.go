@@ -47,7 +47,7 @@ func GetArchiveMeta(ctx context.Context, storage driver.Driver, path string, arg
 		}
 		return m, nil
 	}
-	if storage.Config().OnlyLocal {
+	if storage.Config().OnlyLinkMFile {
 		meta, err := fn()
 		return meta, err
 	}
@@ -402,7 +402,7 @@ func DriverExtract(ctx context.Context, storage driver.Driver, path string, args
 		}
 		return link, nil
 	}
-	if storage.Config().OnlyLocal {
+	if storage.Config().OnlyLinkMFile {
 		link, err := fn()
 		if err != nil {
 			return nil, nil, err
