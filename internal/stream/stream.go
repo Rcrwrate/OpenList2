@@ -173,30 +173,29 @@ func NewSeekableStream(fs *FileStream, link *model.Link) (*SeekableStream, error
 		return &SeekableStream{FileStream: fs}, nil
 	}
 	if link != nil {
+		var rrc model.RangeReadCloserIF
 		if link.MFile != nil {
-			fs.AddIfCloser(link.MFile)
 			fs.Reader = link.MFile
-		}
-
-		if link.RangeReadCloser != nil {
+			fs.AddIfCloser(link.MFile)
+		} else if link.RangeReadCloser != nil {
 			link.RangeReadCloser.AcquireReference()
-			fs.Add(link.RangeReadCloser)
-			return &SeekableStream{FileStream: fs, rangeReadCloser: &RateLimitRangeReadCloser{
+			rrc = &RateLimitRangeReadCloser{
 				RangeReadCloserIF: link.RangeReadCloser,
 				Limiter:           ServerDownloadLimit,
-			}}, nil
+			}
+			fs.Add(link.RangeReadCloser)
+		} else {
+			rrf, err := GetRangeReaderFuncFromLink(fs.GetSize(), link)
+			if err != nil {
+				return nil, err
+			}
+			rrc = &RateLimitRangeReadCloser{
+				RangeReadCloserIF: &model.RangeReadCloser{RangeReader: rrf},
+				Limiter:           ServerDownloadLimit,
+			}
+			fs.Add(rrc)
 		}
-
-		rrf, err := GetRangeReaderFuncFromLink(fs.GetSize(), link)
-		if err != nil {
-			return nil, err
-		}
-		rrc := &model.RangeReadCloser{RangeReader: rrf}
-		fs.Add(rrc)
-		return &SeekableStream{FileStream: fs, rangeReadCloser: &RateLimitRangeReadCloser{
-			RangeReadCloserIF: rrc,
-			Limiter:           ServerDownloadLimit,
-		}}, nil
+		return &SeekableStream{FileStream: fs, rangeReadCloser: rrc}, nil
 	}
 	return nil, fmt.Errorf("illegal seekableStream")
 }

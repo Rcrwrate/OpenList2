@@ -266,7 +266,7 @@ func (d *Crypt) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 	var fileHeader []byte
 	rangeReaderFunc := func(ctx context.Context, offset, length int64) (io.ReadCloser, error) {
 		underlyingLength := length
-		isReadFileHeader := offset == 0 && length <= fileHeaderSize
+		isReadFileHeader := offset == 0 && length > 0 && length <= fileHeaderSize
 		if isReadFileHeader {
 			mu.Lock()
 			defer mu.Unlock()

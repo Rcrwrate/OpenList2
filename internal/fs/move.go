@@ -352,17 +352,14 @@ func (t *MoveTask) copyFile(srcStorage, dstStorage driver.Driver, srcFilePath, d
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] link", srcFilePath)
 	}
-
-	fs := &stream.FileStream{
+	ss, err := stream.NewSeekableStream(&stream.FileStream{
 		Obj: srcFile,
 		Ctx: t.Ctx(),
-	}
-
-	ss, err := stream.NewSeekableStream(fs, link)
+	}, link)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] stream", srcFilePath)
 	}
-
+	defer ss.Close()
 	return op.Put(t.Ctx(), dstStorage, dstDirPath, ss, nil, true)
 }
 

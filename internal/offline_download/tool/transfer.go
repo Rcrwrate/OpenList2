@@ -285,16 +285,16 @@ func transferObjFile(t *TransferTask) error {
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] link", t.SrcObjPath)
 	}
-	fs := &stream.FileStream{
+	// any link provided is seekable
+	ss, err := stream.NewSeekableStream(&stream.FileStream{
 		Obj: srcFile,
 		Ctx: t.Ctx(),
-	}
-	// any link provided is seekable
-	ss, err := stream.NewSeekableStream(fs, link)
+	}, link)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] stream", t.SrcObjPath)
 	}
 	t.SetTotalBytes(srcFile.GetSize())
+	defer ss.Close()
 	return op.Put(t.Ctx(), t.DstStorage, t.DstDirPath, ss, t.SetProgress)
 }
 
