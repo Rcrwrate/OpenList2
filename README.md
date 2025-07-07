@@ -113,7 +113,7 @@ The `OpenList` is open-source software licensed under the [AGPL-3.0](https://www
 
 ## Contributors
 
-We sincerely thank the author [Xhofe](https://github.com/Xhofe) of the original project [AlistGo/alist](https://github.com/AlistGo/alist) and all other contributors.
+We sincerely thank the author [Xhofe](https://github.com/Xhofe) of the original project [alist-org/alist](https://github.com/alist-org/alist) and all other contributors.
 
 Thanks goes to these wonderful people:
 

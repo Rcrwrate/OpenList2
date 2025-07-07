@@ -113,7 +113,7 @@ N/A（待重建）
 
 ## 贡献者
 
-我们衷心感谢原项目 [AlistGo/alist](https://github.com/AlistGo/alist) 的作者 [Xhofe](https://github.com/Xhofe) 及所有其他贡献者。
+我们衷心感谢原项目 [alist-org/alist](https://github.com/alist-org/alist) 的作者 [Xhofe](https://github.com/Xhofe) 及所有其他贡献者。
 
 感谢这些优秀的人：
 

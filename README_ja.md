@@ -113,7 +113,7 @@ N/A（再構築中）
 
 ## コントリビューター
 
-オリジナルプロジェクト [AlistGo/alist](https://github.com/AlistGo/alist) の作者 [Xhofe](https://github.com/Xhofe) およびその他すべての貢献者に心より感謝いたします。
+オリジナルプロジェクト [alist-org/alist](https://github.com/alist-org/alist) の作者 [Xhofe](https://github.com/Xhofe) およびその他すべての貢献者に心より感謝いたします。
 
 素晴らしい皆様に感謝します：
 

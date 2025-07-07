@@ -113,7 +113,7 @@ Stel algemene vragen in [*Discussions*](https://github.com/OpenListTeam/OpenList
 
 ## Bijdragers
 
-Wij danken de auteur [Xhofe](https://github.com/Xhofe) van het originele project [AlistGo/alist](https://github.com/AlistGo/alist) en alle andere bijdragers.
+Wij danken de auteur [Xhofe](https://github.com/Xhofe) van het originele project [alist-org/alist](https://github.com/alist-org/alist) en alle andere bijdragers.
 
 Dank aan deze geweldige mensen:
 
