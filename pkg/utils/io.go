@@ -150,33 +150,69 @@ func Retry(attempts int, sleep time.Duration, f func() error) (err error) {
 	return fmt.Errorf("after %d attempts, last error: %s", attempts, err)
 }
 
+type ClosersNoAddKey struct{}
 type ClosersIF interface {
 	io.Closer
 	Add(closer io.Closer)
 	AddIfCloser(a any)
+}
+type Closers []io.Closer
+
+func (c *Closers) Close() error {
+	var errs []error
+	for _, closer := range *c {
+		if closer != nil {
+			errs = append(errs, closer.Close())
+		}
+	}
+	*c = (*c)[:0]
+	return errors.Join(errs...)
+}
+func (c *Closers) Add(closer io.Closer) {
+	if closer != nil {
+		*c = append(*c, closer)
+	}
+}
+func (c *Closers) AddIfCloser(a any) {
+	if closer, ok := a.(io.Closer); ok {
+		*c = append(*c, closer)
+	}
+}
+
+var _ ClosersIF = (*Closers)(nil)
+
+func NewClosers(c ...io.Closer) Closers {
+	return Closers(c)
+}
+
+type SyncClosersIF interface {
+	ClosersIF
 	AcquireReference()
 }
-type ClosersNoAddKey struct{}
-type Closers struct {
+
+type SyncClosers struct {
 	closers []io.Closer
 	mu      sync.Mutex
 	ref     int
 }
 
-var _ ClosersIF = (*Closers)(nil)
+var _ SyncClosersIF = (*SyncClosers)(nil)
 
-func (c *Closers) AcquireReference() {
+func (c *SyncClosers) AcquireReference() {
 	c.mu.Lock()
 	// log.Debugf("Closers.AcquireReference %p,ref=%d", c, c.ref)
 	c.ref++
 	for _, closer := range c.closers {
-		if c2, ok := closer.(ClosersIF); ok {
+		if c2, ok := closer.(SyncClosersIF); ok {
+			if c2 == c {
+				panic("deadlock")
+			}
 			c2.AcquireReference()
 		}
 	}
 	c.mu.Unlock()
 }
-func (c *Closers) Close() error {
+func (c *SyncClosers) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	// log.Debugf("Closers.Close %p,ref=%d", c, c.ref)
@@ -184,7 +220,10 @@ func (c *Closers) Close() error {
 	close := c.ref <= 0
 	var errs []error
 	for _, closer := range c.closers {
-		if c2, ok := closer.(ClosersIF); ok {
+		if c2, ok := closer.(SyncClosersIF); ok {
+			if c2 == c {
+				panic("deadlock")
+			}
 			errs = append(errs, c2.Close())
 		} else if closer != nil && close {
 			errs = append(errs, closer.Close())
@@ -199,14 +238,14 @@ func (c *Closers) Close() error {
 
 	return errors.Join(errs...)
 }
-func (c *Closers) Add(closer io.Closer) {
+func (c *SyncClosers) Add(closer io.Closer) {
 	if closer != nil {
 		c.mu.Lock()
 		c.closers = append(c.closers, closer)
 		c.mu.Unlock()
 	}
 }
-func (c *Closers) AddIfCloser(a any) {
+func (c *SyncClosers) AddIfCloser(a any) {
 	if closer, ok := a.(io.Closer); ok {
 		c.mu.Lock()
 		c.closers = append(c.closers, closer)
@@ -214,8 +253,8 @@ func (c *Closers) AddIfCloser(a any) {
 	}
 }
 
-func NewClosers(c ...io.Closer) Closers {
-	return Closers{closers: c}
+func NewSyncClosers(c ...io.Closer) SyncClosers {
+	return SyncClosers{closers: c}
 }
 
 type Ordered interface {

@@ -76,20 +76,20 @@ type ArchiveDecompressArgs struct {
 
 type RangeReadCloserIF interface {
 	RangeRead(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error)
-	utils.ClosersIF
+	utils.SyncClosersIF
 }
 
 var _ RangeReadCloserIF = (*RangeReadCloser)(nil)
 
 type RangeReadCloser struct {
 	RangeReader RangeReaderFunc
-	utils.Closers
+	utils.SyncClosers
 }
 
 func (r *RangeReadCloser) RangeRead(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
 	rc, err := r.RangeReader(ctx, httpRange)
 	if notAdd, ok := ctx.Value(utils.ClosersNoAddKey{}).(bool); !ok || !notAdd {
-		r.Closers.Add(rc)
+		r.SyncClosers.Add(rc)
 	}
 	return rc, err
 }

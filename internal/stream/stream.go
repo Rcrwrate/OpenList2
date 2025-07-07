@@ -158,12 +158,12 @@ var _ model.FileStreamer = (*FileStream)(nil)
 // additional resources that need to be closed, they should be added to the Closer property of
 // the SeekableStream object and be closed together when the SeekableStream object is closed.
 type SeekableStream struct {
-	*FileStream
+	FileStream
 	// should have one of belows to support rangeRead
 	rangeReadCloser model.RangeReadCloserIF
 }
 
-func NewSeekableStream(fs *FileStream, link *model.Link) (*SeekableStream, error) {
+func NewSeekableStream(fs FileStream, link *model.Link) (*SeekableStream, error) {
 	if len(fs.Mimetype) == 0 {
 		fs.Mimetype = utils.GetMimeType(fs.Obj.GetName())
 	}

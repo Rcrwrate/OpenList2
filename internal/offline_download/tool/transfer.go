@@ -286,7 +286,7 @@ func transferObjFile(t *TransferTask) error {
 		return errors.WithMessagef(err, "failed get [%s] link", t.SrcObjPath)
 	}
 	// any link provided is seekable
-	ss, err := stream.NewSeekableStream(&stream.FileStream{
+	ss, err := stream.NewSeekableStream(stream.FileStream{
 		Obj: srcFile,
 		Ctx: t.Ctx(),
 	}, link)
