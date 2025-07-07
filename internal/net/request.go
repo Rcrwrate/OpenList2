@@ -68,12 +68,7 @@ func NewDownloader(options ...func(*Downloader)) *Downloader {
 // memory usage is at about Concurrency*PartSize, use this wisely
 func (d Downloader) Download(ctx context.Context, p *HttpRequestParams) (readCloser io.ReadCloser, err error) {
 
-	var finalP HttpRequestParams
-	awsutil.Copy(&finalP, p)
-	if finalP.Range.Length == -1 {
-		finalP.Range.Length = finalP.Size - finalP.Range.Start
-	}
-	impl := downloader{params: &finalP, cfg: d, ctx: ctx}
+	impl := downloader{cfg: d, ctx: ctx}
 
 	// Ensures we don't need nil checks later on
 	// 必需的选项
@@ -83,9 +78,16 @@ func (d Downloader) Download(ctx context.Context, p *HttpRequestParams) (readClo
 	if impl.cfg.PartSize == 0 {
 		impl.cfg.PartSize = DefaultDownloadPartSize
 	}
+	var finalP HttpRequestParams
+	awsutil.Copy(&finalP, p)
 	if impl.cfg.HttpClient == nil {
 		impl.cfg.HttpClient = DefaultHttpRequestFunc
+	} else {
+		if finalP.Range.Length < 0 || finalP.Range.Start+finalP.Range.Length > finalP.Size {
+			finalP.Range.Length = finalP.Size - finalP.Range.Start
+		}
 	}
+	impl.params = &finalP
 
 	return impl.download()
 }

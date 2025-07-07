@@ -20,7 +20,6 @@ var config = driver.Config{
 	Name:        "115 Share",
 	DefaultRoot: "0",
 	// OnlyProxy:   true,
-	// OnlyLocal:         true,
 	CheckStatus:       false,
 	Alert:             "",
 	NoOverwriteUpload: true,

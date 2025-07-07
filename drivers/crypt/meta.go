@@ -28,7 +28,6 @@ type Addition struct {
 var config = driver.Config{
 	Name:              "Crypt",
 	LocalSort:         true,
-	OnlyLocal:         true,
 	OnlyProxy:         true,
 	NoCache:           true,
 	NoUpload:          false,
@@ -37,6 +36,7 @@ var config = driver.Config{
 	CheckStatus:       false,
 	Alert:             "",
 	NoOverwriteUpload: false,
+	NoUrl:             true,
 }
 
 func init() {

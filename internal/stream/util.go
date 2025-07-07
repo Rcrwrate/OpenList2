@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,11 +15,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func GetRangeReadCloserFromLink(size int64, link *model.Link) (model.RangeReadCloserIF, error) {
+func GetRangeReaderFuncFromLink(size int64, link *model.Link) (model.RangeReaderFunc, error) {
 	if len(link.URL) == 0 {
-		return nil, fmt.Errorf("can't create RangeReadCloser since URL is empty in link")
+		return nil, errors.New("URL is empty in link")
 	}
-	rangeReaderFunc := func(ctx context.Context, r http_range.Range) (io.ReadCloser, error) {
+	return func(ctx context.Context, r http_range.Range) (io.ReadCloser, error) {
 		if link.Concurrency > 0 || link.PartSize > 0 {
 			header := net.ProcessHeader(nil, link.Header)
 			down := net.NewDownloader(func(d *net.Downloader) {
@@ -33,7 +34,9 @@ func GetRangeReadCloserFromLink(size int64, link *model.Link) (model.RangeReadCl
 			}
 			rc, err := down.Download(ctx, req)
 			return rc, err
-
+		}
+		if r.Start+r.Length > size {
+			r.Length = size - r.Start
 		}
 		response, err := RequestRangedHttp(ctx, link, r.Start, r.Length)
 		if err != nil {
@@ -55,9 +58,7 @@ func GetRangeReadCloserFromLink(size int64, link *model.Link) (model.RangeReadCl
 		}
 
 		return response.Body, nil
-	}
-	resultRangeReadCloser := model.RangeReadCloser{RangeReader: rangeReaderFunc}
-	return &resultRangeReadCloser, nil
+	}, nil
 }
 
 func RequestRangedHttp(ctx context.Context, link *model.Link, offset, length int64) (*http.Response, error) {

@@ -13,8 +13,9 @@ type Config struct {
 	Alert             string `json:"alert"` //info,success,warning,danger
 	NoOverwriteUpload bool   `json:"-"`     // whether to support overwrite upload
 	ProxyRangeOption  bool   `json:"-"`
+	NoUrl             bool   `json:"-"`
 }
 
 func (c Config) MustProxy() bool {
-	return c.OnlyProxy || c.OnlyLocal
+	return c.OnlyProxy || c.OnlyLocal || c.NoUrl
 }

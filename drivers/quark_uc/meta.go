@@ -43,7 +43,7 @@ func init() {
 		return &QuarkOrUC{
 			config: driver.Config{
 				Name:              "UC",
-				OnlyLocal:         true,
+				OnlyProxy:         true,
 				DefaultRoot:       "0",
 				NoOverwriteUpload: true,
 			},

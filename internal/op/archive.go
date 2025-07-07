@@ -84,7 +84,7 @@ func GetArchiveToolAndStream(ctx context.Context, storage driver.Driver, path st
 			return nil, nil, nil, errors.WithMessagef(stderrors.Join(err, e), "failed get archive tool: %s", ext)
 		}
 	}
-	ss, err := stream.NewSeekableStream(stream.FileStream{Ctx: ctx, Obj: obj}, l)
+	ss, err := stream.NewSeekableStream(&stream.FileStream{Ctx: ctx, Obj: obj}, l)
 	if err != nil {
 		if clr, ok := l.MFile.(io.Closer); ok {
 			_ = clr.Close()
@@ -107,7 +107,7 @@ func GetArchiveToolAndStream(ctx context.Context, storage driver.Driver, path st
 			if err != nil {
 				break
 			}
-			ss, err = stream.NewSeekableStream(stream.FileStream{Ctx: ctx, Obj: o}, l)
+			ss, err = stream.NewSeekableStream(&stream.FileStream{Ctx: ctx, Obj: o}, l)
 			if err != nil {
 				if clr, ok := l.MFile.(io.Closer); ok {
 					_ = clr.Close()

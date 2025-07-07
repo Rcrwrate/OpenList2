@@ -20,7 +20,6 @@ type Addition struct {
 var config = driver.Config{
 	Name:              "HalalCloud",
 	LocalSort:         false,
-	OnlyLocal:         true,
 	OnlyProxy:         true,
 	NoCache:           false,
 	NoUpload:          false,
@@ -29,6 +28,7 @@ var config = driver.Config{
 	CheckStatus:       false,
 	Alert:             "",
 	NoOverwriteUpload: false,
+	NoUrl:             true,
 }
 
 func init() {
