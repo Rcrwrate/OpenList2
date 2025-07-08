@@ -21,22 +21,22 @@ func Proxy(w http.ResponseWriter, r *http.Request, link *model.Link, file model.
 		if clr, ok := link.MFile.(io.Closer); ok {
 			defer clr.Close()
 		}
-		attachHeader(w, file)
-		contentType := link.Header.Get("Content-Type")
-		if contentType != "" {
-			w.Header().Set("Content-Type", contentType)
-		}
+		attachHeader(w, file, link.Header)
 		http.ServeContent(w, r, file.GetName(), file.ModTime(), link.MFile)
 		return nil
 	} else if link.RangeReadCloser != nil {
-		attachHeader(w, file)
-		link.RangeReadCloser.AcquireReference()
-		return net.ServeHTTP(w, r, file.GetName(), file.ModTime(), file.GetSize(), &stream.RateLimitRangeReadCloser{
-			RangeReadCloserIF: link.RangeReadCloser,
-			Limiter:           stream.ServerDownloadLimit,
-		})
+		attachHeader(w, file, link.Header)
+		rrc := link.RangeReadCloser
+		rrc.AcquireReference()
+		if _, ok := rrc.(*stream.RateLimitRangeReadCloser); !ok {
+			rrc = &stream.RateLimitRangeReadCloser{
+				RangeReadCloserIF: link.RangeReadCloser,
+				Limiter:           stream.ServerDownloadLimit,
+			}
+		}
+		return net.ServeHTTP(w, r, file.GetName(), file.ModTime(), file.GetSize(), rrc)
 	} else if link.Concurrency > 0 || link.PartSize > 0 {
-		attachHeader(w, file)
+		attachHeader(w, file, link.Header)
 		size := file.GetSize()
 		rangeReader := func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
 			requestHeader := ctx.Value(net.RequestHeaderKey{})
@@ -83,11 +83,15 @@ func Proxy(w http.ResponseWriter, r *http.Request, link *model.Link, file model.
 		return err
 	}
 }
-func attachHeader(w http.ResponseWriter, file model.Obj) {
+func attachHeader(w http.ResponseWriter, file model.Obj, header http.Header) {
 	fileName := file.GetName()
 	w.Header().Set("Content-Disposition", utils.GenerateContentDisposition(fileName))
 	w.Header().Set("Content-Type", utils.GetMimeType(fileName))
 	w.Header().Set("Etag", GetEtag(file))
+	contentType := header.Get("Content-Type")
+	if len(contentType) > 0 {
+		w.Header().Set("Content-Type", contentType)
+	}
 }
 func GetEtag(file model.Obj) string {
 	hash := ""

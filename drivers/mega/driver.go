@@ -115,10 +115,9 @@ func (d *Mega) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*
 			return readers.NewLimitedReadCloser(oo, length), nil
 		}
 		resultRangeReadCloser := &model.RangeReadCloser{RangeReader: resultRangeReader}
-		resultLink := &model.Link{
+		return &model.Link{
 			RangeReadCloser: resultRangeReadCloser,
-		}
-		return resultLink, nil
+		}, nil
 	}
 	return nil, fmt.Errorf("unable to convert dir to mega n")
 }

@@ -178,12 +178,15 @@ func NewSeekableStream(fs FileStream, link *model.Link) (*SeekableStream, error)
 			fs.Reader = link.MFile
 			fs.AddIfCloser(link.MFile)
 		} else if link.RangeReadCloser != nil {
-			link.RangeReadCloser.AcquireReference()
-			rrc = &RateLimitRangeReadCloser{
-				RangeReadCloserIF: link.RangeReadCloser,
-				Limiter:           ServerDownloadLimit,
+			rrc = link.RangeReadCloser
+			rrc.AcquireReference()
+			if _, ok := rrc.(*RateLimitRangeReadCloser); !ok {
+				rrc = &RateLimitRangeReadCloser{
+					RangeReadCloserIF: link.RangeReadCloser,
+					Limiter:           ServerDownloadLimit,
+				}
 			}
-			fs.Add(link.RangeReadCloser)
+			fs.Add(rrc)
 		} else {
 			rrf, err := GetRangeReaderFuncFromLink(fs.GetSize(), link)
 			if err != nil {

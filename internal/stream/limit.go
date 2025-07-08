@@ -152,6 +152,9 @@ func (rrc *RateLimitRangeReadCloser) RangeRead(ctx context.Context, httpRange ht
 	if err != nil {
 		return nil, err
 	}
+	if rrc.Limiter == nil {
+		return rc, nil
+	}
 	return &RateLimitReader{
 		Reader:  rc,
 		Limiter: rrc.Limiter,

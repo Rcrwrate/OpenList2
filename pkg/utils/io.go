@@ -200,8 +200,9 @@ var _ SyncClosersIF = (*SyncClosers)(nil)
 
 func (c *SyncClosers) AcquireReference() {
 	c.mu.Lock()
-	// log.Debugf("Closers.AcquireReference %p,ref=%d", c, c.ref)
+	defer c.mu.Unlock()
 	c.ref++
+	// log.Debugf("Closers.AcquireReference %p,ref=%d", c, c.ref)
 	for _, closer := range c.closers {
 		if c2, ok := closer.(SyncClosersIF); ok {
 			if c2 == c {
@@ -210,14 +211,13 @@ func (c *SyncClosers) AcquireReference() {
 			c2.AcquireReference()
 		}
 	}
-	c.mu.Unlock()
+
 }
 func (c *SyncClosers) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	// log.Debugf("Closers.Close %p,ref=%d", c, c.ref)
-	c.ref--
-	close := c.ref <= 0
+	close := c.ref <= 1
 	var errs []error
 	for _, closer := range c.closers {
 		if c2, ok := closer.(SyncClosersIF); ok {
@@ -235,6 +235,7 @@ func (c *SyncClosers) Close() error {
 		c.closers = c.closers[:0]
 		return errors.Join(errs...)
 	}
+	c.ref--
 
 	return errors.Join(errs...)
 }

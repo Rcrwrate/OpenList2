@@ -26,7 +26,7 @@ func (d *FTP) GetAddition() driver.Additional {
 }
 
 func (d *FTP) Init(ctx context.Context) error {
-	return d.login()
+	return d._login()
 }
 
 func (d *FTP) Drop(ctx context.Context) error {
@@ -66,14 +66,18 @@ func (d *FTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 	}
 
 	r := NewFileReader(d.conn, encode(file.GetPath(), d.Encoding), file.GetSize())
-	link := &model.Link{
+	if r != nil && !d.Config().OnlyLinkMFile {
+		return &model.Link{
+			RangeReadCloser: driver.GetRangeReadCloserFromMFile(file.GetSize(), r),
+		}, nil
+	}
+	return &model.Link{
 		MFile: &stream.RateLimitFile{
 			File:    r,
 			Limiter: stream.ServerDownloadLimit,
 			Ctx:     ctx,
 		},
-	}
-	return link, nil
+	}, nil
 }
 
 func (d *FTP) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) error {

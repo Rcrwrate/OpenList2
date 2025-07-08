@@ -35,6 +35,7 @@ var config = driver.Config{
 	LocalSort:     true,
 	OnlyLinkMFile: true,
 	DefaultRoot:   "/",
+	NoLinkURL:     true,
 }
 
 func init() {

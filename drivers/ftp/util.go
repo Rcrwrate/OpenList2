@@ -14,10 +14,8 @@ import (
 
 // do others that not defined in Driver interface
 
-var loginG singleflight.Group[error]
-
 func (d *FTP) login() error {
-	err, _, _ := loginG.Do(fmt.Sprintf("FTP.login:%p", d), func() (error, error) {
+	err, _, _ := singleflight.ErrorGroup.Do(fmt.Sprintf("FTP.login:%p", d), func() (error, error) {
 		return d._login(), nil
 	})
 	return err

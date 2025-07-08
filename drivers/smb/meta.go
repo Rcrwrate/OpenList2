@@ -16,9 +16,10 @@ type Addition struct {
 var config = driver.Config{
 	Name:          "SMB",
 	LocalSort:     true,
-	OnlyLinkMFile: true,
+	OnlyLinkMFile: false,
 	DefaultRoot:   ".",
 	NoCache:       true,
+	NoLinkURL:     true,
 }
 
 func init() {

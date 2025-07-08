@@ -6,6 +6,7 @@ import (
 
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
 )
 
 type UpdateProgress = model.UpdateProgress
@@ -61,3 +62,15 @@ type ReaderWithCtx = stream.ReaderWithCtx
 type ReaderUpdatingProgress = stream.ReaderUpdatingProgress
 
 type SimpleReaderWithSize = stream.SimpleReaderWithSize
+
+func GetRangeReadCloserFromMFile(size int64, file model.File) model.RangeReadCloserIF {
+	rrc := &model.RangeReadCloser{RangeReader: func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
+		length := httpRange.Length
+		if length < 0 || httpRange.Start+length > size {
+			length = size - httpRange.Start
+		}
+		return io.NopCloser(io.NewSectionReader(file, httpRange.Start, length)), nil
+	}}
+	rrc.AddIfCloser(file)
+	return rrc
+}
