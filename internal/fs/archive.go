@@ -22,9 +22,9 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
+	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/OpenListTeam/tache"
 )
 
 type ArchiveDownloadTask struct {
@@ -93,7 +93,7 @@ func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadT
 		t.status = "getting src object"
 		for _, s := range ss {
 			if s.GetFile() == nil {
-				_, err = stream.CacheFullInTempFileAndUpdateProgress(s, func(p float64) {
+				_, err = stream.CacheFullInTempFileAndUpdateProgress(s, nil, func(p float64) {
 					t.SetProgress((float64(cur) + float64(s.GetSize())*p/100.0) / float64(total))
 				})
 			}
