@@ -93,9 +93,9 @@ func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadT
 		t.status = "getting src object"
 		for _, s := range ss {
 			if s.GetFile() == nil {
-				_, err = stream.CacheFullInTempFileAndUpdateProgress(s, nil, func(p float64) {
+				_, err = stream.CacheFullInTempFileAndWriter(s, func(p float64) {
 					t.SetProgress((float64(cur) + float64(s.GetSize())*p/100.0) / float64(total))
-				})
+				}, nil)
 			}
 			cur += s.GetSize()
 			if err != nil {

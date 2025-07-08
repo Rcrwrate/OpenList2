@@ -146,7 +146,7 @@ func (d *QuarkOrUC) Put(ctx context.Context, dstDir model.Obj, stream model.File
 	if len(writers) > 0 {
 		cacheFileProgress := model.UpdateProgressWithRange(up, 0, 50)
 		up = model.UpdateProgressWithRange(up, 50, 100)
-		_, err := streamPkg.CacheFullInTempFileAndUpdateProgress(stream, io.MultiWriter(writers...), cacheFileProgress)
+		_, err := streamPkg.CacheFullInTempFileAndWriter(stream, cacheFileProgress, io.MultiWriter(writers...))
 		if err != nil {
 			return err
 		}

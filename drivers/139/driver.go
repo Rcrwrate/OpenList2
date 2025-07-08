@@ -524,7 +524,7 @@ func (d *Yun139) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 		if len(fullHash) != utils.SHA256.Width {
 			cacheFileProgress := model.UpdateProgressWithRange(up, 0, 50)
 			up = model.UpdateProgressWithRange(up, 50, 100)
-			_, fullHash, err = streamPkg.CacheFullInTempFileAndHash(stream, utils.SHA256, cacheFileProgress)
+			_, fullHash, err = streamPkg.CacheFullInTempFileAndHash(stream, cacheFileProgress, utils.SHA256)
 			if err != nil {
 				return err
 			}

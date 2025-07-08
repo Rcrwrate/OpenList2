@@ -98,12 +98,19 @@ func (r *ReaderWithCtx) Close() error {
 	return nil
 }
 
-func CacheFullInTempFileAndUpdateProgress(stream model.FileStreamer, w io.Writer, up model.UpdateProgress) (model.File, error) {
+func CacheFullInTempFileAndWriter(stream model.FileStreamer, up model.UpdateProgress, w io.Writer) (model.File, error) {
 	if cache := stream.GetFile(); cache != nil {
 		if w != nil {
 			_, err := cache.Seek(0, io.SeekStart)
 			if err == nil {
-				_, err = utils.CopyWithBuffer(w, cache)
+				var reader io.Reader = stream
+				if up != nil {
+					reader = &ReaderUpdatingProgress{
+						Reader:         stream,
+						UpdateProgress: up,
+					}
+				}
+				_, err = utils.CopyWithBuffer(w, reader)
 				if err == nil {
 					_, err = cache.Seek(0, io.SeekStart)
 				}
@@ -134,9 +141,9 @@ func CacheFullInTempFileAndUpdateProgress(stream model.FileStreamer, w io.Writer
 	return tmpF, err
 }
 
-func CacheFullInTempFileAndHash(stream model.FileStreamer, hashType *utils.HashType, up model.UpdateProgress, params ...any) (model.File, string, error) {
-	h := hashType.NewFunc(params...)
-	tmpF, err := CacheFullInTempFileAndUpdateProgress(stream, h, up)
+func CacheFullInTempFileAndHash(stream model.FileStreamer, up model.UpdateProgress, hashType *utils.HashType, hashParams ...any) (model.File, string, error) {
+	h := hashType.NewFunc(hashParams...)
+	tmpF, err := CacheFullInTempFileAndWriter(stream, up, h)
 	if err != nil {
 		return nil, "", err
 	}

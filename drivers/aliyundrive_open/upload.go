@@ -196,7 +196,7 @@ func (d *AliyundriveOpen) upload(ctx context.Context, dstDir model.Obj, stream m
 		if len(hash) != utils.SHA1.Width {
 			cacheFileProgress := model.UpdateProgressWithRange(up, 0, 50)
 			up = model.UpdateProgressWithRange(up, 50, 100)
-			_, hash, err = streamPkg.CacheFullInTempFileAndHash(stream, utils.SHA1, cacheFileProgress)
+			_, hash, err = streamPkg.CacheFullInTempFileAndHash(stream, cacheFileProgress, utils.SHA1)
 			if err != nil {
 				return nil, err
 			}

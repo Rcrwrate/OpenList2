@@ -190,7 +190,7 @@ func (d *Pan123) Put(ctx context.Context, dstDir model.Obj, file model.FileStrea
 	if len(etag) < utils.MD5.Width {
 		cacheFileProgress := model.UpdateProgressWithRange(up, 0, 50)
 		up = model.UpdateProgressWithRange(up, 50, 100)
-		_, etag, err = stream.CacheFullInTempFileAndHash(file, utils.MD5, cacheFileProgress)
+		_, etag, err = stream.CacheFullInTempFileAndHash(file, cacheFileProgress, utils.MD5)
 		if err != nil {
 			return err
 		}
