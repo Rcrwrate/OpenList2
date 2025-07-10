@@ -43,7 +43,7 @@ func GetRangeReaderFromLink(size int64, link *model.Link) (model.RangeReaderIF, 
 		return GetRangeReaderFromMFile(size, link.MFile), nil
 	}
 	if len(link.URL) == 0 && link.RangeReader == nil {
-		return nil, errors.New("invalid link")
+		return nil, errors.New("invalid link: must have at least one of MFile, URL, or RangeReader")
 	}
 	var rangeReader RangeReaderFunc
 	if link.Concurrency > 0 || link.PartSize > 0 {
