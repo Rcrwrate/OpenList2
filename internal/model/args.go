@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -24,16 +25,25 @@ type LinkArgs struct {
 }
 
 type Link struct {
-	URL             string            `json:"url"`    // most common way
-	Header          http.Header       `json:"header"` // needed header (for url)
-	RangeReadCloser RangeReadCloserIF `json:"-"`      // recommended way if can't use URL
-	MFile           File              `json:"-"`      // best for local,smb... file system, which exposes MFile
+	URL         string        `json:"url"`    // most common way
+	Header      http.Header   `json:"header"` // needed header (for url)
+	RangeReader RangeReaderIF `json:"-"`      // recommended way if can't use URL
+	MFile       File          `json:"-"`      // best for local,smb... file system, which exposes MFile
 
 	Expiration *time.Duration // local cache expire Duration
 
 	//for accelerating request, use multi-thread downloading
 	Concurrency int `json:"concurrency"`
 	PartSize    int `json:"part_size"`
+
+	utils.SyncClosers `json:"-"`
+}
+
+func (l *Link) Close() error {
+	if clr, ok := l.MFile.(io.Closer); ok {
+		return errors.Join(clr.Close(), l.SyncClosers.Close())
+	}
+	return l.SyncClosers.Close()
 }
 
 type OtherArgs struct {
@@ -74,25 +84,27 @@ type ArchiveDecompressArgs struct {
 	PutIntoNewDir bool
 }
 
-type RangeReadCloserIF interface {
+type RangeReaderIF interface {
 	RangeRead(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error)
-	utils.SyncClosersIF
+}
+
+type RangeReadCloserIF interface {
+	RangeReaderIF
+	utils.ClosersIF
 }
 
 var _ RangeReadCloserIF = (*RangeReadCloser)(nil)
 
 type RangeReadCloser struct {
-	RangeReader RangeReaderFunc
-	utils.SyncClosers
+	RangeReader RangeReaderIF
+	utils.Closers
 }
 
 func (r *RangeReadCloser) RangeRead(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
-	rc, err := r.RangeReader(ctx, httpRange)
-	if notAdd, ok := ctx.Value(utils.ClosersNoAddKey{}).(bool); !ok || !notAdd {
-		r.SyncClosers.Add(rc)
+	rc, err := r.RangeReader.RangeRead(ctx, httpRange)
+	if err != nil {
+		return nil, err
 	}
-	return rc, err
+	r.Add(rc)
+	return rc, nil
 }
-
-// type WriterFunc func(w io.Writer) error
-type RangeReaderFunc func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error)

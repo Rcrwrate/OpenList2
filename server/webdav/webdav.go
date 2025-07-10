@@ -245,6 +245,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
+		defer link.Close()
 		if storage.GetStorage().ProxyRange {
 			common.ProxyRange(ctx, link, fi.GetSize())
 		}
@@ -264,6 +265,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
+		defer link.Close()
 		http.Redirect(w, r, link.URL, http.StatusFound)
 	}
 	return 0, nil

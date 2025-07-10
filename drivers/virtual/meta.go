@@ -18,7 +18,7 @@ var config = driver.Config{
 	OnlyLinkMFile: true,
 	LocalSort:     true,
 	NeedMs:        true,
-	//NoCache:   true,
+	NoLinkURL:     true,
 }
 
 func init() {

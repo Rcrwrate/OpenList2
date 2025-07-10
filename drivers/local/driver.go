@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -254,9 +255,10 @@ func (d *Local) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 		link.MFile = open
 	}
 	if link.MFile != nil && !d.Config().OnlyLinkMFile {
-		link.RangeReadCloser = &stream.RateLimitRangeReadCloser{
-			RangeReadCloserIF: driver.GetRangeReadCloserFromMFile(file.GetSize(), link.MFile),
+		if clr, ok := link.MFile.(io.Closer); ok {
+			link.Add(clr)
 		}
+		link.RangeReader = stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile)
 		link.MFile = nil
 	}
 	return link, nil

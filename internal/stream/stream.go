@@ -158,46 +158,32 @@ var _ model.FileStreamer = (*FileStream)(nil)
 // additional resources that need to be closed, they should be added to the Closer property of
 // the SeekableStream object and be closed together when the SeekableStream object is closed.
 type SeekableStream struct {
-	FileStream
+	*FileStream
 	// should have one of belows to support rangeRead
 	rangeReadCloser model.RangeReadCloserIF
 }
 
-func NewSeekableStream(fs FileStream, link *model.Link) (*SeekableStream, error) {
+func NewSeekableStream(fs *FileStream, link *model.Link) (*SeekableStream, error) {
 	if len(fs.Mimetype) == 0 {
 		fs.Mimetype = utils.GetMimeType(fs.Obj.GetName())
 	}
 
 	if fs.Reader != nil {
 		fs.AddIfCloser(fs.Reader)
+		fs.Add(link)
 		return &SeekableStream{FileStream: fs}, nil
 	}
+
 	if link != nil {
-		var rrc model.RangeReadCloserIF
-		if link.MFile != nil {
-			fs.Reader = link.MFile
-			fs.AddIfCloser(link.MFile)
-		} else if link.RangeReadCloser != nil {
-			rrc = link.RangeReadCloser
-			rrc.AcquireReference()
-			if _, ok := rrc.(*RateLimitRangeReadCloser); !ok {
-				rrc = &RateLimitRangeReadCloser{
-					RangeReadCloserIF: link.RangeReadCloser,
-					Limiter:           ServerDownloadLimit,
-				}
-			}
-			fs.Add(rrc)
-		} else {
-			rrf, err := GetRangeReaderFuncFromLink(fs.GetSize(), link)
-			if err != nil {
-				return nil, err
-			}
-			rrc = &RateLimitRangeReadCloser{
-				RangeReadCloserIF: &model.RangeReadCloser{RangeReader: rrf},
-				Limiter:           ServerDownloadLimit,
-			}
-			fs.Add(rrc)
+		rr, err := GetRangeReaderFromLink(fs.GetSize(), link)
+		if err != nil {
+			return nil, err
 		}
+		rrc := &model.RangeReadCloser{
+			RangeReader: rr,
+		}
+		fs.Add(rrc)
+		fs.Add(link)
 		return &SeekableStream{FileStream: fs, rangeReadCloser: rrc}, nil
 	}
 	return nil, fmt.Errorf("illegal seekableStream")
@@ -225,10 +211,6 @@ func (ss *SeekableStream) RangeRead(httpRange http_range.Range) (io.Reader, erro
 
 // only provide Reader as full stream when it's demanded. in rapid-upload, we can skip this to save memory
 func (ss *SeekableStream) Read(p []byte) (n int, err error) {
-	//f.mu.Lock()
-
-	//f.peekedOnce = true
-	//defer f.mu.Unlock()
 	if ss.Reader == nil {
 		if ss.rangeReadCloser == nil {
 			return 0, fmt.Errorf("illegal seekableStream")
@@ -237,9 +219,22 @@ func (ss *SeekableStream) Read(p []byte) (n int, err error) {
 		if err != nil {
 			return 0, nil
 		}
-		ss.Reader = io.NopCloser(rc)
+		ss.Reader = rc
 	}
 	return ss.Reader.Read(p)
+}
+
+func (ss *SeekableStream) GetFile() model.File {
+	if ss.tmpFile != nil {
+		return ss.tmpFile
+	}
+	if ss.Reader == nil && ss.rangeReadCloser != nil {
+		ss.Reader, _ = ss.rangeReadCloser.RangeRead(ss.Ctx, http_range.Range{Length: -1})
+	}
+	if file, ok := ss.Reader.(model.File); ok {
+		return file
+	}
+	return nil
 }
 
 func (ss *SeekableStream) CacheFullInTempFile() (model.File, error) {

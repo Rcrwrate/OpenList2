@@ -43,11 +43,11 @@ func (t *TransferTask) Run() error {
 	defer func() { t.SetEndTime(time.Now()) }()
 	if t.SrcStorage == nil {
 		if t.DeletePolicy == UploadDownloadStream {
-			rrf, err := stream.GetRangeReaderFuncFromLink(t.GetTotalBytes(), &model.Link{URL: t.Url})
+			rr, err := stream.GetRangeReaderFromLink(t.GetTotalBytes(), &model.Link{URL: t.Url})
 			if err != nil {
 				return err
 			}
-			r, err := rrf(t.Ctx(), http_range.Range{Length: t.GetTotalBytes()})
+			r, err := rr.RangeRead(t.Ctx(), http_range.Range{Length: t.GetTotalBytes()})
 			if err != nil {
 				return err
 			}
@@ -286,11 +286,12 @@ func transferObjFile(t *TransferTask) error {
 		return errors.WithMessagef(err, "failed get [%s] link", t.SrcObjPath)
 	}
 	// any link provided is seekable
-	ss, err := stream.NewSeekableStream(stream.FileStream{
+	ss, err := stream.NewSeekableStream(&stream.FileStream{
 		Obj: srcFile,
 		Ctx: t.Ctx(),
 	}, link)
 	if err != nil {
+		_ = link.Close()
 		return errors.WithMessagef(err, "failed get [%s] stream", t.SrcObjPath)
 	}
 	t.SetTotalBytes(srcFile.GetSize())

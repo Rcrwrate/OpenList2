@@ -18,70 +18,74 @@ import (
 
 func Proxy(w http.ResponseWriter, r *http.Request, link *model.Link, file model.Obj) error {
 	if link.MFile != nil {
-		if clr, ok := link.MFile.(io.Closer); ok {
-			defer clr.Close()
-		}
 		attachHeader(w, file, link.Header)
 		http.ServeContent(w, r, file.GetName(), file.ModTime(), link.MFile)
 		return nil
-	} else if link.RangeReadCloser != nil {
-		attachHeader(w, file, link.Header)
-		rrc := link.RangeReadCloser
-		rrc.AcquireReference()
-		if _, ok := rrc.(*stream.RateLimitRangeReadCloser); !ok {
-			rrc = &stream.RateLimitRangeReadCloser{
-				RangeReadCloserIF: link.RangeReadCloser,
-				Limiter:           stream.ServerDownloadLimit,
-			}
-		}
-		return net.ServeHTTP(w, r, file.GetName(), file.ModTime(), file.GetSize(), rrc)
-	} else if link.Concurrency > 0 || link.PartSize > 0 {
+	}
+
+	if link.Concurrency > 0 || link.PartSize > 0 {
 		attachHeader(w, file, link.Header)
 		size := file.GetSize()
-		rangeReader := func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
-			requestHeader := ctx.Value(net.RequestHeaderKey{})
-			if requestHeader == nil {
-				requestHeader = http.Header{}
-			}
-			header := net.ProcessHeader(requestHeader.(http.Header), link.Header)
-			down := net.NewDownloader(func(d *net.Downloader) {
-				d.Concurrency = link.Concurrency
-				d.PartSize = link.PartSize
-			})
-			req := &net.HttpRequestParams{
-				URL:       link.URL,
-				Range:     httpRange,
-				Size:      size,
-				HeaderRef: header,
-			}
-			rc, err := down.Download(ctx, req)
-			return rc, err
-		}
-		return net.ServeHTTP(w, r, file.GetName(), file.ModTime(), file.GetSize(), &stream.RateLimitRangeReadCloser{
-			RangeReadCloserIF: &model.RangeReadCloser{RangeReader: rangeReader},
-			Limiter:           stream.ServerDownloadLimit,
+		down := net.NewDownloader(func(d *net.Downloader) {
+			d.Concurrency = link.Concurrency
+			d.PartSize = link.PartSize
 		})
-	} else {
-		//transparent proxy
-		header := net.ProcessHeader(r.Header, link.Header)
-		res, err := net.RequestHttp(r.Context(), r.Method, header, link.URL)
-		if err != nil {
-			return err
+		var rrf stream.RangeReaderFunc = func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
+			var req *net.HttpRequestParams
+			if link.RangeReader != nil {
+				req = &net.HttpRequestParams{
+					Range: httpRange,
+					Size:  size,
+				}
+			} else {
+				requestHeader, _ := ctx.Value(net.RequestHeaderKey{}).(http.Header)
+				header := net.ProcessHeader(requestHeader, link.Header)
+				req = &net.HttpRequestParams{
+					Range:     httpRange,
+					Size:      size,
+					URL:       link.URL,
+					HeaderRef: header,
+				}
+			}
+			return down.Download(ctx, req)
 		}
-		defer res.Body.Close()
+		rrc := &model.RangeReadCloser{}
+		if link.RangeReader == nil {
+			r = r.WithContext(context.WithValue(r.Context(), net.RequestHeaderKey{}, r.Header))
+			rrc.RangeReader = stream.RateLimitRangeReaderFunc(rrf)
+		} else {
+			down.HttpClient = net.GetRangeReaderHttpRequestFunc(link.RangeReader)
+			rrc.RangeReader = rrf
+		}
+		return net.ServeHTTP(w, r, file.GetName(), file.ModTime(), size, rrc)
+	}
 
-		maps.Copy(w.Header(), res.Header)
-		w.WriteHeader(res.StatusCode)
-		if r.Method == http.MethodHead {
-			return nil
-		}
-		_, err = utils.CopyWithBuffer(w, &stream.RateLimitReader{
-			Reader:  res.Body,
-			Limiter: stream.ServerDownloadLimit,
-			Ctx:     r.Context(),
+	if link.RangeReader != nil {
+		attachHeader(w, file, link.Header)
+		return net.ServeHTTP(w, r, file.GetName(), file.ModTime(), file.GetSize(), &model.RangeReadCloser{
+			RangeReader: link.RangeReader,
 		})
+	}
+
+	//transparent proxy
+	header := net.ProcessHeader(r.Header, link.Header)
+	res, err := net.RequestHttp(r.Context(), r.Method, header, link.URL)
+	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
+
+	maps.Copy(w.Header(), res.Header)
+	w.WriteHeader(res.StatusCode)
+	if r.Method == http.MethodHead {
+		return nil
+	}
+	_, err = utils.CopyWithBuffer(w, &stream.RateLimitReader{
+		Reader:  res.Body,
+		Limiter: stream.ServerDownloadLimit,
+		Ctx:     r.Context(),
+	})
+	return err
 }
 func attachHeader(w http.ResponseWriter, file model.Obj, header http.Header) {
 	fileName := file.GetName()
@@ -111,12 +115,12 @@ func ProxyRange(ctx context.Context, link *model.Link, size int64) {
 	if link.MFile != nil {
 		return
 	}
-	if link.RangeReadCloser == nil && !strings.HasPrefix(link.URL, GetApiUrl(ctx)+"/") {
-		var rrf, err = stream.GetRangeReaderFuncFromLink(size, link)
+	if link.RangeReader == nil && !strings.HasPrefix(link.URL, GetApiUrl(ctx)+"/") {
+		rrf, err := stream.GetRangeReaderFromLink(size, link)
 		if err != nil {
 			return
 		}
-		link.RangeReadCloser = &model.RangeReadCloser{RangeReader: rrf}
+		link.RangeReader = rrf
 	}
 }
 

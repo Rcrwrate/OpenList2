@@ -8,6 +8,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/jlaffaye/ftp"
 )
 
@@ -68,7 +69,8 @@ func (d *FTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 	r := NewFileReader(d.conn, encode(file.GetPath(), d.Encoding), file.GetSize())
 	if r != nil && !d.Config().OnlyLinkMFile {
 		return &model.Link{
-			RangeReadCloser: driver.GetRangeReadCloserFromMFile(file.GetSize(), r),
+			RangeReader: stream.RateLimitRangeReaderFunc(stream.GetRangeReaderFromMFile(file.GetSize(), r)),
+			SyncClosers: utils.NewSyncClosers(r),
 		}, nil
 	}
 	return &model.Link{

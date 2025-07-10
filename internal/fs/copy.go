@@ -93,11 +93,12 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 				return nil, errors.WithMessagef(err, "failed get [%s] link", srcObjPath)
 			}
 			// any link provided is seekable
-			ss, err := stream.NewSeekableStream(stream.FileStream{
+			ss, err := stream.NewSeekableStream(&stream.FileStream{
 				Obj: srcObj,
 				Ctx: ctx,
 			}, link)
 			if err != nil {
+				_ = link.Close()
 				return nil, errors.WithMessagef(err, "failed get [%s] stream", srcObjPath)
 			}
 			defer ss.Close()
@@ -172,11 +173,12 @@ func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Drive
 		return errors.WithMessagef(err, "failed get [%s] link", srcFilePath)
 	}
 	// any link provided is seekable
-	ss, err := stream.NewSeekableStream(stream.FileStream{
+	ss, err := stream.NewSeekableStream(&stream.FileStream{
 		Obj: srcFile,
 		Ctx: tsk.Ctx(),
 	}, link)
 	if err != nil {
+		_ = link.Close()
 		return errors.WithMessagef(err, "failed get [%s] stream", srcFilePath)
 	}
 	defer ss.Close()

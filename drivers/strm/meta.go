@@ -20,6 +20,7 @@ var config = driver.Config{
 	DefaultRoot:   "/",
 	OnlyLinkMFile: true,
 	OnlyProxy:     true,
+	NoLinkURL:     true,
 }
 
 func init() {

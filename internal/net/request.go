@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 
 	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
@@ -68,7 +69,12 @@ func NewDownloader(options ...func(*Downloader)) *Downloader {
 // memory usage is at about Concurrency*PartSize, use this wisely
 func (d Downloader) Download(ctx context.Context, p *HttpRequestParams) (readCloser io.ReadCloser, err error) {
 
-	impl := downloader{cfg: d, ctx: ctx}
+	var finalP HttpRequestParams
+	awsutil.Copy(&finalP, p)
+	if finalP.Range.Length < 0 || finalP.Range.Start+finalP.Range.Length > finalP.Size {
+		finalP.Range.Length = finalP.Size - finalP.Range.Start
+	}
+	impl := downloader{params: &finalP, cfg: d, ctx: ctx}
 
 	// Ensures we don't need nil checks later on
 	// 必需的选项
@@ -78,16 +84,9 @@ func (d Downloader) Download(ctx context.Context, p *HttpRequestParams) (readClo
 	if impl.cfg.PartSize == 0 {
 		impl.cfg.PartSize = DefaultDownloadPartSize
 	}
-	var finalP HttpRequestParams
-	awsutil.Copy(&finalP, p)
 	if impl.cfg.HttpClient == nil {
 		impl.cfg.HttpClient = DefaultHttpRequestFunc
-	} else {
-		if finalP.Range.Length < 0 || finalP.Range.Start+finalP.Range.Length > finalP.Size {
-			finalP.Range.Length = finalP.Size - finalP.Range.Start
-		}
 	}
-	impl.params = &finalP
 
 	return impl.download()
 }
@@ -400,14 +399,15 @@ var errInfiniteRetry = errors.New("infinite retry")
 func (d *downloader) tryDownloadChunk(params *HttpRequestParams, ch *chunk) (int64, error) {
 	resp, err := d.cfg.HttpClient(d.ctx, params)
 	if err != nil {
-		if resp == nil {
+		statusCode, ok := errors.Unwrap(err).(ErrorHttpStatusCode)
+		if !ok {
 			return 0, err
 		}
-		if resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		if statusCode == http.StatusRequestedRangeNotSatisfiable {
 			return 0, err
 		}
 		if ch.id == 0 { //第1个任务 有限的重试，超过重试就会结束请求
-			switch resp.StatusCode {
+			switch statusCode {
 			default:
 				return 0, err
 			case http.StatusTooManyRequests:
@@ -416,7 +416,7 @@ func (d *downloader) tryDownloadChunk(params *HttpRequestParams, ch *chunk) (int
 			case http.StatusGatewayTimeout:
 			}
 			<-time.After(time.Millisecond * 200)
-			return 0, &errNeedRetry{err: fmt.Errorf("http request failure,status: %d", resp.StatusCode)}
+			return 0, &errNeedRetry{err: err}
 		}
 
 		// 来到这 说明第1个分片下载 连接成功了
@@ -554,12 +554,26 @@ type chunk struct {
 
 func DefaultHttpRequestFunc(ctx context.Context, params *HttpRequestParams) (*http.Response, error) {
 	header := http_range.ApplyRangeToHttpHeader(params.Range, params.HeaderRef)
+	return RequestHttp(ctx, "GET", header, params.URL)
+}
 
-	res, err := RequestHttp(ctx, "GET", header, params.URL)
-	if err != nil {
-		return res, err
+func GetRangeReaderHttpRequestFunc(rangeReader model.RangeReaderIF) HttpRequestFunc {
+	return func(ctx context.Context, params *HttpRequestParams) (*http.Response, error) {
+		rc, err := rangeReader.RangeRead(ctx, params.Range)
+		if err != nil {
+			return nil, err
+		}
+
+		return &http.Response{
+			StatusCode: http.StatusPartialContent,
+			Status:     http.StatusText(http.StatusPartialContent),
+			Body:       rc,
+			Header: http.Header{
+				"Content-Range": {params.Range.ContentRange(params.Size)},
+			},
+			ContentLength: params.Range.Length,
+		}, nil
 	}
-	return res, nil
 }
 
 type HttpRequestParams struct {

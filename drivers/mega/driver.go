@@ -14,6 +14,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/t3rm1n4l/go-mega"
@@ -114,9 +115,8 @@ func (d *Mega) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*
 
 			return readers.NewLimitedReadCloser(oo, length), nil
 		}
-		resultRangeReadCloser := &model.RangeReadCloser{RangeReader: resultRangeReader}
 		return &model.Link{
-			RangeReadCloser: resultRangeReadCloser,
+			RangeReader: stream.RateLimitRangeReaderFunc(resultRangeReader),
 		}, nil
 	}
 	return nil, fmt.Errorf("unable to convert dir to mega n")

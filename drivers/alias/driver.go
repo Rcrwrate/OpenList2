@@ -3,6 +3,7 @@ package alias
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	stdpath "path"
 	"strings"
@@ -11,8 +12,10 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/sign"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 )
 
 type Alias struct {
@@ -110,26 +113,40 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 	if !ok {
 		return nil, errs.ObjectNotFound
 	}
-	redirect := args.Redirect
-	if strings.HasSuffix(strings.ToLower(root), ".proxy") {
-		args.Redirect = true
-	}
 	for _, dst := range dsts {
-		link, err := d.link(ctx, dst, sub, args)
+		reqPath := stdpath.Join(dst, sub)
+		link, obj, err := d.link(ctx, reqPath, args)
 		if err == nil {
-			link.Expiration = nil // 去除非必要缓存，d.link里op.Lin有缓存
-			if !redirect && len(link.URL) > 0 {
-				// 正常情况下 多并发 仅支持返回URL的驱动
-				// alias套娃alias 或者 目录以`.proxy`结尾 例如 mega.proxy:/mega
-				// 可以让crypt、mega等驱动(不返回URL的) 支持并发
+			var resultLink *model.Link
+			if link != nil {
+				resultLink = &model.Link{
+					URL:         link.URL,
+					Header:      link.Header,
+					RangeReader: link.RangeReader,
+					SyncClosers: utils.NewSyncClosers(link),
+				}
+				if link.MFile != nil {
+					resultLink.RangeReader = stream.GetRangeReaderFromMFile(obj.GetSize(), link.MFile)
+				}
+
+			} else {
+				resultLink = &model.Link{
+					URL: fmt.Sprintf("%s/p%s?sign=%s",
+						common.GetApiUrl(ctx),
+						utils.EncodePath(reqPath, true),
+						sign.Sign(reqPath)),
+				}
+
+			}
+			if !args.Redirect {
 				if d.DownloadConcurrency > 0 {
-					link.Concurrency = d.DownloadConcurrency
+					resultLink.Concurrency = d.DownloadConcurrency
 				}
 				if d.DownloadPartSize > 0 {
-					link.PartSize = d.DownloadPartSize * utils.KB
+					resultLink.PartSize = d.DownloadPartSize * utils.KB
 				}
 			}
-			return link, nil
+			return resultLink, nil
 		}
 	}
 	return nil, errs.ObjectNotFound

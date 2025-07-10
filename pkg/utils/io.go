@@ -150,7 +150,6 @@ func Retry(attempts int, sleep time.Duration, f func() error) (err error) {
 	return fmt.Errorf("after %d attempts, last error: %s", attempts, err)
 }
 
-type ClosersNoAddKey struct{}
 type ClosersIF interface {
 	io.Closer
 	Add(closer io.Closer)
@@ -187,7 +186,7 @@ func NewClosers(c ...io.Closer) Closers {
 
 type SyncClosersIF interface {
 	ClosersIF
-	AcquireReference()
+	AcquireReference() bool
 }
 
 type SyncClosers struct {
@@ -198,47 +197,37 @@ type SyncClosers struct {
 
 var _ SyncClosersIF = (*SyncClosers)(nil)
 
-func (c *SyncClosers) AcquireReference() {
+func (c *SyncClosers) AcquireReference() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ref++
-	// log.Debugf("Closers.AcquireReference %p,ref=%d", c, c.ref)
-	for _, closer := range c.closers {
-		if c2, ok := closer.(SyncClosersIF); ok {
-			if c2 == c {
-				panic("deadlock")
-			}
-			c2.AcquireReference()
-		}
+	if len(c.closers) == 0 {
+		return false
 	}
-
+	c.ref++
+	// log.Debugf("Closers.AcquireReference %p,ref=%d\n", c, c.ref)
+	return true
 }
+
 func (c *SyncClosers) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	// log.Debugf("Closers.Close %p,ref=%d", c, c.ref)
-	close := c.ref <= 1
+	// defer log.Debugf("Closers.Close %p,ref=%d\n", c, c.ref)
+	if c.ref > 1 {
+		c.ref--
+		return nil
+	}
+	c.ref = 0
+
 	var errs []error
 	for _, closer := range c.closers {
-		if c2, ok := closer.(SyncClosersIF); ok {
-			if c2 == c {
-				panic("deadlock")
-			}
-			errs = append(errs, c2.Close())
-		} else if closer != nil && close {
+		if closer != nil {
 			errs = append(errs, closer.Close())
 		}
 	}
-
-	if close {
-		c.ref = 0
-		c.closers = c.closers[:0]
-		return errors.Join(errs...)
-	}
-	c.ref--
-
+	c.closers = c.closers[0:]
 	return errors.Join(errs...)
 }
+
 func (c *SyncClosers) Add(closer io.Closer) {
 	if closer != nil {
 		c.mu.Lock()
@@ -246,6 +235,7 @@ func (c *SyncClosers) Add(closer io.Closer) {
 		c.mu.Unlock()
 	}
 }
+
 func (c *SyncClosers) AddIfCloser(a any) {
 	if closer, ok := a.(io.Closer); ok {
 		c.mu.Lock()

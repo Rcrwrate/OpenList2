@@ -8,3 +8,13 @@ type File interface {
 	io.ReaderAt
 	io.Seeker
 }
+type FileCloser struct {
+	File
+}
+
+func (f *FileCloser) Close() error {
+	if clr, ok := f.File.(io.Closer); ok {
+		return clr.Close()
+	}
+	return nil
+}

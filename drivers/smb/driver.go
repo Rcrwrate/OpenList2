@@ -83,7 +83,7 @@ func (d *SMB) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 	d.updateLastConnTime()
 	if remoteFile != nil && !d.Config().OnlyLinkMFile {
 		return &model.Link{
-			RangeReadCloser: driver.GetRangeReadCloserFromMFile(file.GetSize(), remoteFile),
+			RangeReader: stream.RateLimitRangeReaderFunc(stream.GetRangeReaderFromMFile(file.GetSize(), remoteFile)),
 		}, nil
 	}
 	return &model.Link{

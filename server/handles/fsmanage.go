@@ -2,7 +2,6 @@ package handles
 
 import (
 	"fmt"
-	"io"
 	stdpath "path"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
@@ -17,7 +16,6 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 type MkdirOrLinkReq struct {
@@ -376,7 +374,7 @@ func Link(c *gin.Context) {
 		common.ErrorResp(c, err, 500)
 		return
 	}
-	if storage.Config().OnlyLinkMFile || storage.Config().NoLinkURL {
+	if storage.Config().NoLinkURL {
 		common.SuccessResp(c, model.Link{
 			URL: fmt.Sprintf("%s/p%s?d&sign=%s",
 				common.GetApiUrl(c),
@@ -390,13 +388,6 @@ func Link(c *gin.Context) {
 		common.ErrorResp(c, err, 500)
 		return
 	}
-	if clr, ok := link.MFile.(io.Closer); ok {
-		defer func(clr io.Closer) {
-			err := clr.Close()
-			if err != nil {
-				log.Errorf("close link data error: %v", err)
-			}
-		}(clr)
-	}
+	defer link.Close()
 	common.SuccessResp(c, link)
 }
