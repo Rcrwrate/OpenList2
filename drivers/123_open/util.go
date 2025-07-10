@@ -54,7 +54,53 @@ const (
 	uploadCompleteV1API = "/upload/v1/file/upload_complete"
 	// 异步轮询获取上传结果 qps 0
 	uploadAsyncResultAPI = "/upload/v1/file/upload_async_result"
+	// 列举已上传分片
+	listUploadedPartsAPI = "/upload/v1/file/list_uploaded_parts"
 )
+
+// 个人开发者QPS限制
+var idQPSLimit = map[string]int{
+	accessTokenAPI:       1,
+	userInfoAPI:          1,
+	fileListAPI:          3,
+	downloadInfoAPI:      0,
+	mkdirAPI:             0,
+	moveAPI:              1,
+	renameAPI:            0,
+	trashAPI:             0,
+	preupCreateAPI:       0,
+	sliceUploadAPI:       0,
+	uploadCompleteAPI:    0,
+	uploadURLAPI:         0,
+	singleUploadAPI:      0,
+	preupCreateV1API:     0,
+	getUploadURLAPI:      0,
+	uploadCompleteV1API:  0,
+	uploadAsyncResultAPI: 0,
+	listUploadedPartsAPI: 0,
+}
+
+// 第三方授权应用QPS限制
+var appQPSLimit = map[string]int{
+	preupCreateV1API:     5,
+	getUploadURLAPI:      20,
+	listUploadedPartsAPI: 20,
+	mkdirAPI:             5,
+	uploadAsyncResultAPI: 5,
+	uploadCompleteV1API:  20,
+	accessTokenAPI:       8,
+	fileListAPI:          15,
+	downloadInfoAPI:      5,
+	userInfoAPI:          0,
+	moveAPI:              1,
+	renameAPI:            0,
+	trashAPI:             0,
+	preupCreateAPI:       0,
+	sliceUploadAPI:       0,
+	uploadCompleteAPI:    0,
+	uploadURLAPI:         0,
+	singleUploadAPI:      0,
+}
 
 // var ( //不同情况下获取的AccessTokenQPS限制不同 如下模块化易于拓展
 // 	Api = "https://open-api.123pan.com"
@@ -136,6 +182,9 @@ func (d *Open123) flushAccessToken() error {
 	// 第三方授权应用刷新token
 	if d.RefreshToken != "" {
 		r := &RefreshTokenResp{}
+		rta := d.apiinstance[refreshTokenAPI]
+		rta.Require()
+		defer rta.Release()
 
 		res, err := base.RestyClient.R().
 			SetHeaders(map[string]string{
@@ -198,18 +247,10 @@ func (d *Open123) flushAccessToken() error {
 	return nil
 }
 
-func (d *Open123) getApiInfo(api string) *ApiInfo {
-	apiInfo := d.apiinstance[api]
-	if apiInfo == nil {
-		apiInfo = InitApiInfo(baseURL+api, 0)
-	}
-	return apiInfo
-}
-
 func (d *Open123) getUserInfo() (*UserInfoResp, error) {
 	var resp UserInfoResp
 
-	if _, err := d.Request(d.getApiInfo(userInfoAPI), http.MethodGet, nil, &resp); err != nil {
+	if _, err := d.Request(d.apiinstance[userInfoAPI], http.MethodGet, nil, &resp); err != nil {
 		return nil, err
 	}
 
@@ -219,7 +260,7 @@ func (d *Open123) getUserInfo() (*UserInfoResp, error) {
 func (d *Open123) getFiles(parentFileId int64, limit int, lastFileId int64) (*FileListResp, error) {
 	var resp FileListResp
 
-	_, err := d.Request(d.getApiInfo(fileListAPI), http.MethodGet, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[fileListAPI], http.MethodGet, func(req *resty.Request) {
 		req.SetQueryParams(
 			map[string]string{
 				"parentFileId": strconv.FormatInt(parentFileId, 10),
@@ -241,7 +282,7 @@ func (d *Open123) getFiles(parentFileId int64, limit int, lastFileId int64) (*Fi
 func (d *Open123) getDownloadInfo(fileId int64) (*DownloadInfoResp, error) {
 	var resp DownloadInfoResp
 
-	_, err := d.Request(d.getApiInfo(downloadInfoAPI), http.MethodGet, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[downloadInfoAPI], http.MethodGet, func(req *resty.Request) {
 		req.SetQueryParams(map[string]string{
 			"fileId": strconv.FormatInt(fileId, 10),
 		})
@@ -254,7 +295,7 @@ func (d *Open123) getDownloadInfo(fileId int64) (*DownloadInfoResp, error) {
 }
 
 func (d *Open123) mkdir(parentID int64, name string) error {
-	_, err := d.Request(d.getApiInfo(mkdirAPI), http.MethodPost, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[mkdirAPI], http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"parentID": strconv.FormatInt(parentID, 10),
 			"name":     name,
@@ -268,7 +309,7 @@ func (d *Open123) mkdir(parentID int64, name string) error {
 }
 
 func (d *Open123) move(fileID, toParentFileID int64) error {
-	_, err := d.Request(d.getApiInfo(moveAPI), http.MethodPost, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[moveAPI], http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"fileIDs":        []int64{fileID},
 			"toParentFileID": toParentFileID,
@@ -282,7 +323,7 @@ func (d *Open123) move(fileID, toParentFileID int64) error {
 }
 
 func (d *Open123) rename(fileId int64, fileName string) error {
-	_, err := d.Request(d.getApiInfo(renameAPI), http.MethodPut, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[renameAPI], http.MethodPut, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"fileId":   fileId,
 			"fileName": fileName,
@@ -296,7 +337,7 @@ func (d *Open123) rename(fileId int64, fileName string) error {
 }
 
 func (d *Open123) trash(fileId int64) error {
-	_, err := d.Request(d.getApiInfo(trashAPI), http.MethodPost, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[trashAPI], http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"fileIDs": []int64{fileId},
 		})

@@ -29,29 +29,35 @@ func (d *Open123) Init(ctx context.Context) error {
 	if d.UploadThread < 1 || d.UploadThread > 32 {
 		d.UploadThread = 3
 	}
-	//初始化api实例，个人开发者才需要针对账号进行qps限制，第三方应用不需要
+
+	qps := map[string]int{}
 	if d.RefreshToken == "" {
-		d.apiinstance = map[string]*ApiInfo{
-			accessTokenAPI:       InitApiInfo(baseURL+accessTokenAPI, 1),
-			refreshTokenAPI:      InitApiInfo(baseURL+refreshTokenAPI, 0),
-			userInfoAPI:          InitApiInfo(baseURL+userInfoAPI, 1),
-			fileListAPI:          InitApiInfo(baseURL+fileListAPI, 3),
-			downloadInfoAPI:      InitApiInfo(baseURL+downloadInfoAPI, 0),
-			mkdirAPI:             InitApiInfo(baseURL+mkdirAPI, 2),
-			moveAPI:              InitApiInfo(baseURL+moveAPI, 1),
-			renameAPI:            InitApiInfo(baseURL+renameAPI, 0),
-			trashAPI:             InitApiInfo(baseURL+trashAPI, 0),
-			preupCreateAPI:       InitApiInfo(baseURL+preupCreateAPI, 0),
-			sliceUploadAPI:       InitApiInfo(sliceUploadAPI, 0),
-			uploadCompleteAPI:    InitApiInfo(baseURL+uploadCompleteAPI, 0),
-			uploadURLAPI:         InitApiInfo(uploadURLAPI, 0),
-			singleUploadAPI:      InitApiInfo(singleUploadAPI, 0),
-			preupCreateV1API:     InitApiInfo(baseURL+preupCreateV1API, 0),
-			getUploadURLAPI:      InitApiInfo(baseURL+getUploadURLAPI, 0),
-			uploadCompleteV1API:  InitApiInfo(baseURL+uploadCompleteV1API, 0),
-			uploadAsyncResultAPI: InitApiInfo(baseURL+uploadAsyncResultAPI, 0),
-		}
+		qps = idQPSLimit
+	} else {
+		qps = appQPSLimit
+
 	}
+	d.apiinstance = map[string]*ApiInfo{
+		accessTokenAPI:       InitApiInfo(baseURL+accessTokenAPI, qps[accessTokenAPI]),
+		refreshTokenAPI:      InitApiInfo(baseURL+refreshTokenAPI, qps[refreshTokenAPI]),
+		userInfoAPI:          InitApiInfo(baseURL+userInfoAPI, qps[userInfoAPI]),
+		fileListAPI:          InitApiInfo(baseURL+fileListAPI, qps[fileListAPI]),
+		downloadInfoAPI:      InitApiInfo(baseURL+downloadInfoAPI, qps[downloadInfoAPI]),
+		mkdirAPI:             InitApiInfo(baseURL+mkdirAPI, qps[mkdirAPI]),
+		moveAPI:              InitApiInfo(baseURL+moveAPI, qps[moveAPI]),
+		renameAPI:            InitApiInfo(baseURL+renameAPI, qps[renameAPI]),
+		trashAPI:             InitApiInfo(baseURL+trashAPI, qps[trashAPI]),
+		preupCreateAPI:       InitApiInfo(baseURL+preupCreateAPI, qps[preupCreateAPI]),
+		sliceUploadAPI:       InitApiInfo(sliceUploadAPI, qps[sliceUploadAPI]),
+		uploadCompleteAPI:    InitApiInfo(baseURL+uploadCompleteAPI, qps[uploadCompleteAPI]),
+		uploadURLAPI:         InitApiInfo(uploadURLAPI, qps[uploadURLAPI]),
+		singleUploadAPI:      InitApiInfo(singleUploadAPI, qps[singleUploadAPI]),
+		preupCreateV1API:     InitApiInfo(baseURL+preupCreateV1API, qps[preupCreateV1API]),
+		getUploadURLAPI:      InitApiInfo(baseURL+getUploadURLAPI, qps[getUploadURLAPI]),
+		uploadCompleteV1API:  InitApiInfo(baseURL+uploadCompleteV1API, qps[uploadCompleteV1API]),
+		uploadAsyncResultAPI: InitApiInfo(baseURL+uploadAsyncResultAPI, qps[uploadAsyncResultAPI]),
+	}
+
 	return nil
 }
 
