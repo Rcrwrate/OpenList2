@@ -102,9 +102,6 @@ type RangeReadCloser struct {
 
 func (r *RangeReadCloser) RangeRead(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
 	rc, err := r.RangeReader.RangeRead(ctx, httpRange)
-	if err != nil {
-		return nil, err
-	}
 	r.Add(rc)
-	return rc, nil
+	return rc, err
 }

@@ -169,7 +169,6 @@ func NewSeekableStream(fs *FileStream, link *model.Link) (*SeekableStream, error
 	}
 
 	if fs.Reader != nil {
-		fs.AddIfCloser(fs.Reader)
 		fs.Add(link)
 		return &SeekableStream{FileStream: fs}, nil
 	}
@@ -179,11 +178,19 @@ func NewSeekableStream(fs *FileStream, link *model.Link) (*SeekableStream, error
 		if err != nil {
 			return nil, err
 		}
+		if _, ok := rr.(*model.FileRangeReader); ok {
+			fs.Reader, err = rr.RangeRead(fs.Ctx, http_range.Range{Length: -1})
+			if err != nil {
+				return nil, err
+			}
+			fs.Add(link)
+			return &SeekableStream{FileStream: fs}, nil
+		}
 		rrc := &model.RangeReadCloser{
 			RangeReader: rr,
 		}
-		fs.Add(rrc)
 		fs.Add(link)
+		fs.Add(rrc)
 		return &SeekableStream{FileStream: fs, rangeReadCloser: rrc}, nil
 	}
 	return nil, fmt.Errorf("illegal seekableStream")
@@ -222,19 +229,6 @@ func (ss *SeekableStream) Read(p []byte) (n int, err error) {
 		ss.Reader = rc
 	}
 	return ss.Reader.Read(p)
-}
-
-func (ss *SeekableStream) GetFile() model.File {
-	if ss.tmpFile != nil {
-		return ss.tmpFile
-	}
-	if ss.Reader == nil && ss.rangeReadCloser != nil {
-		ss.Reader, _ = ss.rangeReadCloser.RangeRead(ss.Ctx, http_range.Range{Length: -1})
-	}
-	if file, ok := ss.Reader.(model.File); ok {
-		return file
-	}
-	return nil
 }
 
 func (ss *SeekableStream) CacheFullInTempFile() (model.File, error) {
@@ -487,7 +481,7 @@ func (r *RangeReadReadAtSeeker) Seek(offset int64, whence int) (int64, error) {
 		return r.masterOff, errors.New("invalid seek: negative position")
 	}
 	if offset > r.ss.GetSize() {
-		return r.masterOff, io.EOF
+		offset = r.ss.GetSize()
 	}
 	r.masterOff = offset
 	return offset, nil

@@ -65,7 +65,6 @@ func (t *TransferTask) Run() error {
 				Mimetype: mimetype,
 				Closers:  utils.NewClosers(r),
 			}
-			defer s.Close()
 			return op.Put(t.Ctx(), t.DstStorage, t.DstDirPath, s, t.SetProgress)
 		}
 		return transferStdPath(t)
@@ -295,7 +294,6 @@ func transferObjFile(t *TransferTask) error {
 		return errors.WithMessagef(err, "failed get [%s] stream", t.SrcObjPath)
 	}
 	t.SetTotalBytes(srcFile.GetSize())
-	defer ss.Close()
 	return op.Put(t.Ctx(), t.DstStorage, t.DstDirPath, ss, t.SetProgress)
 }
 

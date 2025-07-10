@@ -182,6 +182,7 @@ func (d *downloader) download() (io.ReadCloser, error) {
 		resp.Body = utils.NewReadCloser(resp.Body, func() error {
 			d.m.Lock()
 			defer d.m.Unlock()
+			var err error
 			if closeFunc != nil {
 				d.concurrencyFinish()
 				err = closeFunc()

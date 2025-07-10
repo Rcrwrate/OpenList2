@@ -360,7 +360,6 @@ func (t *MoveTask) copyFile(srcStorage, dstStorage driver.Driver, srcFilePath, d
 		_ = link.Close()
 		return errors.WithMessagef(err, "failed get [%s] stream", srcFilePath)
 	}
-	defer ss.Close()
 	return op.Put(t.Ctx(), dstStorage, dstDirPath, ss, nil, true)
 }
 

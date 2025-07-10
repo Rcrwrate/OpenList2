@@ -262,6 +262,7 @@ func Link(ctx context.Context, storage driver.Driver, path string, args model.Li
 	if link, ok := linkCache.Get(key); ok {
 		return link, file, nil
 	}
+
 	var forget utils.CloseFunc
 	fn := func() (*model.Link, error) {
 		link, err := storage.Link(ctx, file, args)
@@ -270,12 +271,8 @@ func Link(ctx context.Context, storage driver.Driver, path string, args model.Li
 		}
 		if link.Expiration != nil {
 			linkCache.Set(key, link, cache.WithEx[*model.Link](*link.Expiration))
-			if forget != nil {
-				forget()
-			}
-		} else {
-			link.Add(forget)
 		}
+		link.Add(forget)
 		return link, nil
 	}
 
@@ -526,14 +523,15 @@ func Remove(ctx context.Context, storage driver.Driver, path string) error {
 }
 
 func Put(ctx context.Context, storage driver.Driver, dstDirPath string, file model.FileStreamer, up driver.UpdateProgress, lazyCache ...bool) error {
-	if storage.Config().CheckStatus && storage.GetStorage().Status != WORK {
-		return errors.Errorf("storage not init: %s", storage.GetStorage().Status)
-	}
+	close := file.Close
 	defer func() {
-		if err := file.Close(); err != nil {
+		if err := close(); err != nil {
 			log.Errorf("failed to close file streamer, %v", err)
 		}
 	}()
+	if storage.Config().CheckStatus && storage.GetStorage().Status != WORK {
+		return errors.Errorf("storage not init: %s", storage.GetStorage().Status)
+	}
 	// UrlTree PUT
 	if storage.GetStorage().Driver == "UrlTree" {
 		var link string

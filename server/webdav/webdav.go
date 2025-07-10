@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -307,6 +308,12 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) (status i
 }
 
 func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int, err error) {
+	defer func() {
+		if n, _ := io.ReadFull(r.Body, []byte{0}); n == 1 {
+			_, _ = utils.CopyWithBuffer(io.Discard, r.Body)
+		}
+		_ = r.Body.Close()
+	}()
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	if err != nil {
 		return status, err
@@ -346,8 +353,6 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 		return http.StatusNotFound, err
 	}
 
-	_ = r.Body.Close()
-	_ = fsStream.Close()
 	// TODO(rost): Returning 405 Method Not Allowed might not be appropriate.
 	if err != nil {
 		return http.StatusMethodNotAllowed, err

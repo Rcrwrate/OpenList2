@@ -66,16 +66,18 @@ func (d *FTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 		return nil, err
 	}
 
-	r := NewFileReader(d.conn, encode(file.GetPath(), d.Encoding), file.GetSize())
-	if r != nil && !d.Config().OnlyLinkMFile {
+	remoteFile := NewFileReader(d.conn, encode(file.GetPath(), d.Encoding), file.GetSize())
+	if remoteFile != nil && !d.Config().OnlyLinkMFile {
 		return &model.Link{
-			RangeReader: stream.RateLimitRangeReaderFunc(stream.GetRangeReaderFromMFile(file.GetSize(), r)),
-			SyncClosers: utils.NewSyncClosers(r),
+			RangeReader: &model.FileRangeReader{
+				RangeReaderIF: stream.RateLimitRangeReaderFunc(stream.GetRangeReaderFromMFile(file.GetSize(), remoteFile)),
+			},
+			SyncClosers: utils.NewSyncClosers(remoteFile),
 		}, nil
 	}
 	return &model.Link{
 		MFile: &stream.RateLimitFile{
-			File:    r,
+			File:    remoteFile,
 			Limiter: stream.ServerDownloadLimit,
 			Ctx:     ctx,
 		},

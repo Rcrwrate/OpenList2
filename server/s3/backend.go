@@ -293,11 +293,11 @@ func (b *s3Backend) PutObject(
 		return result, err
 	}
 
-	if err := stream.Close(); err != nil {
-		// remove file when close error occurred (FsPutErr)
-		_ = fs.Remove(ctx, fp)
-		return result, err
-	}
+	// if err := stream.Close(); err != nil {
+	// 	// remove file when close error occurred (FsPutErr)
+	// 	_ = fs.Remove(ctx, fp)
+	// 	return result, err
+	// }
 
 	b.meta.Store(fp, meta)
 

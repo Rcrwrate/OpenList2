@@ -115,7 +115,7 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 	}
 	for _, dst := range dsts {
 		reqPath := stdpath.Join(dst, sub)
-		link, obj, err := d.link(ctx, reqPath, args)
+		link, file, err := d.link(ctx, reqPath, args)
 		if err == nil {
 			var resultLink *model.Link
 			if link != nil {
@@ -126,7 +126,9 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 					SyncClosers: utils.NewSyncClosers(link),
 				}
 				if link.MFile != nil {
-					resultLink.RangeReader = stream.GetRangeReaderFromMFile(obj.GetSize(), link.MFile)
+					resultLink.RangeReader = &model.FileRangeReader{
+						RangeReaderIF: stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile),
+					}
 				}
 
 			} else {
@@ -273,9 +275,13 @@ func (d *Alias) Put(ctx context.Context, dstDir model.Obj, s model.FileStreamer,
 	reqPath, err := d.getReqPath(ctx, dstDir, true)
 	if err == nil {
 		if len(reqPath) == 1 {
-			return fs.PutDirectly(ctx, *reqPath[0], s)
+			return fs.PutDirectly(ctx, *reqPath[0], &stream.FileStream{
+				Obj:          s,
+				Mimetype:     s.GetMimetype(),
+				WebPutAsTask: s.NeedStore(),
+				Reader:       s,
+			})
 		} else {
-			defer s.Close()
 			file, err := s.CacheFullInTempFile()
 			if err != nil {
 				return err

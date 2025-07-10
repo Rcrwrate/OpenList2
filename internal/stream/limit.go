@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"golang.org/x/time/rate"
 )
@@ -139,4 +140,21 @@ func (r *RateLimitFile) Close() error {
 		return c.Close()
 	}
 	return nil
+}
+
+type RateLimitRangeReaderFunc RangeReaderFunc
+
+func (f RateLimitRangeReaderFunc) RangeRead(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
+	rc, err := f(ctx, httpRange)
+	if err != nil {
+		return nil, err
+	}
+	if ServerDownloadLimit != nil {
+		rc = &RateLimitReader{
+			Ctx:     ctx,
+			Reader:  rc,
+			Limiter: ServerDownloadLimit,
+		}
+	}
+	return rc, nil
 }

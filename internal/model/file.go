@@ -1,6 +1,9 @@
 package model
 
-import "io"
+import (
+	"errors"
+	"io"
+)
 
 // File is basic file level accessing interface
 type File interface {
@@ -10,11 +13,20 @@ type File interface {
 }
 type FileCloser struct {
 	File
+	io.Closer
 }
 
 func (f *FileCloser) Close() error {
+	var err error
 	if clr, ok := f.File.(io.Closer); ok {
-		return clr.Close()
+		err = errors.Join(err, clr.Close())
 	}
-	return nil
+	if f.Closer != nil {
+		err = errors.Join(err, f.Closer.Close())
+	}
+	return err
+}
+
+type FileRangeReader struct {
+	RangeReaderIF
 }

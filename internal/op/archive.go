@@ -369,8 +369,6 @@ func DriverExtract(ctx context.Context, storage driver.Driver, path string, args
 	key := stdpath.Join(Key(storage, path), args.InnerPath)
 	if link, ok := extractCache.Get(key); ok {
 		return link.Link, link.Obj, nil
-	} else if link, ok := extractCache.Get(key + ":" + args.IP); ok {
-		return link.Link, link.Obj, nil
 	}
 
 	var forget utils.CloseFunc
@@ -381,12 +379,8 @@ func DriverExtract(ctx context.Context, storage driver.Driver, path string, args
 		}
 		if link.Link.Expiration != nil {
 			extractCache.Set(key, link, cache.WithEx[*extractLink](*link.Link.Expiration))
-			if forget != nil {
-				forget()
-			}
-		} else {
-			link.Add(forget)
 		}
+		link.Add(forget)
 		return link, nil
 	}
 

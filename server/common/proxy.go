@@ -12,7 +12,6 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/net"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
-	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 )
 
@@ -25,39 +24,13 @@ func Proxy(w http.ResponseWriter, r *http.Request, link *model.Link, file model.
 
 	if link.Concurrency > 0 || link.PartSize > 0 {
 		attachHeader(w, file, link.Header)
-		size := file.GetSize()
-		down := net.NewDownloader(func(d *net.Downloader) {
-			d.Concurrency = link.Concurrency
-			d.PartSize = link.PartSize
-		})
-		var rrf stream.RangeReaderFunc = func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
-			var req *net.HttpRequestParams
-			if link.RangeReader != nil {
-				req = &net.HttpRequestParams{
-					Range: httpRange,
-					Size:  size,
-				}
-			} else {
-				requestHeader, _ := ctx.Value(net.RequestHeaderKey{}).(http.Header)
-				header := net.ProcessHeader(requestHeader, link.Header)
-				req = &net.HttpRequestParams{
-					Range:     httpRange,
-					Size:      size,
-					URL:       link.URL,
-					HeaderRef: header,
-				}
-			}
-			return down.Download(ctx, req)
-		}
-		rrc := &model.RangeReadCloser{}
+		rrf, _ := stream.GetRangeReaderFromLink(file.GetSize(), link)
 		if link.RangeReader == nil {
 			r = r.WithContext(context.WithValue(r.Context(), net.RequestHeaderKey{}, r.Header))
-			rrc.RangeReader = stream.RateLimitRangeReaderFunc(rrf)
-		} else {
-			down.HttpClient = net.GetRangeReaderHttpRequestFunc(link.RangeReader)
-			rrc.RangeReader = rrf
 		}
-		return net.ServeHTTP(w, r, file.GetName(), file.ModTime(), size, rrc)
+		return net.ServeHTTP(w, r, file.GetName(), file.ModTime(), file.GetSize(), &model.RangeReadCloser{
+			RangeReader: rrf,
+		})
 	}
 
 	if link.RangeReader != nil {

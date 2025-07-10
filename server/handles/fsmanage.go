@@ -374,7 +374,7 @@ func Link(c *gin.Context) {
 		common.ErrorResp(c, err, 500)
 		return
 	}
-	if storage.Config().NoLinkURL {
+	if storage.Config().NoLinkURL || storage.Config().OnlyLinkMFile {
 		common.SuccessResp(c, model.Link{
 			URL: fmt.Sprintf("%s/p%s?d&sign=%s",
 				common.GetApiUrl(c),
@@ -383,7 +383,7 @@ func Link(c *gin.Context) {
 		})
 		return
 	}
-	link, _, err := fs.Link(c, rawPath, model.LinkArgs{IP: c.ClientIP(), Header: c.Request.Header})
+	link, _, err := fs.Link(c, rawPath, model.LinkArgs{IP: c.ClientIP(), Header: c.Request.Header, Redirect: true})
 	if err != nil {
 		common.ErrorResp(c, err, 500)
 		return

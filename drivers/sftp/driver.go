@@ -65,7 +65,9 @@ func (d *SFTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*
 	}
 	if remoteFile != nil && !d.Config().OnlyLinkMFile {
 		return &model.Link{
-			RangeReader: stream.RateLimitRangeReaderFunc(stream.GetRangeReaderFromMFile(file.GetSize(), remoteFile)),
+			RangeReader: &model.FileRangeReader{
+				RangeReaderIF: stream.RateLimitRangeReaderFunc(stream.GetRangeReaderFromMFile(file.GetSize(), remoteFile)),
+			},
 			SyncClosers: utils.NewSyncClosers(remoteFile),
 		}, nil
 	}

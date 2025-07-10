@@ -101,7 +101,6 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 				_ = link.Close()
 				return nil, errors.WithMessagef(err, "failed get [%s] stream", srcObjPath)
 			}
-			defer ss.Close()
 			return nil, op.Put(ctx, dstStorage, dstDirActualPath, ss, nil, false)
 		}
 	}
@@ -181,6 +180,5 @@ func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Drive
 		_ = link.Close()
 		return errors.WithMessagef(err, "failed get [%s] stream", srcFilePath)
 	}
-	defer ss.Close()
 	return op.Put(tsk.Ctx(), dstStorage, dstDirPath, ss, tsk.SetProgress, true)
 }

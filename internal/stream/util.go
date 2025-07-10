@@ -21,37 +21,16 @@ func (f RangeReaderFunc) RangeRead(ctx context.Context, httpRange http_range.Ran
 	return f(ctx, httpRange)
 }
 
-type RateLimitRangeReaderFunc RangeReaderFunc
-
-func (f RateLimitRangeReaderFunc) RangeRead(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
-	rc, err := f(ctx, httpRange)
-	if err != nil {
-		return nil, err
-	}
-	if ServerDownloadLimit != nil {
-		rc = &RateLimitReader{
-			Ctx:     ctx,
-			Reader:  rc,
-			Limiter: ServerDownloadLimit,
-		}
-	}
-	return rc, nil
-}
-
 func GetRangeReaderFromLink(size int64, link *model.Link) (model.RangeReaderIF, error) {
 	if link.MFile != nil {
-		return GetRangeReaderFromMFile(size, link.MFile), nil
+		return &model.FileRangeReader{RangeReaderIF: GetRangeReaderFromMFile(size, link.MFile)}, nil
 	}
-	if len(link.URL) == 0 && link.RangeReader == nil {
-		return nil, errors.New("invalid link: must have at least one of MFile, URL, or RangeReader")
-	}
-	var rangeReader RangeReaderFunc
 	if link.Concurrency > 0 || link.PartSize > 0 {
 		down := net.NewDownloader(func(d *net.Downloader) {
 			d.Concurrency = link.Concurrency
 			d.PartSize = link.PartSize
 		})
-		rangeReader = func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
+		var rangeReader RangeReaderFunc = func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
 			var req *net.HttpRequestParams
 			if link.RangeReader != nil {
 				req = &net.HttpRequestParams{
@@ -81,7 +60,10 @@ func GetRangeReaderFromLink(size int64, link *model.Link) (model.RangeReaderIF, 
 		return link.RangeReader, nil
 	}
 
-	rangeReader = func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
+	if len(link.URL) == 0 {
+		return nil, errors.New("invalid link: must have at least one of MFile, URL, or RangeReader")
+	}
+	rangeReader := func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
 		if httpRange.Length < 0 || httpRange.Start+httpRange.Length > size {
 			httpRange.Length = size - httpRange.Start
 		}
