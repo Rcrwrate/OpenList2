@@ -78,6 +78,7 @@ var idQPSLimit = map[string]int{
 	uploadCompleteV1API:  0,
 	uploadAsyncResultAPI: 0,
 	listUploadedPartsAPI: 0,
+	refreshTokenAPI:      0,
 }
 
 // 第三方授权应用QPS限制
@@ -100,6 +101,7 @@ var appQPSLimit = map[string]int{
 	uploadCompleteAPI:    0,
 	uploadURLAPI:         0,
 	singleUploadAPI:      0,
+	refreshTokenAPI:      10, // 这个是1分钟100，按现在的实现逻辑不是很好处理，先设置为10
 }
 
 // var ( //不同情况下获取的AccessTokenQPS限制不同 如下模块化易于拓展
