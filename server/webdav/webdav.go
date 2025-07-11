@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenListTeam/OpenList/v4/internal/net"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
@@ -252,6 +253,9 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		}
 		err = common.Proxy(w, r, link, fi)
 		if err != nil {
+			if statusCode, ok := errors.Unwrap(err).(net.ErrorHttpStatusCode); ok {
+				return int(statusCode), err
+			}
 			return http.StatusInternalServerError, fmt.Errorf("webdav proxy error: %+v", err)
 		}
 	} else if storage.GetStorage().WebdavProxy() && downProxyUrl != "" {

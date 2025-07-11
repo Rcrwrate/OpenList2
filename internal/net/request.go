@@ -121,7 +121,7 @@ type ConcurrencyLimit struct {
 	Limit int // 需要大于0
 }
 
-var ErrExceedMaxConcurrency = errors.New("ExceedMaxConcurrency")
+var ErrExceedMaxConcurrency = ErrorHttpStatusCode(http.StatusTooManyRequests)
 
 func (l *ConcurrencyLimit) sub() error {
 	l._m.Lock()
@@ -201,7 +201,7 @@ func (d *downloader) download() (io.ReadCloser, error) {
 	d.pos = d.params.Range.Start
 	d.maxPos = d.params.Range.Start + d.params.Range.Length
 	d.concurrency = d.cfg.Concurrency
-	d.sendChunkTask(true)
+	_ = d.sendChunkTask(true)
 
 	var rc io.ReadCloser = NewMultiReadCloser(d.bufs[0], d.interrupt, d.finishBuf)
 
@@ -305,7 +305,7 @@ func (d *downloader) finishBuf(id int) (isLast bool, nextBuf *Buf) {
 		return true, nil
 	}
 
-	d.sendChunkTask(false)
+	_ = d.sendChunkTask(false)
 
 	d.readingID = id
 	return false, d.getBuf(id)
@@ -453,7 +453,7 @@ func (d *downloader) tryDownloadChunk(params *HttpRequestParams, ch *chunk) (int
 			return 0, err
 		}
 	}
-	d.sendChunkTask(true)
+	_ = d.sendChunkTask(true)
 	n, err := utils.CopyWithBuffer(ch.buf, resp.Body)
 
 	if err != nil {

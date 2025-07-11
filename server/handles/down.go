@@ -2,6 +2,7 @@ package handles
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	stdpath "path"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/net"
 	"github.com/OpenListTeam/OpenList/v4/internal/setting"
 	"github.com/OpenListTeam/OpenList/v4/internal/sign"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
@@ -154,7 +156,11 @@ func proxy(c *gin.Context, link *model.Link, file model.Obj, proxyRange bool) {
 	if Writer.IsWritten() {
 		log.Errorf("%s %s local proxy error: %+v", c.Request.Method, c.Request.URL.Path, err)
 	} else {
-		common.ErrorResp(c, err, 500, true)
+		if statusCode, ok := errors.Unwrap(err).(net.ErrorHttpStatusCode); ok {
+			common.ErrorResp(c, err, int(statusCode), true)
+		} else {
+			common.ErrorResp(c, err, 500, true)
+		}
 	}
 }
 

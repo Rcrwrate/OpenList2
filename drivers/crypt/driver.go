@@ -264,26 +264,20 @@ func (d *Crypt) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 
 	mu := &sync.Mutex{}
 	var fileHeader []byte
-	rangeReaderFunc := func(ctx context.Context, offset, length int64) (io.ReadCloser, error) {
-		underlyingLength := length
-		var cacheFileHeader, readFileHeader bool
-		if offset == 0 && length > 0 {
-			cacheFileHeader = length > fileHeaderSize
-			readFileHeader = length <= fileHeaderSize
-		}
-		if readFileHeader || cacheFileHeader {
+	rangeReaderFunc := func(ctx context.Context, offset, limit int64) (io.ReadCloser, error) {
+		length := limit
+		if offset == 0 && limit > 0 {
 			mu.Lock()
-			if readFileHeader {
+			if limit <= fileHeaderSize {
 				defer mu.Unlock()
 				if fileHeader != nil {
-					return io.NopCloser(bytes.NewReader(fileHeader[:length])), nil
+					return io.NopCloser(bytes.NewReader(fileHeader[:limit])), nil
 				}
 				length = fileHeaderSize
-			} else if fileHeader != nil {
-				mu.Unlock()
-				cacheFileHeader = false
-			} else {
+			} else if fileHeader == nil {
 				defer mu.Unlock()
+			} else {
+				mu.Unlock()
 			}
 		}
 
@@ -292,16 +286,16 @@ func (d *Crypt) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 			return nil, err
 		}
 
-		if readFileHeader || cacheFileHeader {
+		if offset == 0 && limit > 0 {
 			fileHeader = make([]byte, fileHeaderSize)
 			n, _ := io.ReadFull(remoteReader, fileHeader)
 			if n != fileHeaderSize {
 				fileHeader = nil
 				return nil, fmt.Errorf("can't read data, expected=%d, got=%d", fileHeaderSize, n)
 			}
-			if readFileHeader {
+			if limit <= fileHeaderSize {
 				remoteReader.Close()
-				return io.NopCloser(bytes.NewReader(fileHeader[:underlyingLength])), nil
+				return io.NopCloser(bytes.NewReader(fileHeader[:limit])), nil
 			} else {
 				remoteReader = utils.ReadCloser{
 					Reader: io.MultiReader(bytes.NewReader(fileHeader), remoteReader),

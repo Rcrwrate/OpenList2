@@ -73,10 +73,10 @@ func GetRangeReaderFromLink(size int64, link *model.Link) (model.RangeReaderIF, 
 
 		response, err := net.RequestHttp(ctx, "GET", header, link.URL)
 		if err != nil {
-			if _, ok := errors.Unwrap(err).(net.ErrorHttpStatusCode); !ok {
-				return nil, fmt.Errorf("http request failure, err:%s", err)
+			if _, ok := errors.Unwrap(err).(net.ErrorHttpStatusCode); ok {
+				return nil, err
 			}
-			return nil, err
+			return nil, fmt.Errorf("http request failure, err:%w", err)
 		}
 		if httpRange.Start == 0 && (httpRange.Length == -1 || httpRange.Length == size) || response.StatusCode == http.StatusPartialContent ||
 			checkContentRange(&response.Header, httpRange.Start) {

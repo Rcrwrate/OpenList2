@@ -17,14 +17,14 @@ type FileCloser struct {
 }
 
 func (f *FileCloser) Close() error {
-	var err error
+	var errs []error
 	if clr, ok := f.File.(io.Closer); ok {
-		err = errors.Join(err, clr.Close())
+		errs = append(errs, clr.Close())
 	}
 	if f.Closer != nil {
-		err = errors.Join(err, f.Closer.Close())
+		errs = append(errs, f.Closer.Close())
 	}
-	return err
+	return errors.Join(errs...)
 }
 
 type FileRangeReader struct {

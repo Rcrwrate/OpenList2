@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -255,9 +254,7 @@ func (d *Local) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 		link.MFile = open
 	}
 	if link.MFile != nil && !d.Config().OnlyLinkMFile {
-		if clr, ok := link.MFile.(io.Closer); ok {
-			link.Add(clr)
-		}
+		link.AddIfCloser(link.MFile)
 		link.RangeReader = &model.FileRangeReader{
 			RangeReaderIF: stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile),
 		}
