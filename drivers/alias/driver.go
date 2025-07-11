@@ -116,40 +116,41 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 	for _, dst := range dsts {
 		reqPath := stdpath.Join(dst, sub)
 		link, file, err := d.link(ctx, reqPath, args)
-		if err == nil {
-			var resultLink *model.Link
-			if link != nil {
-				resultLink = &model.Link{
-					URL:         link.URL,
-					Header:      link.Header,
-					RangeReader: link.RangeReader,
-					SyncClosers: utils.NewSyncClosers(link),
-				}
-				if link.MFile != nil {
-					resultLink.RangeReader = &model.FileRangeReader{
-						RangeReaderIF: stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile),
-					}
-				}
-
-			} else {
-				resultLink = &model.Link{
-					URL: fmt.Sprintf("%s/p%s?sign=%s",
-						common.GetApiUrl(ctx),
-						utils.EncodePath(reqPath, true),
-						sign.Sign(reqPath)),
-				}
-
-			}
-			if !args.Redirect {
-				if d.DownloadConcurrency > 0 {
-					resultLink.Concurrency = d.DownloadConcurrency
-				}
-				if d.DownloadPartSize > 0 {
-					resultLink.PartSize = d.DownloadPartSize * utils.KB
-				}
-			}
-			return resultLink, nil
+		if err != nil {
+			continue
 		}
+		var resultLink *model.Link
+		if link != nil {
+			resultLink = &model.Link{
+				URL:         link.URL,
+				Header:      link.Header,
+				RangeReader: link.RangeReader,
+				SyncClosers: utils.NewSyncClosers(link),
+			}
+			if link.MFile != nil {
+				resultLink.RangeReader = &model.FileRangeReader{
+					RangeReaderIF: stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile),
+				}
+			}
+
+		} else {
+			resultLink = &model.Link{
+				URL: fmt.Sprintf("%s/p%s?sign=%s",
+					common.GetApiUrl(ctx),
+					utils.EncodePath(reqPath, true),
+					sign.Sign(reqPath)),
+			}
+
+		}
+		if !args.Redirect {
+			if d.DownloadConcurrency > 0 {
+				resultLink.Concurrency = d.DownloadConcurrency
+			}
+			if d.DownloadPartSize > 0 {
+				resultLink.PartSize = d.DownloadPartSize * utils.KB
+			}
+		}
+		return resultLink, nil
 	}
 	return nil, errs.ObjectNotFound
 }

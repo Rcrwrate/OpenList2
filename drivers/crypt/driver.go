@@ -243,6 +243,7 @@ func (d *Crypt) Get(ctx context.Context, path string) (model.Obj, error) {
 	//return nil, errs.ObjectNotFound
 }
 
+// https://github.com/rclone/rclone/blob/v1.67.0/backend/crypt/cipher.go#L37
 const fileHeaderSize = 32
 
 func (d *Crypt) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
@@ -265,23 +266,24 @@ func (d *Crypt) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 	var fileHeader []byte
 	rangeReaderFunc := func(ctx context.Context, offset, length int64) (io.ReadCloser, error) {
 		underlyingLength := length
-		var createFileHeader, readFileHeader bool
+		var cacheFileHeader, readFileHeader bool
 		if offset == 0 && length > 0 {
-			createFileHeader = length > fileHeaderSize
+			cacheFileHeader = length > fileHeaderSize
 			readFileHeader = length <= fileHeaderSize
 		}
-		if readFileHeader || createFileHeader {
+		if readFileHeader || cacheFileHeader {
 			mu.Lock()
 			if readFileHeader {
+				defer mu.Unlock()
 				if fileHeader != nil {
-					mu.Unlock()
 					return io.NopCloser(bytes.NewReader(fileHeader[:length])), nil
 				}
-				defer mu.Unlock()
 				length = fileHeaderSize
 			} else if fileHeader != nil {
 				mu.Unlock()
-				createFileHeader = false
+				cacheFileHeader = false
+			} else {
+				defer mu.Unlock()
 			}
 		}
 
@@ -290,12 +292,12 @@ func (d *Crypt) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 			return nil, err
 		}
 
-		if readFileHeader || createFileHeader {
+		if readFileHeader || cacheFileHeader {
 			fileHeader = make([]byte, fileHeaderSize)
 			n, _ := io.ReadFull(remoteReader, fileHeader)
 			if n != fileHeaderSize {
 				fileHeader = nil
-				return nil, io.ErrUnexpectedEOF
+				return nil, fmt.Errorf("can't read data, expected=%d, got=%d", fileHeaderSize, n)
 			}
 			if readFileHeader {
 				remoteReader.Close()

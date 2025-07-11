@@ -3,7 +3,6 @@ package tool
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	stdpath "path"
 	"path/filepath"
@@ -278,9 +277,7 @@ func transferObjFile(t *TransferTask) error {
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", t.SrcObjPath)
 	}
-	link, _, err := op.Link(t.Ctx(), t.SrcStorage, t.SrcObjPath, model.LinkArgs{
-		Header: http.Header{},
-	})
+	link, _, err := op.Link(t.Ctx(), t.SrcStorage, t.SrcObjPath, model.LinkArgs{})
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] link", t.SrcObjPath)
 	}

@@ -3,7 +3,6 @@ package fs
 import (
 	"context"
 	"fmt"
-	"net/http"
 	stdpath "path"
 	"time"
 
@@ -86,9 +85,7 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 		}
 		if !srcObj.IsDir() {
 			// copy file directly
-			link, _, err := op.Link(ctx, srcStorage, srcObjActualPath, model.LinkArgs{
-				Header: http.Header{},
-			})
+			link, _, err := op.Link(ctx, srcStorage, srcObjActualPath, model.LinkArgs{})
 			if err != nil {
 				return nil, errors.WithMessagef(err, "failed get [%s] link", srcObjPath)
 			}
@@ -165,9 +162,7 @@ func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Drive
 		return errors.WithMessagef(err, "failed get src [%s] file", srcFilePath)
 	}
 	tsk.SetTotalBytes(srcFile.GetSize())
-	link, _, err := op.Link(tsk.Ctx(), srcStorage, srcFilePath, model.LinkArgs{
-		Header: http.Header{},
-	})
+	link, _, err := op.Link(tsk.Ctx(), srcStorage, srcFilePath, model.LinkArgs{})
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] link", srcFilePath)
 	}
