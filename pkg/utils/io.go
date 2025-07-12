@@ -204,14 +204,14 @@ func (c *SyncClosers) AcquireReference() bool {
 		return false
 	}
 	c.ref++
-	log.Debugf("Closers.AcquireReference %p,ref=%d\n", c, c.ref)
+	log.Debugf("SyncClosers.AcquireReference %p,ref=%d\n", c, c.ref)
 	return true
 }
 
 func (c *SyncClosers) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	defer log.Debugf("Closers.Close %p,ref=%d\n", c, c.ref)
+	defer log.Debugf("SyncClosers.Close %p,ref=%d\n", c, c.ref)
 	if c.ref > 1 {
 		c.ref--
 		return nil
