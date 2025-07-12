@@ -63,7 +63,7 @@ func FsList(c *gin.Context) {
 		return
 	}
 	req.Validate()
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	reqPath, err := user.JoinPath(req.Path)
 	if err != nil {
 		common.ErrorResp(c, err, 403)
@@ -76,7 +76,7 @@ func FsList(c *gin.Context) {
 			return
 		}
 	}
-	c.Set("meta", meta)
+	common.GinWithValue(c, conf.MetaKey, meta)
 	if !common.CanAccess(user, meta, reqPath, req.Password) {
 		common.ErrorStrResp(c, "password is incorrect or you have no permission", 403)
 		return
@@ -112,7 +112,7 @@ func FsDirs(c *gin.Context) {
 		common.ErrorResp(c, err, 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	reqPath := req.Path
 	if req.ForceRoot {
 		if !user.IsAdmin() {
@@ -134,7 +134,7 @@ func FsDirs(c *gin.Context) {
 			return
 		}
 	}
-	c.Set("meta", meta)
+	common.GinWithValue(c, conf.MetaKey, meta)
 	if !common.CanAccess(user, meta, reqPath, req.Password) {
 		common.ErrorStrResp(c, "password is incorrect or you have no permission", 403)
 		return
@@ -249,7 +249,7 @@ func FsGet(c *gin.Context) {
 		common.ErrorResp(c, err, 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	reqPath, err := user.JoinPath(req.Path)
 	if err != nil {
 		common.ErrorResp(c, err, 403)
@@ -262,7 +262,7 @@ func FsGet(c *gin.Context) {
 			return
 		}
 	}
-	c.Set("meta", meta)
+	common.GinWithValue(c, conf.MetaKey, meta)
 	if !common.CanAccess(user, meta, reqPath, req.Password) {
 		common.ErrorStrResp(c, "password is incorrect or you have no permission", 403)
 		return
@@ -376,7 +376,7 @@ func FsOther(c *gin.Context) {
 		common.ErrorResp(c, err, 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	var err error
 	req.Path, err = user.JoinPath(req.Path)
 	if err != nil {
@@ -390,7 +390,7 @@ func FsOther(c *gin.Context) {
 			return
 		}
 	}
-	c.Set("meta", meta)
+	common.GinWithValue(c, conf.MetaKey, meta)
 	if !common.CanAccess(user, meta, req.Path, req.Password) {
 		common.ErrorStrResp(c, "password is incorrect or you have no permission", 403)
 		return

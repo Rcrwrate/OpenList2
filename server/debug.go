@@ -5,6 +5,7 @@ import (
 	_ "net/http/pprof"
 	"runtime"
 
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/sign"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/OpenListTeam/OpenList/v4/server/middlewares"
@@ -17,7 +18,7 @@ func _pprof(g *gin.RouterGroup) {
 
 func debug(g *gin.RouterGroup) {
 	g.GET("/path/*path", middlewares.Down(sign.Verify), func(ctx *gin.Context) {
-		rawPath := ctx.MustGet("path").(string)
+		rawPath := ctx.Request.Context().Value(conf.PathKey).(string)
 		ctx.JSON(200, gin.H{
 			"path": rawPath,
 		})

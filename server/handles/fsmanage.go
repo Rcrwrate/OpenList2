@@ -4,6 +4,7 @@ import (
 	"fmt"
 	stdpath "path"
 
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
@@ -28,7 +29,7 @@ func FsMkdir(c *gin.Context) {
 		common.ErrorResp(c, err, 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	reqPath, err := user.JoinPath(req.Path)
 	if err != nil {
 		common.ErrorResp(c, err, 403)
@@ -71,7 +72,7 @@ func FsMove(c *gin.Context) {
 		common.ErrorStrResp(c, "Empty file names", 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !user.CanMove() {
 		common.ErrorResp(c, errs.PermissionDenied, 403)
 		return
@@ -133,7 +134,7 @@ func FsCopy(c *gin.Context) {
 		common.ErrorStrResp(c, "Empty file names", 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !user.CanCopy() {
 		common.ErrorResp(c, errs.PermissionDenied, 403)
 		return
@@ -197,7 +198,7 @@ func FsRename(c *gin.Context) {
 		common.ErrorResp(c, err, 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !user.CanRename() {
 		common.ErrorResp(c, errs.PermissionDenied, 403)
 		return
@@ -238,7 +239,7 @@ func FsRemove(c *gin.Context) {
 		common.ErrorStrResp(c, "Empty file names", 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !user.CanRemove() {
 		common.ErrorResp(c, errs.PermissionDenied, 403)
 		return
@@ -270,7 +271,7 @@ func FsRemoveEmptyDirectory(c *gin.Context) {
 		return
 	}
 
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !user.CanRemove() {
 		common.ErrorResp(c, errs.PermissionDenied, 403)
 		return
@@ -288,7 +289,7 @@ func FsRemoveEmptyDirectory(c *gin.Context) {
 			return
 		}
 	}
-	c.Set("meta", meta)
+	common.GinWithValue(c, conf.MetaKey, meta)
 
 	rootFiles, err := fs.List(c, srcDir, &fs.ListArgs{})
 	if err != nil {
@@ -365,7 +366,7 @@ func Link(c *gin.Context) {
 		common.ErrorResp(c, err, 400)
 		return
 	}
-	//user := c.MustGet("user").(*model.User)
+	//user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	//rawPath := stdpath.Join(user.BasePath, req.Path)
 	// why need not join base_path? because it's always the full path
 	rawPath := req.Path
