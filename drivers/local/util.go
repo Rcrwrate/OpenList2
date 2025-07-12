@@ -22,9 +22,6 @@ import (
 
 var sem *semaphore.Weighted
 
-func init() {
-	sem = semaphore.NewWeighted(int64(conf.Conf.ThumbConcurrency))
-}
 func isSymlinkDir(f fs.FileInfo, path string) bool {
 	if f.Mode()&os.ModeSymlink == os.ModeSymlink {
 		dst, err := os.Readlink(filepath.Join(path, f.Name()))
@@ -123,6 +120,9 @@ func (d *Local) getThumb(ctx context.Context, file model.Obj) (*bytes.Buffer, *s
 		if utils.Exists(thumbPath) {
 			return nil, &thumbPath, nil
 		}
+	}
+	if sem == nil {
+		sem = semaphore.NewWeighted(int64(conf.Conf.ThumbConcurrency))
 	}
 	if err := sem.Acquire(ctx, 1); err != nil {
 		return nil, nil, err
