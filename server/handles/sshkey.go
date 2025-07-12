@@ -17,7 +17,7 @@ type SSHKeyAddReq struct {
 }
 
 func AddMyPublicKey(c *gin.Context) {
-	userObj, ok := c.Value(conf.UserKey).(*model.User)
+	userObj, ok := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !ok || userObj.IsGuest() {
 		common.ErrorStrResp(c, "user invalid", 401)
 		return
@@ -48,7 +48,7 @@ func AddMyPublicKey(c *gin.Context) {
 }
 
 func ListMyPublicKey(c *gin.Context) {
-	userObj, ok := c.Value(conf.UserKey).(*model.User)
+	userObj, ok := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !ok || userObj.IsGuest() {
 		common.ErrorStrResp(c, "user invalid", 401)
 		return
@@ -57,7 +57,7 @@ func ListMyPublicKey(c *gin.Context) {
 }
 
 func DeleteMyPublicKey(c *gin.Context) {
-	userObj, ok := c.Value(conf.UserKey).(*model.User)
+	userObj, ok := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !ok || userObj.IsGuest() {
 		common.ErrorStrResp(c, "user invalid", 401)
 		return

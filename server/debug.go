@@ -17,14 +17,14 @@ func _pprof(g *gin.RouterGroup) {
 }
 
 func debug(g *gin.RouterGroup) {
-	g.GET("/path/*path", middlewares.Down(sign.Verify), func(ctx *gin.Context) {
-		rawPath := ctx.Request.Context().Value(conf.PathKey).(string)
-		ctx.JSON(200, gin.H{
+	g.GET("/path/*path", middlewares.Down(sign.Verify), func(c *gin.Context) {
+		rawPath := c.Request.Context().Value(conf.PathKey).(string)
+		c.JSON(200, gin.H{
 			"path": rawPath,
 		})
 	})
-	g.GET("/hide_privacy", func(ctx *gin.Context) {
-		common.ErrorStrResp(ctx, "This is ip: 1.1.1.1", 400)
+	g.GET("/hide_privacy", func(c *gin.Context) {
+		common.ErrorStrResp(c, "This is ip: 1.1.1.1", 400)
 	})
 	g.GET("/gc", func(c *gin.Context) {
 		runtime.GC()

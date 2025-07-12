@@ -106,7 +106,7 @@ func FsArchiveMeta(c *gin.Context) {
 		},
 		Password: req.ArchivePass,
 	}
-	ret, err := fs.ArchiveMeta(c, reqPath, model.ArchiveMetaArgs{
+	ret, err := fs.ArchiveMeta(c.Request.Context(), reqPath, model.ArchiveMetaArgs{
 		ArchiveArgs: archiveArgs,
 		Refresh:     req.Refresh,
 	})
@@ -176,7 +176,7 @@ func FsArchiveList(c *gin.Context) {
 		common.ErrorStrResp(c, "password is incorrect or you have no permission", 403)
 		return
 	}
-	objs, err := fs.ArchiveList(c, reqPath, model.ArchiveListArgs{
+	objs, err := fs.ArchiveList(c.Request.Context(), reqPath, model.ArchiveListArgs{
 		ArchiveInnerArgs: model.ArchiveInnerArgs{
 			ArchiveArgs: model.ArchiveArgs{
 				LinkArgs: model.LinkArgs{
@@ -260,7 +260,7 @@ func FsArchiveDecompress(c *gin.Context) {
 	}
 	tasks := make([]task.TaskExtensionInfo, 0, len(srcPaths))
 	for _, srcPath := range srcPaths {
-		t, e := fs.ArchiveDecompress(c, srcPath, dstDir, model.ArchiveDecompressArgs{
+		t, e := fs.ArchiveDecompress(c.Request.Context(), srcPath, dstDir, model.ArchiveDecompressArgs{
 			ArchiveInnerArgs: model.ArchiveInnerArgs{
 				ArchiveArgs: model.ArchiveArgs{
 					LinkArgs: model.LinkArgs{
@@ -305,7 +305,7 @@ func ArchiveDown(c *gin.Context) {
 		ArchiveProxy(c)
 		return
 	} else {
-		link, _, err := fs.ArchiveDriverExtract(c, archiveRawPath, model.ArchiveInnerArgs{
+		link, _, err := fs.ArchiveDriverExtract(c.Request.Context(), archiveRawPath, model.ArchiveInnerArgs{
 			ArchiveArgs: model.ArchiveArgs{
 				LinkArgs: model.LinkArgs{
 					IP:       c.ClientIP(),
@@ -337,7 +337,7 @@ func ArchiveProxy(c *gin.Context) {
 	}
 	if canProxy(storage, filename) {
 		// TODO: Support external download proxy URL
-		link, file, err := fs.ArchiveDriverExtract(c, archiveRawPath, model.ArchiveInnerArgs{
+		link, file, err := fs.ArchiveDriverExtract(c.Request.Context(), archiveRawPath, model.ArchiveInnerArgs{
 			ArchiveArgs: model.ArchiveArgs{
 				LinkArgs: model.LinkArgs{
 					Header: c.Request.Header,
@@ -362,7 +362,7 @@ func ArchiveInternalExtract(c *gin.Context) {
 	archiveRawPath := c.Request.Context().Value(conf.PathKey).(string)
 	innerPath := utils.FixAndCleanPath(c.Query("inner"))
 	password := c.Query("pass")
-	rc, size, err := fs.ArchiveInternalExtract(c, archiveRawPath, model.ArchiveInnerArgs{
+	rc, size, err := fs.ArchiveInternalExtract(c.Request.Context(), archiveRawPath, model.ArchiveInnerArgs{
 		ArchiveArgs: model.ArchiveArgs{
 			LinkArgs: model.LinkArgs{
 				Header: c.Request.Header,

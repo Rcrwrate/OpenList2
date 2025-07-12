@@ -70,7 +70,7 @@ func argsContains[T comparable](v T, slice ...T) bool {
 }
 
 func getUserInfo(c *gin.Context) (bool, uint, bool) {
-	if user, ok := c.Value(conf.UserKey).(*model.User); ok {
+	if user, ok := c.Request.Context().Value(conf.UserKey).(*model.User); ok {
 		return user.IsAdmin(), user.ID, true
 	} else {
 		return false, 0, false
