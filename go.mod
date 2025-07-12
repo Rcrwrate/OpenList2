@@ -53,7 +53,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/sftp v1.13.9
 	github.com/pquerna/otp v1.4.0
-	github.com/rclone/rclone v1.67.0
+	github.com/rclone/rclone v1.68.2
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/afero v1.14.0
@@ -82,6 +82,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/RoaringBitmap/roaring/v2 v2.4.5 // indirect
+	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/mikelolasagasti/xz v1.0.1 // indirect
 	github.com/minio/minlz v1.0.0 // indirect
 	github.com/minio/xxml v0.0.3 // indirect
@@ -100,7 +101,7 @@ require (
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/charmbracelet/x/ansi v0.3.2 // indirect
 	github.com/charmbracelet/x/term v0.2.0 // indirect
-	github.com/cloudflare/circl v1.3.7 // indirect
+	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
@@ -126,7 +127,6 @@ require (
 require (
 	github.com/Max-Sum/base32768 v0.0.0-20230304063302-18e6ce5945fd // indirect
 	github.com/OpenListTeam/gsync v0.1.0 // indirect
-	github.com/RoaringBitmap/roaring v1.9.3 // indirect
 	github.com/abbot/go-http-auth v0.4.0 // indirect
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/andreburgaud/crypt2go v1.8.0 // indirect
@@ -163,7 +163,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
 	github.com/geoffgarside/ber v1.1.0 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
-	github.com/go-chi/chi/v5 v5.0.12 // indirect
+	github.com/go-chi/chi/v5 v5.1.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -171,8 +171,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/go-webauthn/x v0.1.12 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
-	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-tpm v0.9.1 // indirect
@@ -236,7 +235,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/ryszard/goskiplist v0.0.0-20150312221310-2dfbae5fcf46 // indirect
 	github.com/shabbyrobe/gocovmerge v0.0.0-20230507112040-c3350d9342df // indirect
-	github.com/shirou/gopsutil/v3 v3.24.4 // indirect
+	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
@@ -257,8 +256,7 @@ require (
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.26.0
 	golang.org/x/tools v0.33.0 // indirect
-	google.golang.org/api v0.169.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240708141625-4ad9e859172b // indirect
 	google.golang.org/grpc v1.66.0
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
