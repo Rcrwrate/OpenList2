@@ -1,6 +1,7 @@
 package handles
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -117,6 +118,7 @@ func DefaultSettings(c *gin.Context) {
 			}
 			groups = append(groups, group)
 		}
+		sort.Ints(groups)
 		var resultItems []model.SettingItem
 		for _, group := range groups {
 			for i := range settings {
