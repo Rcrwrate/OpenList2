@@ -48,8 +48,10 @@ func initSettings() {
 	for i := range initialSettingItems {
 		item := &initialSettingItems[i]
 		item.Index = uint(i)
-		if len(item.MigrationValue) > 0 {
+		migrationValue := item.MigrationValue
+		if len(migrationValue) > 0 {
 			op.MigrationSettingItems[item.Key] = op.MigrationValueItem{MigrationValue: item.MigrationValue, Value: item.Value}
+			item.MigrationValue = ""
 		}
 		// err
 		stored, ok := settingMap[item.Key]
@@ -61,7 +63,7 @@ func initSettings() {
 			}
 		}
 		if item.Key != conf.VERSION && stored != nil &&
-			(len(item.MigrationValue) == 0 || stored.Value != item.MigrationValue) {
+			(len(migrationValue) == 0 || stored.Value != migrationValue) {
 			item.Value = stored.Value
 		}
 		_, err = op.HandleSettingItemHook(item)
