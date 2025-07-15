@@ -21,6 +21,8 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
+	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -66,6 +68,9 @@ func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadT
 	var err error
 	if t.srcStorage == nil {
 		t.srcStorage, err = op.GetStorageByMountPath(t.SrcStorageMp)
+		if err != nil {
+			return nil, err
+		}
 	}
 	srcObj, tool, ss, err := op.GetArchiveToolAndStream(t.Ctx(), t.srcStorage, t.SrcObjPath, model.LinkArgs{})
 	if err != nil {
@@ -150,7 +155,16 @@ func (t *ArchiveContentUploadTask) GetStatus() string {
 	return t.status
 }
 
-func (t *ArchiveContentUploadTask) Run() error {
+var _ task.Lifecycle = (*ArchiveContentUploadTask)(nil)
+
+func (t *ArchiveContentUploadTask) BeforeRun() error {
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), batch_task.TaskMap{
+		batch_task.NeedRefreshPath: stdpath.Join(t.DstStorageMp, t.DstDirPath),
+	})
+	return nil
+}
+
+func (t *ArchiveContentUploadTask) RunCore() error {
 	if err := t.ReinitCtx(); err != nil {
 		return err
 	}
@@ -162,11 +176,40 @@ func (t *ArchiveContentUploadTask) Run() error {
 		return nil
 	})
 }
+func (t *ArchiveContentUploadTask) AfterRun(err error) error {
+	allFinish := true
+	// 需要先更新任务状态，再进行判断
+	if err == nil {
+		t.State = tache.StateSucceeded
+	} else {
+		t.State = tache.StateFailed
+	}
+	for _, ct := range ArchiveContentUploadTaskManager.GetAll() {
+		if !utils.SliceContains([]tache.State{
+			tache.StateSucceeded,
+			tache.StateFailed,
+			tache.StateCanceled,
+		}, ct.GetState()) {
+			allFinish = false
+			break
+		}
+
+	}
+	batch_task.BatchTaskRefreshAndRemoveHook.RemoveTask(t.GetID(), allFinish)
+	return err
+}
+
+func (t *ArchiveContentUploadTask) Run() error {
+	return task.RunWithLifecycle(t)
+}
 
 func (t *ArchiveContentUploadTask) RunWithNextTaskCallback(f func(nextTsk *ArchiveContentUploadTask) error) error {
 	var err error
 	if t.dstStorage == nil {
 		t.dstStorage, err = op.GetStorageByMountPath(t.DstStorageMp)
+		if err != nil {
+			return err
+		}
 	}
 	info, err := os.Stat(t.FilePath)
 	if err != nil {

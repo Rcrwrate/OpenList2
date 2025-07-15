@@ -53,13 +53,12 @@ func _moveWithValidation(ctx context.Context, srcPath, dstPath string, validateE
 		DstStorageMp: dstStorage.GetStorage().MountPath,
 	}
 
-	taskMap := batch_task.TaskMap{
-		batch_task.MoveSrcPath: stdpath.Join(srcStorage.GetStorage().MountPath, srcObjActualPath),
-		batch_task.MoveDstPath: stdpath.Join(dstStorage.GetStorage().MountPath, dstDirActualPath),
-	}
 	taskID := fmt.Sprintf("%p", copyTask)
 	copyTask.SetID(taskID)
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(taskID, taskMap)
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(taskID, batch_task.TaskMap{
+		batch_task.MoveSrcPath: stdpath.Join(copyTask.SrcStorageMp, srcObjActualPath),
+		batch_task.MoveDstPath: stdpath.Join(copyTask.DstStorageMp, dstDirActualPath),
+	})
 	CopyTaskManager.Add(copyTask)
 	return nil
 }

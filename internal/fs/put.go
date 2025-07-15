@@ -21,7 +21,6 @@ import (
 
 type UploadTask struct {
 	task.TaskExtension
-	task.Lifecycle
 	storage          driver.Driver
 	dstDirActualPath string
 	file             model.FileStreamer
@@ -34,6 +33,8 @@ func (t *UploadTask) GetName() string {
 func (t *UploadTask) GetStatus() string {
 	return "uploading"
 }
+
+var _ task.Lifecycle = (*UploadTask)(nil)
 
 func (t *UploadTask) BeforeRun() error {
 	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), batch_task.TaskMap{

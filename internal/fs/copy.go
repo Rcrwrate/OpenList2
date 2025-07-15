@@ -22,7 +22,6 @@ import (
 
 type CopyTask struct {
 	task.TaskExtension
-	task.Lifecycle
 	Status       string        `json:"-"` //don't save status to save space
 	SrcObjPath   string        `json:"src_path"`
 	DstDirPath   string        `json:"dst_path"`
@@ -40,9 +39,11 @@ func (t *CopyTask) GetStatus() string {
 	return t.Status
 }
 
+var _ task.Lifecycle = (*CopyTask)(nil)
+
 func (t *CopyTask) BeforeRun() error {
 	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), batch_task.TaskMap{
-		batch_task.NeedRefreshPath: stdpath.Join(t.dstStorage.GetStorage().MountPath, t.DstDirPath),
+		batch_task.NeedRefreshPath: stdpath.Join(t.DstStorageMp, t.DstDirPath),
 	})
 	return nil
 }
