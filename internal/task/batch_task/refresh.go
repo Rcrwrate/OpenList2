@@ -7,6 +7,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	stdpath "path"
 )
 
@@ -26,29 +27,30 @@ func InitBatchTaskHook() {
 }
 
 func refreshAndRemove() {
-	for _, taskMap := range BatchTaskRefreshAndRemoveHook.TaskArgs {
-		needRefreshPath := taskMap[NeedRefreshPath]
-		if needRefreshPath != nil {
-			if refreshPath, ok := needRefreshPath.(string); ok {
+	for _, taskMap := range BatchTaskRefreshAndRemoveHook.GetAllTaskArgs() {
+		if refreshPathRaw, ok := taskMap[NeedRefreshPath]; ok {
+			if refreshPath, ok := refreshPathRaw.(string); ok {
 				storage, actualPath, _ := op.GetStorageAndActualPath(refreshPath)
 				op.ClearCache(storage, actualPath)
 			}
 		}
-		moveSrcPath := taskMap[MoveSrcPath]
-		moveDstPath := taskMap[MoveDstPath]
-		if moveSrcPath != nil && moveDstPath != nil {
-			srcPath, srcOk := moveSrcPath.(string)
-			dstPath, dstOk := moveDstPath.(string)
-			if srcOk && dstOk {
-				srcStorage, srcObjActualPath, err := op.GetStorageAndActualPath(srcPath)
-				if err != nil {
-					return
+		if srcPathRaw, ok := taskMap[MoveSrcPath]; ok {
+			if dstPathRaw, ok := taskMap[MoveDstPath]; ok {
+				srcPath, srcOk := srcPathRaw.(string)
+				dstPath, dstOk := dstPathRaw.(string)
+				if srcOk && dstOk {
+					srcStorage, srcActualPath, err := op.GetStorageAndActualPath(srcPath)
+					if err != nil {
+						log.Errorf("Failed to get storage for path: %v", err)
+						continue
+					}
+					dstStorage, dstActualPath, err := op.GetStorageAndActualPath(dstPath)
+					if err != nil {
+						log.Errorf("Failed to get storage for path: %v", err)
+						continue
+					}
+					_ = verifyAndRemove(srcStorage, dstStorage, srcActualPath, dstActualPath)
 				}
-				dstStorage, dstDirActualPath, err := op.GetStorageAndActualPath(dstPath)
-				if err != nil {
-					return
-				}
-				_ = verifyAndRemove(srcStorage, dstStorage, srcObjActualPath, dstDirActualPath)
 			}
 		}
 	}

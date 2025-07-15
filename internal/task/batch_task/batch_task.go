@@ -7,43 +7,64 @@ import (
 type BatchTaskHook struct {
 	name          string
 	mu            sync.Mutex
-	Tasks         map[string]struct{}
-	TaskArgs      map[string]map[string]any
-	AllFinishHook func()
+	tasks         map[string]struct{}
+	taskArgs      map[string]map[string]any
+	allFinishHook func()
 }
 
 func NewBatchTaskHook(name string) *BatchTaskHook {
 	return &BatchTaskHook{
 		name:     name,
-		Tasks:    make(map[string]struct{}),
-		TaskArgs: make(map[string]map[string]any),
+		tasks:    make(map[string]struct{}),
+		taskArgs: make(map[string]map[string]any),
 	}
 }
 
 func (bt *BatchTaskHook) SetAllFinishHook(f func()) *BatchTaskHook {
-	bt.AllFinishHook = f
+	bt.allFinishHook = f
 	return bt
 }
 
 func (bt *BatchTaskHook) AddTask(taskID string, taskMap map[string]any) {
 	bt.mu.Lock()
 	defer bt.mu.Unlock()
-	bt.Tasks[taskID] = struct{}{}
-	if existingMap, ok := bt.TaskArgs[taskID]; ok {
+	bt.tasks[taskID] = struct{}{}
+	if existingMap, ok := bt.taskArgs[taskID]; ok {
 		for k, v := range taskMap {
 			existingMap[k] = v
 		}
 	} else {
-		bt.TaskArgs[taskID] = taskMap
+		newMap := make(map[string]any, len(taskMap))
+		for k, v := range taskMap {
+			newMap[k] = v
+		}
+		bt.taskArgs[taskID] = newMap
 	}
 }
 
 func (bt *BatchTaskHook) RemoveTask(taskID string, allFinish bool) {
 	bt.mu.Lock()
 	defer bt.mu.Unlock()
-	delete(bt.Tasks, taskID)
-	if len(bt.Tasks) == 0 && allFinish {
-		bt.AllFinishHook()
-		bt.TaskArgs = make(map[string]map[string]any)
+	delete(bt.tasks, taskID)
+	if len(bt.tasks) == 0 && allFinish {
+		if bt.allFinishHook != nil {
+			bt.allFinishHook()
+		}
+		bt.taskArgs = make(map[string]map[string]any)
 	}
+}
+
+func (bt *BatchTaskHook) GetAllTaskArgs() map[string]map[string]any {
+	bt.mu.Lock()
+	defer bt.mu.Unlock()
+
+	result := make(map[string]map[string]any, len(bt.taskArgs))
+	for taskID, args := range bt.taskArgs {
+		copyArgs := make(map[string]any, len(args))
+		for k, v := range args {
+			copyArgs[k] = v
+		}
+		result[taskID] = copyArgs
+	}
+	return result
 }
