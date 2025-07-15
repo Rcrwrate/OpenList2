@@ -74,12 +74,12 @@ func Move(ctx context.Context, srcPath, dstDirPath string, lazyCache ...bool) er
 	return err
 }
 
-func MoveWithTaskAndValidation(ctx context.Context, srcPath, dstDirPath string, validateExistence bool, lazyCache ...bool) error {
-	err := _moveWithValidation(ctx, srcPath, dstDirPath, validateExistence, lazyCache...)
+func MoveWithTaskAndValidation(ctx context.Context, srcPath, dstDirPath string, lazyCache ...bool) (task.TaskExtensionInfo, error) {
+	res, err := _moveWithValidation(ctx, srcPath, dstDirPath, lazyCache...)
 	if err != nil {
 		log.Errorf("failed move %s to %s: %+v", srcPath, dstDirPath, err)
 	}
-	return err
+	return res, err
 }
 
 func Copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool) (task.TaskExtensionInfo, error) {
