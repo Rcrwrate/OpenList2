@@ -29,6 +29,7 @@ type CopyTask struct {
 	dstStorage   driver.Driver `json:"-"`
 	SrcStorageMp string        `json:"src_storage_mp"`
 	DstStorageMp string        `json:"dst_storage_mp"`
+	targetPath   string
 }
 
 func (t *CopyTask) GetName() string {
@@ -66,8 +67,7 @@ func (t *CopyTask) RunCore() error {
 }
 
 func (t *CopyTask) AfterRun(err error) error {
-	dstPath := stdpath.Join(t.DstStorageMp, t.DstDirPath)
-	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(dstPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
 	return err
 }
 
@@ -131,8 +131,9 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 		DstDirPath:   dstDirActualPath,
 		SrcStorageMp: srcStorage.GetStorage().MountPath,
 		DstStorageMp: dstStorage.GetStorage().MountPath,
+		targetPath:   dstDirPath,
 	}
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstDirPath, batch_task.TaskPayload{})
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstDirPath, nil)
 	CopyTaskManager.Add(t)
 	return t, nil
 }
@@ -166,9 +167,9 @@ func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, src
 				DstDirPath:   dstObjPath,
 				SrcStorageMp: srcStorage.GetStorage().MountPath,
 				DstStorageMp: dstStorage.GetStorage().MountPath,
+				targetPath:   t.targetPath,
 			}
-			targetPath := stdpath.Join(task.DstStorageMp, dstObjPath)
-			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{})
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
 			CopyTaskManager.Add(task)
 		}
 		t.Status = "src object is dir, added all copy tasks of objs"

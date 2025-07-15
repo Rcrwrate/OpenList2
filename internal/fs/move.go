@@ -30,6 +30,7 @@ type MoveTask struct {
 	dstStorage   driver.Driver `json:"-"`
 	SrcStorageMp string        `json:"src_storage_mp"`
 	DstStorageMp string        `json:"dst_storage_mp"`
+	targetPath   string
 }
 
 func (t *MoveTask) GetName() string {
@@ -71,8 +72,7 @@ func (t *MoveTask) RunCore() error {
 }
 
 func (t *MoveTask) AfterRun(err error) error {
-	targetPath := stdpath.Join(t.DstStorageMp, t.DstDirPath)
-	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
 	return err
 }
 
@@ -90,7 +90,7 @@ func _moveWithValidation(ctx context.Context, srcPath, dstPath string, lazyCache
 
 	_, err = op.Get(ctx, srcStorage, srcObjActualPath)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "failed get src [%s] object", srcPath)
+		return nil, errors.WithMessagef(err, "failed get src [%s] file", srcPath)
 	}
 
 	// Try native move first if in the same storage
@@ -113,11 +113,9 @@ func _moveWithValidation(ctx context.Context, srcPath, dstPath string, lazyCache
 		DstDirPath:   dstDirActualPath,
 		SrcStorageMp: srcStorage.GetStorage().MountPath,
 		DstStorageMp: dstStorage.GetStorage().MountPath,
+		targetPath:   dstPath,
 	}
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstPath, batch_task.TaskPayload{
-		batch_task.MoveSrcPath: srcPath,
-		batch_task.MoveDstPath: dstPath,
-	})
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstPath, batch_task.MoveSrcPathPayload(srcPath))
 	MoveTaskManager.Add(moveTask)
 	return moveTask, nil
 }
@@ -151,12 +149,9 @@ func moveBetween2Storages(t *MoveTask, srcStorage, dstStorage driver.Driver, src
 				DstDirPath:   dstObjPath,
 				SrcStorageMp: srcStorage.GetStorage().MountPath,
 				DstStorageMp: dstStorage.GetStorage().MountPath,
+				targetPath:   t.targetPath,
 			}
-			targetPath := stdpath.Join(moveTask.DstStorageMp, moveTask.DstDirPath)
-			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{
-				batch_task.MoveSrcPath: stdpath.Join(moveTask.SrcStorageMp, moveTask.SrcObjPath),
-				batch_task.MoveDstPath: targetPath,
-			})
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
 			MoveTaskManager.Add(moveTask)
 		}
 		t.Status = "src object is dir, added all move tasks of objs"

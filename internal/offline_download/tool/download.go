@@ -186,6 +186,7 @@ func (t *DownloadTask) Transfer() error {
 		task := &TransferTask{
 			TaskExtension: task.TaskExtension{
 				Creator: taskCreator,
+				ApiUrl:  t.ApiUrl,
 			},
 			SrcObjPath:   t.TempDir,
 			DstDirPath:   dstDirActualPath,
@@ -193,9 +194,10 @@ func (t *DownloadTask) Transfer() error {
 			DstStorageMp: dstStorage.GetStorage().MountPath,
 			DeletePolicy: t.DeletePolicy,
 			Url:          t.Url,
+			targetPath:   t.DstDirPath,
 		}
 		task.SetTotalBytes(t.GetTotalBytes())
-		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.DstDirPath, batch_task.TaskPayload{})
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.DstDirPath, nil)
 		TransferTaskManager.Add(task)
 		return nil
 	}

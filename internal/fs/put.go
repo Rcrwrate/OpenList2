@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
@@ -79,13 +80,14 @@ func putAsTask(ctx context.Context, dstDirPath string, file model.FileStreamer) 
 	t := &UploadTask{
 		TaskExtension: task.TaskExtension{
 			Creator: taskCreator,
+			ApiUrl:  common.GetApiUrl(ctx),
 		},
 		storage:          storage,
 		dstDirActualPath: dstDirActualPath,
 		file:             file,
 	}
 	t.SetTotalBytes(file.GetSize())
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstDirPath, batch_task.TaskPayload{})
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstDirPath, nil)
 	UploadTaskManager.Add(t)
 	return t, nil
 }

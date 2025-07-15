@@ -22,6 +22,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
 	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -59,8 +60,8 @@ func (t *ArchiveDownloadTask) Run() error {
 	if err != nil {
 		return err
 	}
-	targetPath := stdpath.Join(uploadTask.DstStorageMp, uploadTask.DstDirPath)
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{})
+	uploadTask.targetPath = stdpath.Join(uploadTask.DstStorageMp, uploadTask.DstDirPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(uploadTask.targetPath, nil)
 	ArchiveContentUploadTaskManager.Add(uploadTask)
 	return nil
 }
@@ -123,6 +124,7 @@ func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadT
 	uploadTask := &ArchiveContentUploadTask{
 		TaskExtension: task.TaskExtension{
 			Creator: t.GetCreator(),
+			ApiUrl:  t.ApiUrl,
 		},
 		ObjName:      baseName,
 		InPlace:      !t.PutIntoNewDir,
@@ -146,6 +148,7 @@ type ArchiveContentUploadTask struct {
 	dstStorage   driver.Driver
 	DstStorageMp string
 	finalized    bool
+	targetPath   string
 }
 
 func (t *ArchiveContentUploadTask) GetName() string {
@@ -170,15 +173,14 @@ func (t *ArchiveContentUploadTask) RunCore() error {
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
 	return t.RunWithNextTaskCallback(func(nextTsk *ArchiveContentUploadTask) error {
-		targetPath := stdpath.Join(nextTsk.DstStorageMp, nextTsk.DstDirPath)
-		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{})
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
+		nextTsk.targetPath = t.targetPath
 		ArchiveContentUploadTaskManager.Add(nextTsk)
 		return nil
 	})
 }
 func (t *ArchiveContentUploadTask) AfterRun(err error) error {
-	targetPath := stdpath.Join(t.DstStorageMp, t.DstDirPath)
-	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
 	return err
 }
 
@@ -227,6 +229,7 @@ func (t *ArchiveContentUploadTask) RunWithNextTaskCallback(f func(nextTsk *Archi
 			err = f(&ArchiveContentUploadTask{
 				TaskExtension: task.TaskExtension{
 					Creator: t.GetCreator(),
+					ApiUrl:  t.ApiUrl,
 				},
 				ObjName:      entry.Name(),
 				InPlace:      false,
@@ -382,6 +385,7 @@ func archiveDecompress(ctx context.Context, srcObjPath, dstDirPath string, args 
 	tsk := &ArchiveDownloadTask{
 		TaskExtension: task.TaskExtension{
 			Creator: taskCreator,
+			ApiUrl:  common.GetApiUrl(ctx),
 		},
 		ArchiveDecompressArgs: args,
 		srcStorage:            srcStorage,
