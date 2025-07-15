@@ -37,8 +37,6 @@ type TransferTask struct {
 	targetPath   string
 }
 
-var _ task.Lifecycle = (*TransferTask)(nil)
-
 func (t *TransferTask) BeforeRun() error {
 	return nil
 }

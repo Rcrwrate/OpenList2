@@ -159,8 +159,6 @@ func (t *ArchiveContentUploadTask) GetStatus() string {
 	return t.status
 }
 
-var _ task.Lifecycle = (*ArchiveContentUploadTask)(nil)
-
 func (t *ArchiveContentUploadTask) BeforeRun() error {
 	return nil
 }

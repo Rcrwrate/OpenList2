@@ -21,17 +21,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type MoveTask struct {
-	task.TaskExtension
-	Status       string        `json:"-"` //don't save status to save space
-	SrcObjPath   string        `json:"src_path"`
-	DstDirPath   string        `json:"dst_path"`
-	srcStorage   driver.Driver `json:"-"`
-	dstStorage   driver.Driver `json:"-"`
-	SrcStorageMp string        `json:"src_storage_mp"`
-	DstStorageMp string        `json:"dst_storage_mp"`
-	targetPath   string
-}
+type MoveTask CopyTask
 
 func (t *MoveTask) GetName() string {
 	return fmt.Sprintf("move [%s](%s) to [%s](%s)", t.SrcStorageMp, t.SrcObjPath, t.DstStorageMp, t.DstDirPath)
@@ -44,8 +34,6 @@ func (t *MoveTask) GetStatus() string {
 func (t *MoveTask) Run() error {
 	return task.RunWithLifecycle(t)
 }
-
-var _ task.Lifecycle = (*MoveTask)(nil)
 
 func (t *MoveTask) BeforeRun() error {
 	return nil

@@ -40,8 +40,6 @@ func (t *CopyTask) GetStatus() string {
 	return t.Status
 }
 
-var _ task.Lifecycle = (*CopyTask)(nil)
-
 func (t *CopyTask) BeforeRun() error {
 	return nil
 }

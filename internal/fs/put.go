@@ -34,8 +34,6 @@ func (t *UploadTask) GetStatus() string {
 	return "uploading"
 }
 
-var _ task.Lifecycle = (*UploadTask)(nil)
-
 func (t *UploadTask) BeforeRun() error {
 	return nil
 }

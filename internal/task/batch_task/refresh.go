@@ -3,7 +3,6 @@ package batch_task
 import (
 	"context"
 	"path"
-	stdpath "path"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
@@ -60,7 +59,7 @@ func verify(ctx context.Context, srcStorage, dstStorage driver.Driver, srcPath, 
 		return errors.WithMessagef(err, "failed get src [%s] file", path.Join(srcStorage.GetStorage().MountPath, srcPath))
 	}
 
-	dstObjPath := stdpath.Join(dstPath, srcObj.GetName())
+	dstObjPath := path.Join(dstPath, srcObj.GetName())
 	dstObj, err := op.Get(ctx, dstStorage, dstObjPath)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get dst [%s] file", path.Join(dstStorage.GetStorage().MountPath, dstObjPath))
@@ -77,7 +76,7 @@ func verify(ctx context.Context, srcStorage, dstStorage driver.Driver, srcPath, 
 	}
 
 	for _, obj := range srcObjs {
-		srcSubPath := stdpath.Join(srcPath, obj.GetName())
+		srcSubPath := path.Join(srcPath, obj.GetName())
 		err := verify(ctx, srcStorage, dstStorage, srcSubPath, dstObjPath)
 		if err != nil {
 			return err
