@@ -14,7 +14,7 @@ var BatchTaskRefreshAndRemoveHook *BatchTaskHook
 
 const (
 	NeedRefreshPath = "needRefreshPath"
-	MoveSrcPath     = "moveSstPath"
+	MoveSrcPath     = "moveSrcPath"
 	MoveDstPath     = "moveDstPath"
 )
 
