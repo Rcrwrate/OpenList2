@@ -3,6 +3,9 @@ package fs
 import (
 	"context"
 	"fmt"
+	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	stdpath "path"
 	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
@@ -17,6 +20,7 @@ import (
 
 type UploadTask struct {
 	task.TaskExtension
+	task.Lifecycle
 	storage          driver.Driver
 	dstDirActualPath string
 	file             model.FileStreamer
@@ -30,11 +34,43 @@ func (t *UploadTask) GetStatus() string {
 	return "uploading"
 }
 
-func (t *UploadTask) Run() error {
+func (t *UploadTask) BeforeRun() error {
+	taskMap := make(map[string]any)
+	taskMap[batch_task.NeedRefreshPath] = stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), taskMap)
+	return nil
+}
+
+func (t *UploadTask) RunCore() error {
 	t.ClearEndTime()
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
 	return op.Put(t.Ctx(), t.storage, t.dstDirActualPath, t.file, t.SetProgress, true)
+}
+
+func (t *UploadTask) AfterRun(err error) error {
+	allFinish := true
+	// 需要先更新任务状态，再进行判断
+	if err == nil {
+		t.State = tache.StateSucceeded
+	} else {
+		t.State = tache.StateFailed
+	}
+	for _, ct := range CopyTaskManager.GetAll() {
+		if !utils.SliceContains([]tache.State{
+			tache.StateSucceeded,
+			tache.StateFailed,
+			tache.StateCanceled,
+		}, ct.GetState()) {
+			allFinish = false
+		}
+	}
+	batch_task.BatchTaskRefreshAndRemoveHook.RemoveTask(t.GetID(), allFinish)
+	return err
+}
+
+func (t *UploadTask) Run() error {
+	return task.RunWithLifecycle(t)
 }
 
 var UploadTaskManager *tache.Manager[*UploadTask]

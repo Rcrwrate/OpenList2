@@ -97,31 +97,14 @@ func FsMove(c *gin.Context) {
 		}
 	}
 
-	// Create all tasks immediately without any synchronous validation
-	// All validation will be done asynchronously in the background
-	var addedTasks []task.TaskExtensionInfo
 	for i, name := range req.Names {
-		t, err := fs.MoveWithTaskAndValidation(c.Request.Context(), stdpath.Join(srcDir, name), dstDir, !req.Overwrite, len(req.Names) > i+1)
-		if t != nil {
-			addedTasks = append(addedTasks, t)
-		}
+		err := fs.MoveWithTaskAndValidation(c.Request.Context(), stdpath.Join(srcDir, name), dstDir, !req.Overwrite, len(req.Names) > i+1)
 		if err != nil {
 			common.ErrorResp(c, err, 500)
 			return
 		}
 	}
-
-	// Return immediately with task information
-	if len(addedTasks) > 0 {
-		common.SuccessResp(c, gin.H{
-			"message": fmt.Sprintf("Successfully created %d move task(s)", len(addedTasks)),
-			"tasks":   getTaskInfos(addedTasks),
-		})
-	} else {
-		common.SuccessResp(c, gin.H{
-			"message": "Move operations completed immediately",
-		})
-	}
+	common.SuccessResp(c)
 }
 
 func FsCopy(c *gin.Context) {

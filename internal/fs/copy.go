@@ -3,9 +3,6 @@ package fs
 import (
 	"context"
 	"fmt"
-	stdpath "path"
-	"time"
-
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
@@ -13,14 +10,18 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
+	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
+	stdpath "path"
+	"time"
 )
 
 type CopyTask struct {
 	task.TaskExtension
+	task.Lifecycle
 	Status       string        `json:"-"` //don't save status to save space
 	SrcObjPath   string        `json:"src_path"`
 	DstDirPath   string        `json:"dst_path"`
@@ -38,7 +39,14 @@ func (t *CopyTask) GetStatus() string {
 	return t.Status
 }
 
-func (t *CopyTask) Run() error {
+func (t *CopyTask) BeforeRun() error {
+	taskMap := make(map[string]any)
+	taskMap[batch_task.NeedRefreshPath] = stdpath.Join(t.dstStorage.GetStorage().MountPath, t.DstDirPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), taskMap)
+	return nil
+}
+
+func (t *CopyTask) RunCore() error {
 	if err := t.ReinitCtx(); err != nil {
 		return err
 	}
@@ -56,6 +64,32 @@ func (t *CopyTask) Run() error {
 		return errors.WithMessage(err, "failed get storage")
 	}
 	return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+}
+
+func (t *CopyTask) AfterRun(err error) error {
+	allFinish := true
+	// 需要先更新任务状态，再进行判断
+	if err == nil {
+		t.State = tache.StateSucceeded
+	} else {
+		t.State = tache.StateFailed
+	}
+	for _, ct := range CopyTaskManager.GetAll() {
+		if !utils.SliceContains([]tache.State{
+			tache.StateSucceeded,
+			tache.StateFailed,
+			tache.StateCanceled,
+		}, ct.GetState()) {
+			allFinish = false
+		}
+
+	}
+	batch_task.BatchTaskRefreshAndRemoveHook.RemoveTask(t.GetID(), allFinish)
+	return err
+}
+
+func (t *CopyTask) Run() error {
+	return task.RunWithLifecycle(t)
 }
 
 var CopyTaskManager *tache.Manager[*CopyTask]
