@@ -3,11 +3,12 @@ package fs
 import (
 	"context"
 	"fmt"
+	stdpath "path"
+	"time"
+
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
-	stdpath "path"
-	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
@@ -46,11 +47,6 @@ func (t *MoveTask) Run() error {
 var _ task.Lifecycle = (*MoveTask)(nil)
 
 func (t *MoveTask) BeforeRun() error {
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), batch_task.TaskMap{
-		batch_task.NeedRefreshPath: stdpath.Join(t.DstStorageMp, t.DstDirPath),
-		batch_task.MoveSrcPath:     stdpath.Join(t.srcStorage.GetStorage().MountPath, t.SrcObjPath),
-		batch_task.MoveDstPath:     stdpath.Join(t.dstStorage.GetStorage().MountPath, t.DstDirPath),
-	})
 	return nil
 }
 
@@ -75,25 +71,8 @@ func (t *MoveTask) RunCore() error {
 }
 
 func (t *MoveTask) AfterRun(err error) error {
-	allFinish := true
-	// 需要先更新任务状态，再进行判断
-	if err == nil {
-		t.State = tache.StateSucceeded
-	} else {
-		t.State = tache.StateFailed
-	}
-	for _, ct := range MoveTaskManager.GetAll() {
-		if !utils.SliceContains([]tache.State{
-			tache.StateSucceeded,
-			tache.StateFailed,
-			tache.StateCanceled,
-		}, ct.GetState()) {
-			allFinish = false
-			break
-		}
-
-	}
-	batch_task.BatchTaskRefreshAndRemoveHook.RemoveTask(t.GetID(), allFinish)
+	targetPath := stdpath.Join(t.DstStorageMp, t.DstDirPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
 	return err
 }
 
@@ -135,6 +114,10 @@ func _moveWithValidation(ctx context.Context, srcPath, dstPath string, lazyCache
 		SrcStorageMp: srcStorage.GetStorage().MountPath,
 		DstStorageMp: dstStorage.GetStorage().MountPath,
 	}
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstPath, batch_task.TaskPayload{
+		batch_task.MoveSrcPath: srcPath,
+		batch_task.MoveDstPath: dstPath,
+	})
 	MoveTaskManager.Add(moveTask)
 	return moveTask, nil
 }
@@ -157,7 +140,7 @@ func moveBetween2Storages(t *MoveTask, srcStorage, dstStorage driver.Driver, src
 			}
 			srcObjPath := stdpath.Join(srcObjPath, obj.GetName())
 			dstObjPath := stdpath.Join(dstDirPath, srcObj.GetName())
-			MoveTaskManager.Add(&MoveTask{
+			moveTask := &MoveTask{
 				TaskExtension: task.TaskExtension{
 					Creator: t.GetCreator(),
 					ApiUrl:  t.ApiUrl,
@@ -168,7 +151,13 @@ func moveBetween2Storages(t *MoveTask, srcStorage, dstStorage driver.Driver, src
 				DstDirPath:   dstObjPath,
 				SrcStorageMp: srcStorage.GetStorage().MountPath,
 				DstStorageMp: dstStorage.GetStorage().MountPath,
+			}
+			targetPath := stdpath.Join(moveTask.DstStorageMp, moveTask.DstDirPath)
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{
+				batch_task.MoveSrcPath: stdpath.Join(moveTask.SrcStorageMp, moveTask.SrcObjPath),
+				batch_task.MoveDstPath: targetPath,
 			})
+			MoveTaskManager.Add(moveTask)
 		}
 		t.Status = "src object is dir, added all move tasks of objs"
 		return nil

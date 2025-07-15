@@ -1,64 +1,84 @@
 package batch_task
 
 import (
-	"maps"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
-type FinishHook func(allTaskArgs map[string]TaskMap)
-type BatchTaskHook struct {
-	name          string
-	mu            sync.Mutex
-	tasks         map[string]struct{}
-	taskArgs      map[string]TaskMap
+type taskKey int
+
+const (
+	_ taskKey = iota
+	refreshPath
+	MoveSrcPath
+	MoveDstPath
+)
+
+type TaskPayload map[taskKey]any
+type FinishHook func(payloads []TaskPayload)
+type BatchTaskCoordinator struct {
+	name string
+	mu   sync.Mutex
+
+	pendingTasks  map[string][]TaskPayload
+	finishCounts  map[string]int
 	allFinishHook FinishHook
 }
 
-func NewBatchTaskHook(name string) *BatchTaskHook {
-	return &BatchTaskHook{
-		name:     name,
-		tasks:    map[string]struct{}{},
-		taskArgs: map[string]TaskMap{},
+func NewBatchTasCoordinator(name string) *BatchTaskCoordinator {
+	return &BatchTaskCoordinator{
+		name:         name,
+		pendingTasks: map[string][]TaskPayload{},
+		finishCounts: map[string]int{},
 	}
 }
 
-func (bt *BatchTaskHook) SetAllFinishHook(f FinishHook) *BatchTaskHook {
+func (bt *BatchTaskCoordinator) SetAllFinishHook(f FinishHook) *BatchTaskCoordinator {
 	bt.allFinishHook = f
 	return bt
 }
 
-func (bt *BatchTaskHook) AddTask(taskID string, taskMap TaskMap) {
+// 自动添加refreshPath在第1个任务
+func (bt *BatchTaskCoordinator) AddTask(targetPath string, payload TaskPayload) {
 	bt.mu.Lock()
 	defer bt.mu.Unlock()
-	bt.tasks[taskID] = struct{}{}
-	if existingMap, ok := bt.taskArgs[taskID]; ok {
-		maps.Copy(existingMap, taskMap)
-	} else {
-		bt.taskArgs[taskID] = taskMap
-	}
-}
-
-func (bt *BatchTaskHook) RemoveTask(taskID string, allFinish bool) {
-	bt.mu.Lock()
-	defer bt.mu.Unlock()
-	delete(bt.tasks, taskID)
-	if len(bt.tasks) == 0 && allFinish {
-		if bt.allFinishHook != nil {
-			bt.allFinishHook(bt.taskArgs)
+	defer func() {
+		logrus.Debugf("AddTask:%s ,%d", targetPath, len(bt.pendingTasks[targetPath]))
+	}()
+	if payloads, ok := bt.pendingTasks[targetPath]; ok {
+		if _, ok := payload[refreshPath]; ok {
+			if len(payload) == 1 {
+				t := payloads[0]
+				t[refreshPath] = targetPath
+				payloads[0] = t
+				return
+			}
+			delete(payload, refreshPath)
 		}
-		clear(bt.taskArgs)
+		bt.pendingTasks[targetPath] = append(payloads, payload)
+	} else {
+		payload[refreshPath] = targetPath
+		bt.pendingTasks[targetPath] = []TaskPayload{payload}
 	}
 }
 
-func (bt *BatchTaskHook) GetAllTaskArgs() map[string]TaskMap {
+func (bt *BatchTaskCoordinator) MarkTaskFinish(targetPath string) {
 	bt.mu.Lock()
 	defer bt.mu.Unlock()
-
-	result := map[string]TaskMap{}
-	for taskID, args := range bt.taskArgs {
-		copyArgs := TaskMap{}
-		maps.Copy(copyArgs, args)
-		result[taskID] = copyArgs
+	finishCount := bt.finishCounts[targetPath]
+	finishCount++
+	logrus.Debugf("MarkTaskFinish:%s ,%v", targetPath, finishCount)
+	if payloads, ok := bt.pendingTasks[targetPath]; ok {
+		if len(payloads) == finishCount {
+			delete(bt.pendingTasks, targetPath)
+			delete(bt.finishCounts, targetPath)
+			if bt.allFinishHook != nil {
+				logrus.Debugf("allFinishHook:%s", targetPath)
+				bt.allFinishHook(payloads)
+			}
+			return
+		}
 	}
-	return result
+	bt.finishCounts[targetPath] = finishCount
 }

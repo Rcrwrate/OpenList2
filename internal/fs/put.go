@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
-	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
@@ -37,9 +36,6 @@ func (t *UploadTask) GetStatus() string {
 var _ task.Lifecycle = (*UploadTask)(nil)
 
 func (t *UploadTask) BeforeRun() error {
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), batch_task.TaskMap{
-		batch_task.NeedRefreshPath: stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath),
-	})
 	return nil
 }
 
@@ -51,24 +47,8 @@ func (t *UploadTask) RunCore() error {
 }
 
 func (t *UploadTask) AfterRun(err error) error {
-	allFinish := true
-	// 需要先更新任务状态，再进行判断
-	if err == nil {
-		t.State = tache.StateSucceeded
-	} else {
-		t.State = tache.StateFailed
-	}
-	for _, ct := range UploadTaskManager.GetAll() {
-		if !utils.SliceContains([]tache.State{
-			tache.StateSucceeded,
-			tache.StateFailed,
-			tache.StateCanceled,
-		}, ct.GetState()) {
-			allFinish = false
-			break
-		}
-	}
-	batch_task.BatchTaskRefreshAndRemoveHook.RemoveTask(t.GetID(), allFinish)
+	targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
 	return err
 }
 
@@ -105,6 +85,7 @@ func putAsTask(ctx context.Context, dstDirPath string, file model.FileStreamer) 
 		file:             file,
 	}
 	t.SetTotalBytes(file.GetSize())
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstDirPath, batch_task.TaskPayload{})
 	UploadTaskManager.Add(t)
 	return t, nil
 }

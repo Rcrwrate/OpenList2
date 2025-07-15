@@ -22,7 +22,6 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
 	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
-	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -60,6 +59,8 @@ func (t *ArchiveDownloadTask) Run() error {
 	if err != nil {
 		return err
 	}
+	targetPath := stdpath.Join(uploadTask.DstStorageMp, uploadTask.DstDirPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{})
 	ArchiveContentUploadTaskManager.Add(uploadTask)
 	return nil
 }
@@ -158,9 +159,6 @@ func (t *ArchiveContentUploadTask) GetStatus() string {
 var _ task.Lifecycle = (*ArchiveContentUploadTask)(nil)
 
 func (t *ArchiveContentUploadTask) BeforeRun() error {
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), batch_task.TaskMap{
-		batch_task.NeedRefreshPath: stdpath.Join(t.DstStorageMp, t.DstDirPath),
-	})
 	return nil
 }
 
@@ -172,30 +170,15 @@ func (t *ArchiveContentUploadTask) RunCore() error {
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
 	return t.RunWithNextTaskCallback(func(nextTsk *ArchiveContentUploadTask) error {
+		targetPath := stdpath.Join(nextTsk.DstStorageMp, nextTsk.DstDirPath)
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{})
 		ArchiveContentUploadTaskManager.Add(nextTsk)
 		return nil
 	})
 }
 func (t *ArchiveContentUploadTask) AfterRun(err error) error {
-	allFinish := true
-	// 需要先更新任务状态，再进行判断
-	if err == nil {
-		t.State = tache.StateSucceeded
-	} else {
-		t.State = tache.StateFailed
-	}
-	for _, ct := range ArchiveContentUploadTaskManager.GetAll() {
-		if !utils.SliceContains([]tache.State{
-			tache.StateSucceeded,
-			tache.StateFailed,
-			tache.StateCanceled,
-		}, ct.GetState()) {
-			allFinish = false
-			break
-		}
-
-	}
-	batch_task.BatchTaskRefreshAndRemoveHook.RemoveTask(t.GetID(), allFinish)
+	targetPath := stdpath.Join(t.DstStorageMp, t.DstDirPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
 	return err
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
+	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
 	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/tache"
@@ -34,7 +35,12 @@ type TransferTask struct {
 	Url          string        `json:"-"`
 }
 
-func (t *TransferTask) Run() error {
+var _ task.Lifecycle = (*TransferTask)(nil)
+
+func (t *TransferTask) BeforeRun() error {
+	return nil
+}
+func (t *TransferTask) RunCore() error {
 	if err := t.ReinitCtx(); err != nil {
 		return err
 	}
@@ -71,6 +77,16 @@ func (t *TransferTask) Run() error {
 	} else {
 		return transferObjPath(t)
 	}
+}
+
+func (t *TransferTask) AfterRun(err error) error {
+	targetPath := stdpath.Join(t.DstStorageMp, t.DstDirPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+	return err
+}
+
+func (t *TransferTask) Run() error {
+	return task.RunWithLifecycle(t)
 }
 
 func (t *TransferTask) GetName() string {
@@ -129,6 +145,7 @@ func transferStd(ctx context.Context, tempDir, dstDirPath string, deletePolicy D
 			DstStorageMp: dstStorage.GetStorage().MountPath,
 			DeletePolicy: deletePolicy,
 		}
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstDirPath, batch_task.TaskPayload{})
 		TransferTaskManager.Add(t)
 	}
 	return nil
@@ -160,6 +177,8 @@ func transferStdPath(t *TransferTask) error {
 				DstStorageMp: t.DstStorageMp,
 				DeletePolicy: t.DeletePolicy,
 			}
+			targetPath := stdpath.Join(t.DstStorageMp, dstObjPath)
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{})
 			TransferTaskManager.Add(t)
 		}
 		t.Status = "src object is dir, added all transfer tasks of files"
@@ -231,6 +250,7 @@ func transferObj(ctx context.Context, tempDir, dstDirPath string, deletePolicy D
 			DstStorageMp: dstStorage.GetStorage().MountPath,
 			DeletePolicy: deletePolicy,
 		}
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstDirPath, batch_task.TaskPayload{})
 		TransferTaskManager.Add(t)
 	}
 	return nil
@@ -254,6 +274,8 @@ func transferObjPath(t *TransferTask) error {
 			}
 			srcObjPath := stdpath.Join(t.SrcObjPath, obj.GetName())
 			dstObjPath := stdpath.Join(t.DstDirPath, srcObj.GetName())
+			targetPath := stdpath.Join(t.DstStorageMp, dstObjPath)
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{})
 			TransferTaskManager.Add(&TransferTask{
 				TaskExtension: task.TaskExtension{
 					Creator: t.Creator,

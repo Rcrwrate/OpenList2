@@ -7,39 +7,27 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
-	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
-var BatchTaskRefreshAndRemoveHook *BatchTaskHook
-
-type taskMapKey int
-
-const (
-	_ taskMapKey = iota
-	NeedRefreshPath
-	MoveSrcPath
-	MoveDstPath
-)
-
-type TaskMap map[taskMapKey]any
+var BatchTaskRefreshAndRemoveHook *BatchTaskCoordinator
 
 func InitBatchTaskHook() {
-	BatchTaskRefreshAndRemoveHook = NewBatchTaskHook("refreshAndRemoveHook")
+	BatchTaskRefreshAndRemoveHook = NewBatchTasCoordinator("refreshAndRemoveHook")
 	BatchTaskRefreshAndRemoveHook.SetAllFinishHook(refreshAndRemove)
 }
 
-func refreshAndRemove(allTaskArgs map[string]TaskMap) {
-	for _, taskMap := range allTaskArgs {
-		if refreshPathRaw, ok := taskMap[NeedRefreshPath]; ok {
+func refreshAndRemove(payloads []TaskPayload) {
+	for _, payload := range payloads {
+		if refreshPathRaw, ok := payload[refreshPath]; ok {
 			if refreshPath, ok := refreshPathRaw.(string); ok {
 				storage, actualPath, _ := op.GetStorageAndActualPath(refreshPath)
 				op.ClearCache(storage, actualPath)
 			}
 		}
-		if srcPathRaw, ok := taskMap[MoveSrcPath]; ok {
-			if dstPathRaw, ok := taskMap[MoveDstPath]; ok {
+		if srcPathRaw, ok := payload[MoveSrcPath]; ok {
+			if dstPathRaw, ok := payload[MoveDstPath]; ok {
 				srcPath, srcOk := srcPathRaw.(string)
 				dstPath, dstOk := dstPathRaw.(string)
 				if srcOk && dstOk {
@@ -92,9 +80,6 @@ func verifyAndRemove(srcStorage, dstStorage driver.Driver, srcPath, dstPath stri
 
 	hasError := false
 	for _, obj := range srcObjs {
-		if utils.IsCanceled(ctx) {
-			return nil
-		}
 		srcSubPath := stdpath.Join(srcPath, obj.GetName())
 		err := verifyAndRemove(srcStorage, dstStorage, srcSubPath, dstObjPath)
 		if err != nil {

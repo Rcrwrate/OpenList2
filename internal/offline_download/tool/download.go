@@ -10,6 +10,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/internal/setting"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
+	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -194,6 +195,7 @@ func (t *DownloadTask) Transfer() error {
 			Url:          t.Url,
 		}
 		task.SetTotalBytes(t.GetTotalBytes())
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.DstDirPath, batch_task.TaskPayload{})
 		TransferTaskManager.Add(task)
 		return nil
 	}

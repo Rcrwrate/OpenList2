@@ -42,9 +42,6 @@ func (t *CopyTask) GetStatus() string {
 var _ task.Lifecycle = (*CopyTask)(nil)
 
 func (t *CopyTask) BeforeRun() error {
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), batch_task.TaskMap{
-		batch_task.NeedRefreshPath: stdpath.Join(t.DstStorageMp, t.DstDirPath),
-	})
 	return nil
 }
 
@@ -69,25 +66,8 @@ func (t *CopyTask) RunCore() error {
 }
 
 func (t *CopyTask) AfterRun(err error) error {
-	allFinish := true
-	// 需要先更新任务状态，再进行判断
-	if err == nil {
-		t.State = tache.StateSucceeded
-	} else {
-		t.State = tache.StateFailed
-	}
-	for _, ct := range CopyTaskManager.GetAll() {
-		if !utils.SliceContains([]tache.State{
-			tache.StateSucceeded,
-			tache.StateFailed,
-			tache.StateCanceled,
-		}, ct.GetState()) {
-			allFinish = false
-			break
-		}
-
-	}
-	batch_task.BatchTaskRefreshAndRemoveHook.RemoveTask(t.GetID(), allFinish)
+	dstPath := stdpath.Join(t.DstStorageMp, t.DstDirPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(dstPath)
 	return err
 }
 
@@ -152,6 +132,7 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 		SrcStorageMp: srcStorage.GetStorage().MountPath,
 		DstStorageMp: dstStorage.GetStorage().MountPath,
 	}
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstDirPath, batch_task.TaskPayload{})
 	CopyTaskManager.Add(t)
 	return t, nil
 }
@@ -174,7 +155,7 @@ func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, src
 			}
 			srcObjPath := stdpath.Join(srcObjPath, obj.GetName())
 			dstObjPath := stdpath.Join(dstDirPath, srcObj.GetName())
-			CopyTaskManager.Add(&CopyTask{
+			task := &CopyTask{
 				TaskExtension: task.TaskExtension{
 					Creator: t.GetCreator(),
 					ApiUrl:  t.ApiUrl,
@@ -185,7 +166,10 @@ func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, src
 				DstDirPath:   dstObjPath,
 				SrcStorageMp: srcStorage.GetStorage().MountPath,
 				DstStorageMp: dstStorage.GetStorage().MountPath,
-			})
+			}
+			targetPath := stdpath.Join(task.DstStorageMp, dstObjPath)
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, batch_task.TaskPayload{})
+			CopyTaskManager.Add(task)
 		}
 		t.Status = "src object is dir, added all copy tasks of objs"
 		return nil
