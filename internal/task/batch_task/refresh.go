@@ -27,13 +27,11 @@ type TaskMap map[taskMapKey]any
 
 func InitBatchTaskHook() {
 	BatchTaskRefreshAndRemoveHook = NewBatchTaskHook("refreshAndRemoveHook")
-	BatchTaskRefreshAndRemoveHook.SetAllFinishHook(func() {
-		refreshAndRemove()
-	})
+	BatchTaskRefreshAndRemoveHook.SetAllFinishHook(refreshAndRemove)
 }
 
-func refreshAndRemove() {
-	for _, taskMap := range BatchTaskRefreshAndRemoveHook.GetAllTaskArgs() {
+func refreshAndRemove(allTaskArgs map[string]TaskMap) {
+	for _, taskMap := range allTaskArgs {
 		if refreshPathRaw, ok := taskMap[NeedRefreshPath]; ok {
 			if refreshPath, ok := refreshPathRaw.(string); ok {
 				storage, actualPath, _ := op.GetStorageAndActualPath(refreshPath)

@@ -5,12 +5,13 @@ import (
 	"sync"
 )
 
+type FinishHook func(allTaskArgs map[string]TaskMap)
 type BatchTaskHook struct {
 	name          string
 	mu            sync.Mutex
 	tasks         map[string]struct{}
 	taskArgs      map[string]TaskMap
-	allFinishHook func()
+	allFinishHook FinishHook
 }
 
 func NewBatchTaskHook(name string) *BatchTaskHook {
@@ -21,7 +22,7 @@ func NewBatchTaskHook(name string) *BatchTaskHook {
 	}
 }
 
-func (bt *BatchTaskHook) SetAllFinishHook(f func()) *BatchTaskHook {
+func (bt *BatchTaskHook) SetAllFinishHook(f FinishHook) *BatchTaskHook {
 	bt.allFinishHook = f
 	return bt
 }
@@ -43,7 +44,7 @@ func (bt *BatchTaskHook) RemoveTask(taskID string, allFinish bool) {
 	delete(bt.tasks, taskID)
 	if len(bt.tasks) == 0 && allFinish {
 		if bt.allFinishHook != nil {
-			bt.allFinishHook()
+			bt.allFinishHook(bt.taskArgs)
 		}
 		clear(bt.taskArgs)
 	}
