@@ -3,6 +3,9 @@ package fs
 import (
 	"context"
 	"fmt"
+	stdpath "path"
+	"time"
+
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
@@ -15,8 +18,6 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
-	stdpath "path"
-	"time"
 )
 
 type CopyTask struct {
@@ -40,9 +41,9 @@ func (t *CopyTask) GetStatus() string {
 }
 
 func (t *CopyTask) BeforeRun() error {
-	taskMap := make(map[string]any)
-	taskMap[batch_task.NeedRefreshPath] = stdpath.Join(t.dstStorage.GetStorage().MountPath, t.DstDirPath)
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), taskMap)
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), batch_task.TaskMap{
+		batch_task.NeedRefreshPath: stdpath.Join(t.dstStorage.GetStorage().MountPath, t.DstDirPath),
+	})
 	return nil
 }
 
@@ -81,6 +82,7 @@ func (t *CopyTask) AfterRun(err error) error {
 			tache.StateCanceled,
 		}, ct.GetState()) {
 			allFinish = false
+			break
 		}
 
 	}

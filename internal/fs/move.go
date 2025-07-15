@@ -3,6 +3,8 @@ package fs
 import (
 	"context"
 	"fmt"
+	stdpath "path"
+
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
@@ -11,7 +13,6 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/pkg/errors"
-	stdpath "path"
 )
 
 func _moveWithValidation(ctx context.Context, srcPath, dstPath string, validateExistence bool, lazyCache ...bool) error {
@@ -52,9 +53,10 @@ func _moveWithValidation(ctx context.Context, srcPath, dstPath string, validateE
 		DstStorageMp: dstStorage.GetStorage().MountPath,
 	}
 
-	taskMap := make(map[string]any)
-	taskMap[batch_task.MoveSrcPath] = stdpath.Join(srcStorage.GetStorage().MountPath, srcObjActualPath)
-	taskMap[batch_task.MoveDstPath] = stdpath.Join(dstStorage.GetStorage().MountPath, dstDirActualPath)
+	taskMap := batch_task.TaskMap{
+		batch_task.MoveSrcPath: stdpath.Join(srcStorage.GetStorage().MountPath, srcObjActualPath),
+		batch_task.MoveDstPath: stdpath.Join(dstStorage.GetStorage().MountPath, dstDirActualPath),
+	}
 	taskID := fmt.Sprintf("%p", copyTask)
 	copyTask.SetID(taskID)
 	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(taskID, taskMap)

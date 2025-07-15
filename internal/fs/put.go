@@ -3,10 +3,11 @@ package fs
 import (
 	"context"
 	"fmt"
-	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
-	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	stdpath "path"
 	"time"
+
+	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
@@ -35,9 +36,9 @@ func (t *UploadTask) GetStatus() string {
 }
 
 func (t *UploadTask) BeforeRun() error {
-	taskMap := make(map[string]any)
-	taskMap[batch_task.NeedRefreshPath] = stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), taskMap)
+	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.GetID(), batch_task.TaskMap{
+		batch_task.NeedRefreshPath: stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath),
+	})
 	return nil
 }
 
@@ -63,6 +64,7 @@ func (t *UploadTask) AfterRun(err error) error {
 			tache.StateCanceled,
 		}, ct.GetState()) {
 			allFinish = false
+			break
 		}
 	}
 	batch_task.BatchTaskRefreshAndRemoveHook.RemoveTask(t.GetID(), allFinish)

@@ -2,22 +2,28 @@ package batch_task
 
 import (
 	"context"
+	stdpath "path"
+
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	stdpath "path"
 )
 
 var BatchTaskRefreshAndRemoveHook *BatchTaskHook
 
+type taskMapKey int
+
 const (
-	NeedRefreshPath = "needRefreshPath"
-	MoveSrcPath     = "moveSrcPath"
-	MoveDstPath     = "moveDstPath"
+	_ taskMapKey = iota
+	NeedRefreshPath
+	MoveSrcPath
+	MoveDstPath
 )
+
+type TaskMap map[taskMapKey]any
 
 func InitBatchTaskHook() {
 	BatchTaskRefreshAndRemoveHook = NewBatchTaskHook("refreshAndRemoveHook")

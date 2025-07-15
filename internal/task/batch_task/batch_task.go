@@ -1,6 +1,7 @@
 package batch_task
 
 import (
+	"maps"
 	"sync"
 )
 
@@ -8,15 +9,15 @@ type BatchTaskHook struct {
 	name          string
 	mu            sync.Mutex
 	tasks         map[string]struct{}
-	taskArgs      map[string]map[string]any
+	taskArgs      map[string]TaskMap
 	allFinishHook func()
 }
 
 func NewBatchTaskHook(name string) *BatchTaskHook {
 	return &BatchTaskHook{
 		name:     name,
-		tasks:    make(map[string]struct{}),
-		taskArgs: make(map[string]map[string]any),
+		tasks:    map[string]struct{}{},
+		taskArgs: map[string]TaskMap{},
 	}
 }
 
@@ -25,20 +26,14 @@ func (bt *BatchTaskHook) SetAllFinishHook(f func()) *BatchTaskHook {
 	return bt
 }
 
-func (bt *BatchTaskHook) AddTask(taskID string, taskMap map[string]any) {
+func (bt *BatchTaskHook) AddTask(taskID string, taskMap TaskMap) {
 	bt.mu.Lock()
 	defer bt.mu.Unlock()
 	bt.tasks[taskID] = struct{}{}
 	if existingMap, ok := bt.taskArgs[taskID]; ok {
-		for k, v := range taskMap {
-			existingMap[k] = v
-		}
+		maps.Copy(existingMap, taskMap)
 	} else {
-		newMap := make(map[string]any, len(taskMap))
-		for k, v := range taskMap {
-			newMap[k] = v
-		}
-		bt.taskArgs[taskID] = newMap
+		bt.taskArgs[taskID] = taskMap
 	}
 }
 
@@ -50,20 +45,18 @@ func (bt *BatchTaskHook) RemoveTask(taskID string, allFinish bool) {
 		if bt.allFinishHook != nil {
 			bt.allFinishHook()
 		}
-		bt.taskArgs = make(map[string]map[string]any)
+		clear(bt.taskArgs)
 	}
 }
 
-func (bt *BatchTaskHook) GetAllTaskArgs() map[string]map[string]any {
+func (bt *BatchTaskHook) GetAllTaskArgs() map[string]TaskMap {
 	bt.mu.Lock()
 	defer bt.mu.Unlock()
 
-	result := make(map[string]map[string]any, len(bt.taskArgs))
+	result := map[string]TaskMap{}
 	for taskID, args := range bt.taskArgs {
-		copyArgs := make(map[string]any, len(args))
-		for k, v := range args {
-			copyArgs[k] = v
-		}
+		copyArgs := TaskMap{}
+		maps.Copy(copyArgs, args)
 		result[taskID] = copyArgs
 	}
 	return result
