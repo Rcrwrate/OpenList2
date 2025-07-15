@@ -19,6 +19,7 @@ func InitBatchTaskHook() {
 }
 
 func refreshAndRemove(payloads []TaskPayload) {
+	ctx := context.Background()
 	for _, payload := range payloads {
 		if refreshPathRaw, ok := payload[refreshPath]; ok {
 			if refreshPath, ok := refreshPathRaw.(string); ok {
@@ -41,15 +42,14 @@ func refreshAndRemove(payloads []TaskPayload) {
 						log.Errorf("Failed to get storage for path: %v", err)
 						continue
 					}
-					_ = verifyAndRemove(srcStorage, dstStorage, srcActualPath, dstActualPath)
+					_ = verifyAndRemove(ctx, srcStorage, dstStorage, srcActualPath, dstActualPath)
 				}
 			}
 		}
 	}
 }
 
-func verifyAndRemove(srcStorage, dstStorage driver.Driver, srcPath, dstPath string) error {
-	ctx := context.Background()
+func verifyAndRemove(ctx context.Context, srcStorage, dstStorage driver.Driver, srcPath, dstPath string) error {
 	srcObj, err := op.Get(ctx, srcStorage, srcPath)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] object", srcPath)
@@ -81,7 +81,7 @@ func verifyAndRemove(srcStorage, dstStorage driver.Driver, srcPath, dstPath stri
 	hasError := false
 	for _, obj := range srcObjs {
 		srcSubPath := stdpath.Join(srcPath, obj.GetName())
-		err := verifyAndRemove(srcStorage, dstStorage, srcSubPath, dstObjPath)
+		err := verifyAndRemove(ctx, srcStorage, dstStorage, srcSubPath, dstObjPath)
 		if err != nil {
 			hasError = true
 		}
