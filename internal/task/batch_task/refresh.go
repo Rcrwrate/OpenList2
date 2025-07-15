@@ -29,8 +29,8 @@ func refreshAndRemove() {
 	for _, taskMap := range BatchTaskRefreshAndRemoveHook.TaskArgs {
 		needRefreshPath := taskMap[NeedRefreshPath]
 		if needRefreshPath != nil {
-			if path, ok := needRefreshPath.(string); ok {
-				storage, actualPath, _ := op.GetStorageAndActualPath(path)
+			if refreshPath, ok := needRefreshPath.(string); ok {
+				storage, actualPath, _ := op.GetStorageAndActualPath(refreshPath)
 				op.ClearCache(storage, actualPath)
 			}
 		}
