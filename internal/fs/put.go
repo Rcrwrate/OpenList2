@@ -56,7 +56,7 @@ func (t *UploadTask) AfterRun(err error) error {
 	} else {
 		t.State = tache.StateFailed
 	}
-	for _, ct := range CopyTaskManager.GetAll() {
+	for _, ct := range UploadTaskManager.GetAll() {
 		if !utils.SliceContains([]tache.State{
 			tache.StateSucceeded,
 			tache.StateFailed,
