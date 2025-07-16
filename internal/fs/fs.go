@@ -74,16 +74,8 @@ func Move(ctx context.Context, srcPath, dstDirPath string, lazyCache ...bool) er
 	return err
 }
 
-func MoveWithTask(ctx context.Context, srcPath, dstDirPath string, lazyCache ...bool) (task.TaskExtensionInfo, error) {
-	res, err := _move(ctx, srcPath, dstDirPath, lazyCache...)
-	if err != nil {
-		log.Errorf("failed move %s to %s: %+v", srcPath, dstDirPath, err)
-	}
-	return res, err
-}
-
 func MoveWithTaskAndValidation(ctx context.Context, srcPath, dstDirPath string, validateExistence bool, lazyCache ...bool) (task.TaskExtensionInfo, error) {
-	res, err := _moveWithValidation(ctx, srcPath, dstDirPath, validateExistence, lazyCache...)
+	res, err := _moveWithValidation(ctx, srcPath, dstDirPath, lazyCache...)
 	if err != nil {
 		log.Errorf("failed move %s to %s: %+v", srcPath, dstDirPath, err)
 	}

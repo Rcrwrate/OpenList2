@@ -17,6 +17,10 @@ type ListArgs struct {
 	Refresh           bool
 }
 
+type GetArgs struct {
+	TryRefresh bool
+}
+
 type LinkArgs struct {
 	IP       string
 	Header   http.Header

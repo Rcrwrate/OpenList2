@@ -168,7 +168,7 @@ func List(ctx context.Context, storage driver.Driver, path string, args model.Li
 }
 
 // Get object from list of files
-func Get(ctx context.Context, storage driver.Driver, path string) (model.Obj, error) {
+func Get(ctx context.Context, storage driver.Driver, path string, args ...model.GetArgs) (model.Obj, error) {
 	path = utils.FixAndCleanPath(path)
 	log.Debugf("op.Get %s", path)
 
@@ -231,6 +231,20 @@ func Get(ctx context.Context, storage driver.Driver, path string) (model.Obj, er
 			return f, nil
 		}
 	}
+
+	// 尝试强制刷新
+	if args != nil && args[0].TryRefresh {
+		files, err = List(ctx, storage, dir, model.ListArgs{Refresh: true})
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed get parent list")
+		}
+		for _, f := range files {
+			if f.GetName() == name {
+				return f, nil
+			}
+		}
+	}
+
 	log.Debugf("cant find obj with name: %s", name)
 	return nil, errors.WithStack(errs.ObjectNotFound)
 }

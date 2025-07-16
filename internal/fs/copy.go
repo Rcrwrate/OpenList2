@@ -3,20 +3,22 @@ package fs
 import (
 	"context"
 	"fmt"
-	stdpath "path"
-	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/op/lazy"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	stdpath "path"
+	"time"
 )
 
 type CopyTask struct {
@@ -157,6 +159,9 @@ func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, src
 }
 
 func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Driver, srcFilePath, dstDirPath string) error {
+	dstPath := stdpath.Join(dstStorage.GetStorage().MountPath, dstDirPath)
+	lazy.IncrementCounter(dstPath)
+	defer lazy.DecrementCounterIfExists(dstPath)
 	srcFile, err := op.Get(tsk.Ctx(), srcStorage, srcFilePath)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", srcFilePath)
@@ -175,5 +180,17 @@ func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Drive
 		_ = link.Close()
 		return errors.WithMessagef(err, "failed get [%s] stream", srcFilePath)
 	}
-	return op.Put(tsk.Ctx(), dstStorage, dstDirPath, ss, tsk.SetProgress, true)
+
+	err = op.Put(tsk.Ctx(), dstStorage, dstDirPath, ss, tsk.SetProgress, true)
+	if err == nil {
+		go func() {
+			ctx, cancel := context.WithTimeout(tsk.Ctx(), 1*time.Hour)
+			defer cancel()
+			if ok := lazy.Wait(ctx, dstPath); !ok {
+				log.Warnf("lazy wait timeout or canceled for %s", dstPath)
+			}
+			_, err = op.Get(tsk.Ctx(), dstStorage, stdpath.Join(dstDirPath, srcFile.GetName()), model.GetArgs{TryRefresh: true})
+		}()
+	}
+	return err
 }
