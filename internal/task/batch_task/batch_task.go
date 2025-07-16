@@ -56,12 +56,13 @@ func (bt *BatchTaskCoordinator) MarkTaskFinish(targetPath string) {
 	logrus.Debugf("MarkTaskFinish:%s ,count=%v", targetPath, count)
 	if count == 1 {
 		delete(bt.pendingCount, targetPath)
-		if payloads, ok := bt.pendingPayload[targetPath]; ok {
+		payloads, ok := bt.pendingPayload[targetPath]
+		if ok {
 			delete(bt.pendingPayload, targetPath)
-			if bt.allFinishHook != nil {
-				logrus.Debugf("allFinishHook:%s", targetPath)
-				bt.allFinishHook(targetPath, payloads)
-			}
+		}
+		if bt.allFinishHook != nil {
+			logrus.Debugf("allFinishHook:%s", targetPath)
+			bt.allFinishHook(targetPath, payloads)
 		}
 		return
 	}

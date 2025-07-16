@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"mime"
 	"os"
 	stdpath "path"
 	"path/filepath"
@@ -22,6 +21,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
 	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
@@ -255,7 +255,7 @@ func (t *ArchiveContentUploadTask) RunWithNextTaskCallback(f func(nextTsk *Archi
 				Size:     info.Size(),
 				Modified: time.Now(),
 			},
-			Mimetype:     mime.TypeByExtension(filepath.Ext(t.ObjName)),
+			Mimetype:     utils.GetMimeType(filepath.Ext(t.ObjName)),
 			WebPutAsTask: true,
 			Reader:       file,
 		}
