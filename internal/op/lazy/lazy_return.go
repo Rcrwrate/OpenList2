@@ -42,12 +42,13 @@ func DecrementCounterIfExists(key string) (int32, bool) {
 	newVal := c.value
 	if newVal <= 0 {
 		c.cond.Broadcast()
+		counters.Delete(key)
 	}
 	c.mu.Unlock()
 	return newVal, true
 }
 
-// Wait等待直到计数为0
+// Wait 等待直到计数为0
 func Wait(ctx context.Context, key string) bool {
 	c := getOrCreateCounter(key)
 
