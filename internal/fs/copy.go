@@ -65,7 +65,10 @@ func (t *CopyTask) RunCore() error {
 }
 
 func (t *CopyTask) AfterRun(err error) error {
-	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+	retry, maxRetry := t.GetRetry()
+	if err == nil || retry >= maxRetry {
+		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+	}
 	return err
 }
 

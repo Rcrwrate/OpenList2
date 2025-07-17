@@ -16,7 +16,7 @@ type BatchTaskCoordinator struct {
 	allFinishHook  FinishHook
 }
 
-func NewBatchTasCoordinator(name string) *BatchTaskCoordinator {
+func NewBatchTaskCoordinator(name string) *BatchTaskCoordinator {
 	return &BatchTaskCoordinator{
 		name:           name,
 		pendingPayload: map[string][]any{},

@@ -46,8 +46,11 @@ func (t *UploadTask) RunCore() error {
 }
 
 func (t *UploadTask) AfterRun(err error) error {
-	targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
-	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+	retry, maxRetry := t.GetRetry()
+	if err == nil || retry >= maxRetry {
+		targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
+		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+	}
 	return err
 }
 

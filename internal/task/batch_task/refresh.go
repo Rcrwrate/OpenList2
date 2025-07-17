@@ -14,7 +14,7 @@ import (
 var BatchTaskRefreshAndRemoveHook *BatchTaskCoordinator
 
 func InitBatchTaskHook() {
-	BatchTaskRefreshAndRemoveHook = NewBatchTasCoordinator("refreshAndRemoveHook")
+	BatchTaskRefreshAndRemoveHook = NewBatchTaskCoordinator("refreshAndRemoveHook")
 	BatchTaskRefreshAndRemoveHook.SetAllFinishHook(refreshAndRemove)
 }
 
