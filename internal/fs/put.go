@@ -34,28 +34,25 @@ func (t *UploadTask) GetStatus() string {
 	return "uploading"
 }
 
-func (t *UploadTask) BeforeRun() error {
-	return nil
-}
-
-func (t *UploadTask) RunCore() error {
+func (t *UploadTask) Run() error {
 	t.ClearEndTime()
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
 	return op.Put(t.Ctx(), t.storage, t.dstDirActualPath, t.file, t.SetProgress, true)
 }
 
-func (t *UploadTask) AfterRun(err error) error {
-	retry, maxRetry := t.GetRetry()
-	if err == nil || retry >= maxRetry {
+func (t *UploadTask) SetState(state tache.State) {
+	switch state {
+	case tache.StateSucceeded, tache.StateFailed:
 		targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
 		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+	case tache.StateBeforeRetry:
+		if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+			targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, nil)
+		}
 	}
-	return err
-}
-
-func (t *UploadTask) Run() error {
-	return task.RunWithLifecycle(t)
+	t.TaskExtension.SetState(state)
 }
 
 var UploadTaskManager *tache.Manager[*UploadTask]

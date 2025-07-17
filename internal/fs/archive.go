@@ -163,7 +163,7 @@ func (t *ArchiveContentUploadTask) BeforeRun() error {
 	return nil
 }
 
-func (t *ArchiveContentUploadTask) RunCore() error {
+func (t *ArchiveContentUploadTask) Run() error {
 	if err := t.ReinitCtx(); err != nil {
 		return err
 	}
@@ -177,16 +177,17 @@ func (t *ArchiveContentUploadTask) RunCore() error {
 		return nil
 	})
 }
-func (t *ArchiveContentUploadTask) AfterRun(err error) error {
-	retry, maxRetry := t.GetRetry()
-	if err == nil || retry >= maxRetry {
-		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
-	}
-	return err
-}
 
-func (t *ArchiveContentUploadTask) Run() error {
-	return task.RunWithLifecycle(t)
+func (t *ArchiveContentUploadTask) SetState(state tache.State) {
+	switch state {
+	case tache.StateSucceeded, tache.StateFailed:
+		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+	case tache.StateBeforeRetry:
+		if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
+		}
+	}
+	t.TaskExtension.SetState(state)
 }
 
 func (t *ArchiveContentUploadTask) RunWithNextTaskCallback(f func(nextTsk *ArchiveContentUploadTask) error) error {

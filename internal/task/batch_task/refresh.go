@@ -2,6 +2,7 @@ package batch_task
 
 import (
 	"context"
+	"fmt"
 	"path"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
@@ -41,19 +42,15 @@ func refreshAndRemove(dstPath string, payloads []any) {
 				log.Error(errors.WithMessage(err, "failed get src storage"))
 				continue
 			}
-			if err = verify(ctx, srcStorage, dstStorage, srcActualPath, dstActualPath); err != nil {
-				log.Errorf("failed verify: %+v", err)
-			} else {
-				err = op.Remove(ctx, srcStorage, srcActualPath)
-				if err != nil {
-					log.Errorf("failed remove %s: %+v", srcPath, err)
-				}
+			err = verifyAndRemove(ctx, srcStorage, dstStorage, srcActualPath, dstActualPath)
+			if err != nil {
+				log.Error(err)
 			}
 		}
 	}
 }
 
-func verify(ctx context.Context, srcStorage, dstStorage driver.Driver, srcPath, dstPath string) error {
+func verifyAndRemove(ctx context.Context, srcStorage, dstStorage driver.Driver, srcPath, dstPath string) error {
 	srcObj, err := op.Get(ctx, srcStorage, srcPath)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", path.Join(srcStorage.GetStorage().MountPath, srcPath))
@@ -66,6 +63,10 @@ func verify(ctx context.Context, srcStorage, dstStorage driver.Driver, srcPath, 
 	}
 
 	if !dstObj.IsDir() {
+		err = op.Remove(ctx, srcStorage, srcPath)
+		if err != nil {
+			return fmt.Errorf("failed remove %s: %+v", path.Join(srcStorage.GetStorage().MountPath, srcPath), err)
+		}
 		return nil
 	}
 
@@ -75,12 +76,21 @@ func verify(ctx context.Context, srcStorage, dstStorage driver.Driver, srcPath, 
 		return errors.WithMessagef(err, "failed list src [%s] objs", path.Join(srcStorage.GetStorage().MountPath, srcPath))
 	}
 
+	hasErr := false
 	for _, obj := range srcObjs {
 		srcSubPath := path.Join(srcPath, obj.GetName())
-		err := verify(ctx, srcStorage, dstStorage, srcSubPath, dstObjPath)
+		err := verifyAndRemove(ctx, srcStorage, dstStorage, srcSubPath, dstObjPath)
 		if err != nil {
-			return err
+			log.Error(err)
+			hasErr = true
 		}
+	}
+	if hasErr {
+		return errors.Errorf("some subitems of [%s] failed to verify and remove", path.Join(srcStorage.GetStorage().MountPath, srcPath))
+	}
+	err = op.Remove(ctx, srcStorage, srcPath)
+	if err != nil {
+		return fmt.Errorf("failed remove %s: %+v", path.Join(srcStorage.GetStorage().MountPath, srcPath), err)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package fs
 import (
 	"context"
 	"fmt"
+	"path"
 	stdpath "path"
 	"time"
 
@@ -32,14 +33,6 @@ func (t *MoveTask) GetStatus() string {
 }
 
 func (t *MoveTask) Run() error {
-	return task.RunWithLifecycle(t)
-}
-
-func (t *MoveTask) BeforeRun() error {
-	return nil
-}
-
-func (t *MoveTask) RunCore() error {
 	if err := t.ReinitCtx(); err != nil {
 		return err
 	}
@@ -59,12 +52,16 @@ func (t *MoveTask) RunCore() error {
 	return moveBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
 }
 
-func (t *MoveTask) AfterRun(err error) error {
-	retry, maxRetry := t.GetRetry()
-	if err == nil || retry >= maxRetry {
+func (t *MoveTask) SetState(state tache.State) {
+	switch state {
+	case tache.StateSucceeded, tache.StateFailed:
 		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+	case tache.StateBeforeRetry:
+		if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 { // 手动重试
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, batch_task.MoveSrcPathPayload(path.Join(t.SrcStorageMp, t.SrcObjPath)))
+		}
 	}
-	return err
+	t.TaskExtension.SetState(state)
 }
 
 var MoveTaskManager *tache.Manager[*MoveTask]

@@ -40,11 +40,7 @@ func (t *CopyTask) GetStatus() string {
 	return t.Status
 }
 
-func (t *CopyTask) BeforeRun() error {
-	return nil
-}
-
-func (t *CopyTask) RunCore() error {
+func (t *CopyTask) Run() error {
 	if err := t.ReinitCtx(); err != nil {
 		return err
 	}
@@ -64,16 +60,16 @@ func (t *CopyTask) RunCore() error {
 	return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
 }
 
-func (t *CopyTask) AfterRun(err error) error {
-	retry, maxRetry := t.GetRetry()
-	if err == nil || retry >= maxRetry {
+func (t *CopyTask) SetState(state tache.State) {
+	switch state {
+	case tache.StateSucceeded, tache.StateFailed:
 		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+	case tache.StateBeforeRetry:
+		if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
+		}
 	}
-	return err
-}
-
-func (t *CopyTask) Run() error {
-	return task.RunWithLifecycle(t)
+	t.TaskExtension.SetState(state)
 }
 
 var CopyTaskManager *tache.Manager[*CopyTask]

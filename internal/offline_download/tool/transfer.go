@@ -37,10 +37,7 @@ type TransferTask struct {
 	targetPath   string
 }
 
-func (t *TransferTask) BeforeRun() error {
-	return nil
-}
-func (t *TransferTask) RunCore() error {
+func (t *TransferTask) Run() error {
 	if err := t.ReinitCtx(); err != nil {
 		return err
 	}
@@ -79,13 +76,16 @@ func (t *TransferTask) RunCore() error {
 	}
 }
 
-func (t *TransferTask) AfterRun(err error) error {
-	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
-	return err
-}
-
-func (t *TransferTask) Run() error {
-	return task.RunWithLifecycle(t)
+func (t *TransferTask) SetState(state tache.State) {
+	switch state {
+	case tache.StateSucceeded, tache.StateFailed:
+		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+	case tache.StateBeforeRetry:
+		if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
+		}
+	}
+	t.TaskExtension.SetState(state)
 }
 
 func (t *TransferTask) GetName() string {
