@@ -3,6 +3,7 @@ package handles
 import (
 	"fmt"
 	stdpath "path"
+	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
@@ -206,6 +207,10 @@ func FsRename(c *gin.Context) {
 	reqPath, err := user.JoinPath(req.Path)
 	if err != nil {
 		common.ErrorResp(c, err, 403)
+		return
+	}
+	if strings.ContainsAny(req.Name, "/\\") {
+		common.ErrorStrResp(c, "invalid name: name can't contain path separator", 400)
 		return
 	}
 	if !req.Overwrite {
