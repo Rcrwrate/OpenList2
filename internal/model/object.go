@@ -99,3 +99,17 @@ type ObjThumbURL struct {
 	Thumbnail
 	Url
 }
+
+// ThumbnailFileObj wraps an original file object but returns thumbnail size
+type ThumbnailFileObj struct {
+	Obj
+	ThumbnailSize int64
+}
+
+func (t *ThumbnailFileObj) GetSize() int64 {
+	return t.ThumbnailSize
+}
+
+func (t *ThumbnailFileObj) Unwrap() Obj {
+	return t.Obj
+}
