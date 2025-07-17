@@ -252,8 +252,8 @@ func (d *Local) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 
 func (d *Local) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) error {
 	// Validate dirName to ensure it does not contain invalid characters
-	if strings.Contains(dirName, "/") || strings.Contains(dirName, "\\") || strings.Contains(dirName, "..") {
-		return fmt.Errorf("invalid directory name: %s", dirName)
+	if filepath.Base(dirName) != dirName {
+		return fmt.Errorf("invalid directory name: %q", dirName)
 	}
 	fullPath := filepath.Join(parentDir.GetPath(), dirName)
 	err := os.MkdirAll(fullPath, os.FileMode(d.mkdirPerm))
