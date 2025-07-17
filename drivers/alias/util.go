@@ -7,14 +7,14 @@ import (
 	stdpath "path"
 	"strings"
 
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/errs"
-	"github.com/OpenListTeam/OpenList/internal/fs"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/op"
-	"github.com/OpenListTeam/OpenList/internal/sign"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
-	"github.com/OpenListTeam/OpenList/server/common"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/errs"
+	"github.com/OpenListTeam/OpenList/v4/internal/fs"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/sign"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 )
 
 func (d *Alias) listRoot() []model.Obj {
@@ -96,35 +96,23 @@ func (d *Alias) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([
 	})
 }
 
-func (d *Alias) link(ctx context.Context, dst, sub string, args model.LinkArgs) (*model.Link, error) {
-	reqPath := stdpath.Join(dst, sub)
-	// 参考 crypt 驱动
+func (d *Alias) link(ctx context.Context, reqPath string, args model.LinkArgs) (*model.Link, model.Obj, error) {
 	storage, reqActualPath, err := op.GetStorageAndActualPath(reqPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if _, ok := storage.(*Alias); !ok && !args.Redirect {
-		link, _, err := op.Link(ctx, storage, reqActualPath, args)
-		return link, err
+	// proxy || ftp,s3
+	if !args.Redirect || len(common.GetApiUrl(ctx)) == 0 {
+		return op.Link(ctx, storage, reqActualPath, args)
 	}
-	_, err = fs.Get(ctx, reqPath, &fs.GetArgs{NoLog: true})
+	obj, err := fs.Get(ctx, reqPath, &fs.GetArgs{NoLog: true})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if common.ShouldProxy(storage, stdpath.Base(sub)) {
-		link := &model.Link{
-			URL: fmt.Sprintf("%s/p%s?sign=%s",
-				common.GetApiUrl(args.HttpReq),
-				utils.EncodePath(reqPath, true),
-				sign.Sign(reqPath)),
-		}
-		if args.HttpReq != nil && d.ProxyRange {
-			link.RangeReadCloser = common.NoProxyRange
-		}
-		return link, nil
+	if common.ShouldProxy(storage, stdpath.Base(reqPath)) {
+		return nil, obj, nil
 	}
-	link, _, err := op.Link(ctx, storage, reqActualPath, args)
-	return link, err
+	return op.Link(ctx, storage, reqActualPath, args)
 }
 
 func (d *Alias) getReqPath(ctx context.Context, obj model.Obj, isParent bool) ([]*string, error) {
@@ -201,31 +189,24 @@ func (d *Alias) extract(ctx context.Context, dst, sub string, args model.Archive
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := storage.(driver.ArchiveReader); ok {
-		if _, ok := storage.(*Alias); !ok && !args.Redirect {
-			link, _, err := op.DriverExtract(ctx, storage, reqActualPath, args)
-			return link, err
-		}
+	if _, ok := storage.(driver.ArchiveReader); !ok {
+		return nil, errs.NotImplement
+	}
+	if args.Redirect && common.ShouldProxy(storage, stdpath.Base(sub)) {
 		_, err = fs.Get(ctx, reqPath, &fs.GetArgs{NoLog: true})
 		if err != nil {
 			return nil, err
 		}
-		if common.ShouldProxy(storage, stdpath.Base(sub)) {
-			link := &model.Link{
-				URL: fmt.Sprintf("%s/ap%s?inner=%s&pass=%s&sign=%s",
-					common.GetApiUrl(args.HttpReq),
-					utils.EncodePath(reqPath, true),
-					utils.EncodePath(args.InnerPath, true),
-					url.QueryEscape(args.Password),
-					sign.SignArchive(reqPath)),
-			}
-			if args.HttpReq != nil && d.ProxyRange {
-				link.RangeReadCloser = common.NoProxyRange
-			}
-			return link, nil
+		link := &model.Link{
+			URL: fmt.Sprintf("%s/ap%s?inner=%s&pass=%s&sign=%s",
+				common.GetApiUrl(ctx),
+				utils.EncodePath(reqPath, true),
+				utils.EncodePath(args.InnerPath, true),
+				url.QueryEscape(args.Password),
+				sign.SignArchive(reqPath)),
 		}
-		link, _, err := op.DriverExtract(ctx, storage, reqActualPath, args)
-		return link, err
+		return link, nil
 	}
-	return nil, errs.NotImplement
+	link, _, err := op.DriverExtract(ctx, storage, reqActualPath, args)
+	return link, err
 }

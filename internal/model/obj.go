@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/pkg/http_range"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/dlclark/regexp2"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -37,7 +37,7 @@ type Obj interface {
 // FileStreamer ->check FileStream for more comments
 type FileStreamer interface {
 	io.Reader
-	io.Closer
+	utils.ClosersIF
 	Obj
 	GetMimetype() string
 	//SetReader(io.Reader)
@@ -54,6 +54,19 @@ type FileStreamer interface {
 }
 
 type UpdateProgress func(percentage float64)
+
+func UpdateProgressWithRange(inner UpdateProgress, start, end float64) UpdateProgress {
+	return func(p float64) {
+		if p < 0 {
+			p = 0
+		}
+		if p > 100 {
+			p = 100
+		}
+		scaled := start + (end-start)*(p/100.0)
+		inner(scaled)
+	}
+}
 
 type URL interface {
 	URL() string

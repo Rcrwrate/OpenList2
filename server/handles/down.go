@@ -2,20 +2,21 @@ package handles
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"io"
 	stdpath "path"
 	"strconv"
 	"strings"
 
-	"github.com/OpenListTeam/OpenList/internal/conf"
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/fs"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/setting"
-	"github.com/OpenListTeam/OpenList/internal/sign"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
-	"github.com/OpenListTeam/OpenList/server/common"
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/fs"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/net"
+	"github.com/OpenListTeam/OpenList/v4/internal/setting"
+	"github.com/OpenListTeam/OpenList/v4/internal/sign"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/gin-gonic/gin"
 	"github.com/microcosm-cc/bluemonday"
 	log "github.com/sirupsen/logrus"
@@ -23,7 +24,7 @@ import (
 )
 
 func Down(c *gin.Context) {
-	rawPath := c.MustGet("path").(string)
+	rawPath := c.Request.Context().Value(conf.PathKey).(string)
 	filename := stdpath.Base(rawPath)
 	storage, err := fs.GetStorage(rawPath, &fs.GetStoragesArgs{})
 	if err != nil {
@@ -34,23 +35,22 @@ func Down(c *gin.Context) {
 		Proxy(c)
 		return
 	} else {
-		link, _, err := fs.Link(c, rawPath, model.LinkArgs{
+		link, _, err := fs.Link(c.Request.Context(), rawPath, model.LinkArgs{
 			IP:       c.ClientIP(),
 			Header:   c.Request.Header,
 			Type:     c.Query("type"),
-			HttpReq:  c.Request,
 			Redirect: true,
 		})
 		if err != nil {
 			common.ErrorResp(c, err, 500)
 			return
 		}
-		down(c, link)
+		redirect(c, link)
 	}
 }
 
 func Proxy(c *gin.Context) {
-	rawPath := c.MustGet("path").(string)
+	rawPath := c.Request.Context().Value(conf.PathKey).(string)
 	filename := stdpath.Base(rawPath)
 	storage, err := fs.GetStorage(rawPath, &fs.GetStoragesArgs{})
 	if err != nil {
@@ -70,32 +70,24 @@ func Proxy(c *gin.Context) {
 				return
 			}
 		}
-		link, file, err := fs.Link(c, rawPath, model.LinkArgs{
-			Header:  c.Request.Header,
-			Type:    c.Query("type"),
-			HttpReq: c.Request,
+		link, file, err := fs.Link(c.Request.Context(), rawPath, model.LinkArgs{
+			Header: c.Request.Header,
+			Type:   c.Query("type"),
 		})
 		if err != nil {
 			common.ErrorResp(c, err, 500)
 			return
 		}
-		localProxy(c, link, file, storage.GetStorage().ProxyRange)
+		proxy(c, link, file, storage.GetStorage().ProxyRange)
 	} else {
 		common.ErrorStrResp(c, "proxy not allowed", 403)
 		return
 	}
 }
 
-func down(c *gin.Context, link *model.Link) {
+func redirect(c *gin.Context, link *model.Link) {
+	defer link.Close()
 	var err error
-	if link.MFile != nil {
-		defer func(ReadSeekCloser io.ReadCloser) {
-			err := ReadSeekCloser.Close()
-			if err != nil {
-				log.Errorf("close data error: %s", err)
-			}
-		}(link.MFile)
-	}
 	c.Header("Referrer-Policy", "no-referrer")
 	c.Header("Cache-Control", "max-age=0, no-cache, no-store, must-revalidate")
 	if setting.GetBool(conf.ForwardDirectLinkParams) {
@@ -112,7 +104,8 @@ func down(c *gin.Context, link *model.Link) {
 	c.Redirect(302, link.URL)
 }
 
-func localProxy(c *gin.Context, link *model.Link, file model.Obj, proxyRange bool) {
+func proxy(c *gin.Context, link *model.Link, file model.Obj, proxyRange bool) {
+	defer link.Close()
 	var err error
 	if link.URL != "" && setting.GetBool(conf.ForwardDirectLinkParams) {
 		query := c.Request.URL.Query()
@@ -126,7 +119,7 @@ func localProxy(c *gin.Context, link *model.Link, file model.Obj, proxyRange boo
 		}
 	}
 	if proxyRange {
-		common.ProxyRange(link, file.GetSize())
+		common.ProxyRange(c, link, file.GetSize())
 	}
 	Writer := &common.WrittenResponseWriter{ResponseWriter: c.Writer}
 
@@ -163,7 +156,11 @@ func localProxy(c *gin.Context, link *model.Link, file model.Obj, proxyRange boo
 	if Writer.IsWritten() {
 		log.Errorf("%s %s local proxy error: %+v", c.Request.Method, c.Request.URL.Path, err)
 	} else {
-		common.ErrorResp(c, err, 500, true)
+		if statusCode, ok := errors.Unwrap(err).(net.ErrorHttpStatusCode); ok {
+			common.ErrorResp(c, err, int(statusCode), true)
+		} else {
+			common.ErrorResp(c, err, 500, true)
+		}
 	}
 }
 

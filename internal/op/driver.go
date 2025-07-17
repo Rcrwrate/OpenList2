@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/OpenListTeam/OpenList/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 
-	"github.com/OpenListTeam/OpenList/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/pkg/errors"
 )
 
@@ -81,7 +81,15 @@ func getMainItems(config driver.Config) []driver.Item {
 			Help:     "The cache expiration time for this storage",
 		})
 	}
-	if !config.OnlyProxy && !config.OnlyLocal {
+	if config.MustProxy() {
+		items = append(items, driver.Item{
+			Name:     "webdav_policy",
+			Type:     conf.TypeSelect,
+			Default:  "native_proxy",
+			Options:  "use_proxy_url,native_proxy",
+			Required: true,
+		})
+	} else {
 		items = append(items, []driver.Item{{
 			Name: "web_proxy",
 			Type: conf.TypeBool,
@@ -104,14 +112,6 @@ func getMainItems(config driver.Config) []driver.Item {
 			}
 			items = append(items, item)
 		}
-	} else {
-		items = append(items, driver.Item{
-			Name:     "webdav_policy",
-			Type:     conf.TypeSelect,
-			Default:  "native_proxy",
-			Options:  "use_proxy_url,native_proxy",
-			Required: true,
-		})
 	}
 	items = append(items, driver.Item{
 		Name: "down_proxy_url",

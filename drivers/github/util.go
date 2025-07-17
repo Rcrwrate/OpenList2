@@ -9,8 +9,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	"github.com/go-resty/resty/v2"
@@ -96,7 +97,7 @@ func getPathCommonAncestor(a, b string) (ancestor, aChildName, bChildName, aRest
 }
 
 func getUsername(ctx context.Context) string {
-	user, ok := ctx.Value("user").(*model.User)
+	user, ok := ctx.Value(conf.UserKey).(*model.User)
 	if !ok {
 		return "<system>"
 	}

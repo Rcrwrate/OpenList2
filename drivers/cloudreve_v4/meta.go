@@ -1,8 +1,8 @@
 package cloudreve_v4
 
 import (
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 )
 
 type Addition struct {
@@ -19,21 +19,15 @@ type Addition struct {
 	EnableFolderSize    bool   `json:"enable_folder_size"`
 	EnableThumb         bool   `json:"enable_thumb"`
 	EnableVersionUpload bool   `json:"enable_version_upload"`
+	HideUploading       bool   `json:"hide_uploading"`
 	OrderBy             string `json:"order_by" type:"select" options:"name,size,updated_at,created_at" default:"name" required:"true"`
 	OrderDirection      string `json:"order_direction" type:"select" options:"asc,desc" default:"asc" required:"true"`
 }
 
 var config = driver.Config{
 	Name:              "Cloudreve V4",
-	LocalSort:         false,
-	OnlyLocal:         false,
-	OnlyProxy:         false,
-	NoCache:           false,
-	NoUpload:          false,
-	NeedMs:            false,
 	DefaultRoot:       "cloudreve://my",
 	CheckStatus:       true,
-	Alert:             "",
 	NoOverwriteUpload: true,
 }
 

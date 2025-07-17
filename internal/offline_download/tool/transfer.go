@@ -3,21 +3,22 @@ package tool
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	stdpath "path"
 	"path/filepath"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/op"
-	"github.com/OpenListTeam/OpenList/internal/stream"
-	"github.com/OpenListTeam/OpenList/internal/task"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/internal/task"
+	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/xhofe/tache"
 )
 
 type TransferTask struct {
@@ -30,14 +31,42 @@ type TransferTask struct {
 	SrcStorageMp string        `json:"src_storage_mp"`
 	DstStorageMp string        `json:"dst_storage_mp"`
 	DeletePolicy DeletePolicy  `json:"delete_policy"`
+	Url          string        `json:"-"`
 }
 
 func (t *TransferTask) Run() error {
-	t.ReinitCtx()
+	if err := t.ReinitCtx(); err != nil {
+		return err
+	}
 	t.ClearEndTime()
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
 	if t.SrcStorage == nil {
+		if t.DeletePolicy == UploadDownloadStream {
+			rr, err := stream.GetRangeReaderFromLink(t.GetTotalBytes(), &model.Link{URL: t.Url})
+			if err != nil {
+				return err
+			}
+			r, err := rr.RangeRead(t.Ctx(), http_range.Range{Length: t.GetTotalBytes()})
+			if err != nil {
+				return err
+			}
+			name := t.SrcObjPath
+			mimetype := utils.GetMimeType(name)
+			s := &stream.FileStream{
+				Ctx: nil,
+				Obj: &model.Object{
+					Name:     name,
+					Size:     t.GetTotalBytes(),
+					Modified: time.Now(),
+					IsFolder: false,
+				},
+				Reader:   r,
+				Mimetype: mimetype,
+				Closers:  utils.NewClosers(r),
+			}
+			return op.Put(t.Ctx(), t.DstStorage, t.DstDirPath, s, t.SetProgress)
+		}
 		return transferStdPath(t)
 	} else {
 		return transferObjPath(t)
@@ -45,6 +74,9 @@ func (t *TransferTask) Run() error {
 }
 
 func (t *TransferTask) GetName() string {
+	if t.DeletePolicy == UploadDownloadStream {
+		return fmt.Sprintf("upload [%s](%s) to [%s](%s)", t.SrcObjPath, t.Url, t.DstStorageMp, t.DstDirPath)
+	}
 	return fmt.Sprintf("transfer [%s](%s) to [%s](%s)", t.SrcStorageMp, t.SrcObjPath, t.DstStorageMp, t.DstDirPath)
 }
 
@@ -85,7 +117,7 @@ func transferStd(ctx context.Context, tempDir, dstDirPath string, deletePolicy D
 	if err != nil {
 		return err
 	}
-	taskCreator, _ := ctx.Value("user").(*model.User)
+	taskCreator, _ := ctx.Value(conf.UserKey).(*model.User)
 	for _, entry := range entries {
 		t := &TransferTask{
 			TaskExtension: task.TaskExtension{
@@ -185,7 +217,7 @@ func transferObj(ctx context.Context, tempDir, dstDirPath string, deletePolicy D
 	if err != nil {
 		return errors.WithMessagef(err, "failed list src [%s] objs", tempDir)
 	}
-	taskCreator, _ := ctx.Value("user").(*model.User) // taskCreator is nil when convert failed
+	taskCreator, _ := ctx.Value(conf.UserKey).(*model.User) // taskCreator is nil when convert failed
 	for _, obj := range objs {
 		t := &TransferTask{
 			TaskExtension: task.TaskExtension{
@@ -246,19 +278,17 @@ func transferObjFile(t *TransferTask) error {
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", t.SrcObjPath)
 	}
-	link, _, err := op.Link(t.Ctx(), t.SrcStorage, t.SrcObjPath, model.LinkArgs{
-		Header: http.Header{},
-	})
+	link, _, err := op.Link(t.Ctx(), t.SrcStorage, t.SrcObjPath, model.LinkArgs{})
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] link", t.SrcObjPath)
 	}
-	fs := stream.FileStream{
+	// any link provided is seekable
+	ss, err := stream.NewSeekableStream(&stream.FileStream{
 		Obj: srcFile,
 		Ctx: t.Ctx(),
-	}
-	// any link provided is seekable
-	ss, err := stream.NewSeekableStream(fs, link)
+	}, link)
 	if err != nil {
+		_ = link.Close()
 		return errors.WithMessagef(err, "failed get [%s] stream", t.SrcObjPath)
 	}
 	t.SetTotalBytes(srcFile.GetSize())

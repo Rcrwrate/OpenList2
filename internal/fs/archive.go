@@ -7,7 +7,6 @@ import (
 	"io"
 	"math/rand"
 	"mime"
-	"net/http"
 	"os"
 	stdpath "path"
 	"path/filepath"
@@ -15,16 +14,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/internal/conf"
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/errs"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/op"
-	"github.com/OpenListTeam/OpenList/internal/stream"
-	"github.com/OpenListTeam/OpenList/internal/task"
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/errs"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/internal/task"
+	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/xhofe/tache"
 )
 
 type ArchiveDownloadTask struct {
@@ -49,7 +48,9 @@ func (t *ArchiveDownloadTask) GetStatus() string {
 }
 
 func (t *ArchiveDownloadTask) Run() error {
-	t.ReinitCtx()
+	if err := t.ReinitCtx(); err != nil {
+		return err
+	}
 	t.ClearEndTime()
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
@@ -66,9 +67,7 @@ func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadT
 	if t.srcStorage == nil {
 		t.srcStorage, err = op.GetStorageByMountPath(t.SrcStorageMp)
 	}
-	srcObj, tool, ss, err := op.GetArchiveToolAndStream(t.Ctx(), t.srcStorage, t.SrcObjPath, model.LinkArgs{
-		Header: http.Header{},
-	})
+	srcObj, tool, ss, err := op.GetArchiveToolAndStream(t.Ctx(), t.srcStorage, t.SrcObjPath, model.LinkArgs{})
 	if err != nil {
 		return nil, err
 	}
@@ -91,9 +90,9 @@ func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadT
 		t.status = "getting src object"
 		for _, s := range ss {
 			if s.GetFile() == nil {
-				_, err = stream.CacheFullInTempFileAndUpdateProgress(s, func(p float64) {
+				_, err = stream.CacheFullInTempFileAndWriter(s, func(p float64) {
 					t.SetProgress((float64(cur) + float64(s.GetSize())*p/100.0) / float64(total))
-				})
+				}, nil)
 			}
 			cur += s.GetSize()
 			if err != nil {
@@ -152,7 +151,9 @@ func (t *ArchiveContentUploadTask) GetStatus() string {
 }
 
 func (t *ArchiveContentUploadTask) Run() error {
-	t.ReinitCtx()
+	if err := t.ReinitCtx(); err != nil {
+		return err
+	}
 	t.ClearEndTime()
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
@@ -351,7 +352,7 @@ func archiveDecompress(ctx context.Context, srcObjPath, dstDirPath string, args 
 			return nil, err
 		}
 	}
-	taskCreator, _ := ctx.Value("user").(*model.User)
+	taskCreator, _ := ctx.Value(conf.UserKey).(*model.User)
 	tsk := &ArchiveDownloadTask{
 		TaskExtension: task.TaskExtension{
 			Creator: taskCreator,

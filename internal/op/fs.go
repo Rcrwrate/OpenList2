@@ -6,14 +6,14 @@ import (
 	"slices"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/errs"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/stream"
-	"github.com/OpenListTeam/OpenList/pkg/generic_sync"
-	"github.com/OpenListTeam/OpenList/pkg/singleflight"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
-	"github.com/Xhofe/go-cache"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/errs"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/pkg/generic_sync"
+	"github.com/OpenListTeam/OpenList/v4/pkg/singleflight"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	"github.com/OpenListTeam/go-cache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -244,7 +244,7 @@ func GetUnwrap(ctx context.Context, storage driver.Driver, path string) (model.O
 }
 
 var linkCache = cache.NewMemCache(cache.WithShards[*model.Link](16))
-var linkG singleflight.Group[*model.Link]
+var linkG = singleflight.Group[*model.Link]{Remember: true}
 
 // Link get link, if is an url. should have an expiry time
 func Link(ctx context.Context, storage driver.Driver, path string, args model.LinkArgs) (*model.Link, model.Obj, error) {
@@ -262,26 +262,39 @@ func Link(ctx context.Context, storage driver.Driver, path string, args model.Li
 	if link, ok := linkCache.Get(key); ok {
 		return link, file, nil
 	}
+
+	var forget utils.CloseFunc
 	fn := func() (*model.Link, error) {
 		link, err := storage.Link(ctx, file, args)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed get link")
 		}
 		if link.Expiration != nil {
-			if link.IPCacheKey {
-				key = key + ":" + args.IP
-			}
 			linkCache.Set(key, link, cache.WithEx[*model.Link](*link.Expiration))
 		}
+		link.Add(forget)
 		return link, nil
 	}
 
-	if storage.Config().OnlyLocal {
+	if storage.Config().OnlyLinkMFile {
 		link, err := fn()
 		return link, file, err
 	}
 
+	forget = func() error {
+		if forget != nil {
+			forget = nil
+			linkG.Forget(key)
+		}
+		return nil
+	}
 	link, err, _ := linkG.Do(key, fn)
+	if err == nil && !link.AcquireReference() {
+		link, err, _ = linkG.Do(key, fn)
+		if err == nil {
+			link.AcquireReference()
+		}
+	}
 	return link, file, err
 }
 
@@ -510,14 +523,15 @@ func Remove(ctx context.Context, storage driver.Driver, path string) error {
 }
 
 func Put(ctx context.Context, storage driver.Driver, dstDirPath string, file model.FileStreamer, up driver.UpdateProgress, lazyCache ...bool) error {
-	if storage.Config().CheckStatus && storage.GetStorage().Status != WORK {
-		return errors.Errorf("storage not init: %s", storage.GetStorage().Status)
-	}
+	close := file.Close
 	defer func() {
-		if err := file.Close(); err != nil {
+		if err := close(); err != nil {
 			log.Errorf("failed to close file streamer, %v", err)
 		}
 	}()
+	if storage.Config().CheckStatus && storage.GetStorage().Status != WORK {
+		return errors.Errorf("storage not init: %s", storage.GetStorage().Status)
+	}
 	// UrlTree PUT
 	if storage.GetStorage().Driver == "UrlTree" {
 		var link string

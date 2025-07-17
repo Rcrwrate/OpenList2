@@ -1,8 +1,8 @@
 package pikpak
 
 import (
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 )
 
 type Addition struct {
@@ -17,9 +17,8 @@ type Addition struct {
 }
 
 var config = driver.Config{
-	Name:        "PikPak",
-	LocalSort:   true,
-	DefaultRoot: "",
+	Name:      "PikPak",
+	LocalSort: true,
 }
 
 func init() {

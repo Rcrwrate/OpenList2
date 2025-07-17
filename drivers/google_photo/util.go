@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/OpenListTeam/OpenList/drivers/base"
+	"github.com/OpenListTeam/OpenList/v4/drivers/base"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -90,15 +90,15 @@ func (d *GooglePhoto) getFakeRoot() ([]MediaItem, error) {
 	return []MediaItem{
 		{
 			Id:    FETCH_ALL,
-			Title: "全部媒体",
+			Title: FETCH_ALL,
 		},
 		{
 			Id:    FETCH_ALBUMS,
-			Title: "全部影集",
+			Title: FETCH_ALBUMS,
 		},
 		{
 			Id:    FETCH_SHARE_ALBUMS,
-			Title: "共享影集",
+			Title: FETCH_SHARE_ALBUMS,
 		},
 	}, nil
 }

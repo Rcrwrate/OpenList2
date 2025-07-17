@@ -5,9 +5,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/pkg/http_range"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"golang.org/x/time/rate"
 )
 
@@ -135,19 +135,26 @@ func (r *RateLimitFile) ReadAt(p []byte, off int64) (n int, err error) {
 	return
 }
 
-type RateLimitRangeReadCloser struct {
-	model.RangeReadCloserIF
-	Limiter Limiter
+func (r *RateLimitFile) Close() error {
+	if c, ok := r.File.(io.Closer); ok {
+		return c.Close()
+	}
+	return nil
 }
 
-func (rrc *RateLimitRangeReadCloser) RangeRead(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
-	rc, err := rrc.RangeReadCloserIF.RangeRead(ctx, httpRange)
+type RateLimitRangeReaderFunc RangeReaderFunc
+
+func (f RateLimitRangeReaderFunc) RangeRead(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
+	rc, err := f(ctx, httpRange)
 	if err != nil {
 		return nil, err
 	}
-	return &RateLimitReader{
-		Reader:  rc,
-		Limiter: rrc.Limiter,
-		Ctx:     ctx,
-	}, nil
+	if ServerDownloadLimit != nil {
+		rc = &RateLimitReader{
+			Ctx:     ctx,
+			Reader:  rc,
+			Limiter: ServerDownloadLimit,
+		}
+	}
+	return rc, nil
 }

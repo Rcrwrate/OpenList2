@@ -1,8 +1,8 @@
 package local
 
 import (
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 )
 
 type Addition struct {
@@ -17,11 +17,12 @@ type Addition struct {
 }
 
 var config = driver.Config{
-	Name:        "Local",
-	OnlyLocal:   true,
-	LocalSort:   true,
-	NoCache:     true,
-	DefaultRoot: "/",
+	Name:          "Local",
+	OnlyLinkMFile: false,
+	LocalSort:     true,
+	NoCache:       true,
+	DefaultRoot:   "/",
+	NoLinkURL:     true,
 }
 
 func init() {

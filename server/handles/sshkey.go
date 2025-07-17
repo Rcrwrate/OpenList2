@@ -4,9 +4,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/op"
-	"github.com/OpenListTeam/OpenList/server/common"
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,7 +17,7 @@ type SSHKeyAddReq struct {
 }
 
 func AddMyPublicKey(c *gin.Context) {
-	userObj, ok := c.Value("user").(*model.User)
+	userObj, ok := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !ok || userObj.IsGuest() {
 		common.ErrorStrResp(c, "user invalid", 401)
 		return
@@ -47,7 +48,7 @@ func AddMyPublicKey(c *gin.Context) {
 }
 
 func ListMyPublicKey(c *gin.Context) {
-	userObj, ok := c.Value("user").(*model.User)
+	userObj, ok := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !ok || userObj.IsGuest() {
 		common.ErrorStrResp(c, "user invalid", 401)
 		return
@@ -56,7 +57,7 @@ func ListMyPublicKey(c *gin.Context) {
 }
 
 func DeleteMyPublicKey(c *gin.Context) {
-	userObj, ok := c.Value("user").(*model.User)
+	userObj, ok := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !ok || userObj.IsGuest() {
 		common.ErrorStrResp(c, "user invalid", 401)
 		return

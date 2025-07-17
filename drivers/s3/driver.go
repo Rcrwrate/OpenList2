@@ -4,17 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/url"
 	stdpath "path"
 	"strings"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/stream"
-	"github.com/OpenListTeam/OpenList/pkg/cron"
-	"github.com/OpenListTeam/OpenList/server/common"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/pkg/cron"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -81,20 +81,25 @@ func (d *S3) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([]mo
 
 func (d *S3) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
 	path := getKey(file.GetPath(), false)
-	filename := stdpath.Base(path)
-	disposition := fmt.Sprintf(`attachment; filename*=UTF-8''%s`, url.PathEscape(filename))
-	if d.AddFilenameToDisposition {
-		disposition = fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, url.PathEscape(filename))
-	}
+	fileName := stdpath.Base(path)
 	input := &s3.GetObjectInput{
 		Bucket: &d.Bucket,
 		Key:    &path,
 		//ResponseContentDisposition: &disposition,
 	}
+
 	if d.CustomHost == "" {
+		disposition := fmt.Sprintf(`attachment; filename*=UTF-8''%s`, url.PathEscape(fileName))
+		if d.AddFilenameToDisposition {
+			disposition = utils.GenerateContentDisposition(fileName)
+		}
 		input.ResponseContentDisposition = &disposition
 	}
+
 	req, _ := d.linkClient.GetObjectRequest(input)
+	if req == nil {
+		return nil, fmt.Errorf("failed to create GetObject request")
+	}
 	var link model.Link
 	var err error
 	if d.CustomHost != "" {
@@ -104,11 +109,33 @@ func (d *S3) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*mo
 			err = req.Build()
 			link.URL = req.HTTPRequest.URL.String()
 		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate link URL: %w", err)
+		}
+
 		if d.RemoveBucket {
-			link.URL = strings.Replace(link.URL, "/"+d.Bucket, "", 1)
+			parsedURL, parseErr := url.Parse(link.URL)
+			if parseErr != nil {
+				log.Errorf("Failed to parse URL for bucket removal: %v, URL: %s", parseErr, link.URL)
+				return nil, fmt.Errorf("failed to parse URL for bucket removal: %w", parseErr)
+			}
+
+			path := parsedURL.Path
+			bucketPrefix := "/" + d.Bucket
+			if strings.HasPrefix(path, bucketPrefix) {
+				path = strings.TrimPrefix(path, bucketPrefix)
+				if path == "" {
+					path = "/"
+				}
+				parsedURL.Path = path
+				link.URL = parsedURL.String()
+				log.Debugf("Removed bucket '%s' from URL path: %s -> %s", d.Bucket, bucketPrefix, path)
+			} else {
+				log.Warnf("URL path does not contain expected bucket prefix '%s': %s", bucketPrefix, path)
+			}
 		}
 	} else {
-		if common.ShouldProxy(d, filename) {
+		if common.ShouldProxy(d, fileName) {
 			err = req.Sign()
 			link.URL = req.HTTPRequest.URL.String()
 			link.Header = req.HTTPRequest.Header
@@ -130,7 +157,7 @@ func (d *S3) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) e
 			Name:     getPlaceholderName(d.Placeholder),
 			Modified: time.Now(),
 		},
-		Reader:   io.NopCloser(bytes.NewReader([]byte{})),
+		Reader:   bytes.NewReader([]byte{}),
 		Mimetype: "application/octet-stream",
 	}, func(float64) {})
 }
