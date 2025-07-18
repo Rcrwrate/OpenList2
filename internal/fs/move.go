@@ -52,16 +52,18 @@ func (t *MoveTask) Run() error {
 	return moveBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
 }
 
-func (t *MoveTask) SetState(state tache.State) {
-	switch state {
-	case tache.StateSucceeded, tache.StateFailed:
-		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
-	case tache.StateBeforeRetry:
-		if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 { // 手动重试
-			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, batch_task.MoveSrcPathPayload(path.Join(t.SrcStorageMp, t.SrcObjPath)))
-		}
+func (t *MoveTask) OnSucceeded() {
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+}
+
+func (t *MoveTask) OnFailed() {
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+}
+
+func (t *MoveTask) OnBeforeRetry() {
+	if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, batch_task.MoveSrcPathPayload(path.Join(t.SrcStorageMp, t.SrcObjPath)))
 	}
-	t.TaskExtension.SetState(state)
 }
 
 var MoveTaskManager *tache.Manager[*MoveTask]

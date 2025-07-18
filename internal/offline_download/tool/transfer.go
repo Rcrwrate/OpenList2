@@ -76,18 +76,6 @@ func (t *TransferTask) Run() error {
 	}
 }
 
-func (t *TransferTask) SetState(state tache.State) {
-	switch state {
-	case tache.StateSucceeded, tache.StateFailed:
-		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
-	case tache.StateBeforeRetry:
-		if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
-			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
-		}
-	}
-	t.TaskExtension.SetState(state)
-}
-
 func (t *TransferTask) GetName() string {
 	if t.DeletePolicy == UploadDownloadStream {
 		return fmt.Sprintf("upload [%s](%s) to [%s](%s)", t.SrcObjPath, t.Url, t.DstStorageMp, t.DstDirPath)
@@ -107,6 +95,7 @@ func (t *TransferTask) OnSucceeded() {
 			removeObjTemp(t)
 		}
 	}
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
 }
 
 func (t *TransferTask) OnFailed() {
@@ -116,6 +105,13 @@ func (t *TransferTask) OnFailed() {
 		} else {
 			removeObjTemp(t)
 		}
+	}
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+}
+
+func (t *TransferTask) OnBeforeRetry() {
+	if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
 	}
 }
 

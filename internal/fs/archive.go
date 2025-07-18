@@ -159,10 +159,6 @@ func (t *ArchiveContentUploadTask) GetStatus() string {
 	return t.status
 }
 
-func (t *ArchiveContentUploadTask) BeforeRun() error {
-	return nil
-}
-
 func (t *ArchiveContentUploadTask) Run() error {
 	if err := t.ReinitCtx(); err != nil {
 		return err
@@ -178,16 +174,18 @@ func (t *ArchiveContentUploadTask) Run() error {
 	})
 }
 
-func (t *ArchiveContentUploadTask) SetState(state tache.State) {
-	switch state {
-	case tache.StateSucceeded, tache.StateFailed:
-		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
-	case tache.StateBeforeRetry:
-		if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
-			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
-		}
+func (t *ArchiveContentUploadTask) OnSucceeded() {
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+}
+
+func (t *ArchiveContentUploadTask) OnFailed() {
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
+}
+
+func (t *ArchiveContentUploadTask) OnBeforeRetry() {
+	if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
 	}
-	t.TaskExtension.SetState(state)
 }
 
 func (t *ArchiveContentUploadTask) RunWithNextTaskCallback(f func(nextTsk *ArchiveContentUploadTask) error) error {

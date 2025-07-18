@@ -41,18 +41,21 @@ func (t *UploadTask) Run() error {
 	return op.Put(t.Ctx(), t.storage, t.dstDirActualPath, t.file, t.SetProgress, true)
 }
 
-func (t *UploadTask) SetState(state tache.State) {
-	switch state {
-	case tache.StateSucceeded, tache.StateFailed:
+func (t *UploadTask) OnSucceeded() {
+	targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+}
+
+func (t *UploadTask) OnFailed() {
+	targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
+	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+}
+
+func (t *UploadTask) OnBeforeRetry() {
+	if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
 		targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
-		batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
-	case tache.StateBeforeRetry:
-		if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
-			targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
-			batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, nil)
-		}
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, nil)
 	}
-	t.TaskExtension.SetState(state)
 }
 
 var UploadTaskManager *tache.Manager[*UploadTask]
