@@ -209,8 +209,8 @@ func FsRename(c *gin.Context) {
 		common.ErrorResp(c, err, 403)
 		return
 	}
-	if strings.ContainsAny(req.Name, "/\\") {
-		common.ErrorStrResp(c, "invalid name: name can't contain path separator", 400)
+	if strings.ContainsAny(req.Name, "/\\") || req.Name == "" || req.Name == "." || req.Name == ".." {
+		common.ErrorStrResp(c, "invalid filename", 400)
 		return
 	}
 	if !req.Overwrite {
