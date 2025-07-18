@@ -182,10 +182,11 @@ func (t *ArchiveContentUploadTask) OnFailed() {
 	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
 }
 
-func (t *ArchiveContentUploadTask) OnBeforeRetry() {
-	if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+func (t *ArchiveContentUploadTask) SetRetry(retry int, maxRetry int) {
+	if retry == 0 && t.GetErr() == nil && t.GetState() != tache.StatePending {
 		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
 	}
+	t.TaskExtension.SetRetry(retry, maxRetry)
 }
 
 func (t *ArchiveContentUploadTask) RunWithNextTaskCallback(f func(nextTsk *ArchiveContentUploadTask) error) error {

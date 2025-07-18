@@ -3,7 +3,6 @@ package fs
 import (
 	"context"
 	"fmt"
-	"path"
 	stdpath "path"
 	"time"
 
@@ -60,10 +59,11 @@ func (t *MoveTask) OnFailed() {
 	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
 }
 
-func (t *MoveTask) OnBeforeRetry() {
-	if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
-		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, batch_task.MoveSrcPathPayload(path.Join(t.SrcStorageMp, t.SrcObjPath)))
+func (t *MoveTask) SetRetry(retry int, maxRetry int) {
+	if retry == 0 && t.GetErr() == nil && t.GetState() != tache.StatePending {
+		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, batch_task.MoveSrcPathPayload(stdpath.Join(t.SrcStorageMp, t.SrcObjPath)))
 	}
+	t.TaskExtension.SetRetry(retry, maxRetry)
 }
 
 var MoveTaskManager *tache.Manager[*MoveTask]

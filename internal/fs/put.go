@@ -51,11 +51,12 @@ func (t *UploadTask) OnFailed() {
 	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
 }
 
-func (t *UploadTask) OnBeforeRetry() {
-	if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+func (t *UploadTask) SetRetry(retry int, maxRetry int) {
+	if retry == 0 && t.GetErr() == nil && t.GetState() != tache.StatePending {
 		targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
 		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, nil)
 	}
+	t.TaskExtension.SetRetry(retry, maxRetry)
 }
 
 var UploadTaskManager *tache.Manager[*UploadTask]

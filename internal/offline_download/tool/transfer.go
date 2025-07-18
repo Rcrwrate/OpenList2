@@ -109,10 +109,11 @@ func (t *TransferTask) OnFailed() {
 	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(t.targetPath)
 }
 
-func (t *TransferTask) OnBeforeRetry() {
-	if retry, maxRetry := t.GetRetry(); retry == 0 && maxRetry > 0 {
+func (t *TransferTask) SetRetry(retry int, maxRetry int) {
+	if retry == 0 && t.GetErr() == nil && t.GetState() != tache.StatePending {
 		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.targetPath, nil)
 	}
+	t.TaskExtension.SetRetry(retry, maxRetry)
 }
 
 var (
