@@ -233,10 +233,6 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 	if err != nil {
 		return http.StatusNotFound, err
 	}
-	if r.Method == http.MethodHead {
-		w.Header().Set("Content-Length", fmt.Sprintf("%d", fi.GetSize()))
-		return http.StatusOK, nil
-	}
 	if fi.IsDir() {
 		return http.StatusMethodNotAllowed, nil
 	}
