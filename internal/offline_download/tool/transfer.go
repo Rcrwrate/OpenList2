@@ -320,7 +320,7 @@ func transferObjFile(t *TransferTask) error {
 		_ = link.Close()
 		return errors.WithMessagef(err, "failed get [%s] stream", t.SrcActualPath)
 	}
-	t.SetTotalBytes(srcFile.GetSize())
+	t.SetTotalBytes(ss.GetSize())
 	return op.Put(t.Ctx(), t.DstStorage, t.DstActualPath, ss, t.SetProgress)
 }
 

@@ -224,5 +224,6 @@ func putFileBetween2Storages(tsk *CopyOrMoveTask, srcStorage, dstStorage driver.
 		_ = link.Close()
 		return errors.WithMessagef(err, "failed get [%s] stream", srcActualPath)
 	}
+	tsk.SetTotalBytes(ss.GetSize())
 	return op.Put(tsk.Ctx(), dstStorage, dstDirActualPath, ss, tsk.SetProgress, true)
 }
