@@ -114,10 +114,12 @@ func _copyOrMove(ctx context.Context, isCopy bool, srcObjPath, dstDirPath string
 				_ = link.Close()
 				return nil, errors.WithMessagef(err, "failed get [%s] stream", srcObjPath)
 			}
-			if !isCopy {
-				defer func() {
-					task_group.TransferCoordinator.Done(dstDirPath, err == nil)
-				}()
+			defer func() {
+				task_group.TransferCoordinator.Done(dstDirPath, err == nil)
+			}()
+			if isCopy {
+				task_group.TransferCoordinator.AddTask(dstDirPath, nil)
+			} else {
 				task_group.TransferCoordinator.AddTask(dstDirPath, task_group.SrcPathToRemove(srcObjPath))
 			}
 			err = op.Put(ctx, dstStorage, dstDirActualPath, ss, nil, false)
