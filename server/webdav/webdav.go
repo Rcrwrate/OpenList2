@@ -250,7 +250,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		}
 		defer link.Close()
 		if storage.GetStorage().ProxyRange {
-			common.ProxyRange(ctx, link, fi.GetSize())
+			link = common.ProxyRange(ctx, link, fi.GetSize())
 		}
 		err = common.Proxy(w, r, link, fi)
 		if err != nil {

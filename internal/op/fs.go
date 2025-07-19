@@ -2,7 +2,6 @@ package op
 
 import (
 	"context"
-	"fmt"
 	stdpath "path"
 	"slices"
 	"time"
@@ -260,11 +259,7 @@ func Link(ctx context.Context, storage driver.Driver, path string, args model.Li
 		return nil, nil, errors.WithStack(errs.NotFile)
 	}
 
-	key := Key(storage, path)
-	if len(args.Type) > 0 {
-		key = fmt.Sprintf("%s:type=%s", key, args.Type)
-	}
-
+	key := stdpath.Join(Key(storage, path), args.Type)
 	if link, ok := linkCache.Get(key); ok {
 		return link, file, nil
 	}

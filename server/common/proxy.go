@@ -99,17 +99,20 @@ func GetEtag(file model.Obj, size int64) string {
 	return fmt.Sprintf(`"%x-%x"`, file.ModTime().Unix(), size)
 }
 
-func ProxyRange(ctx context.Context, link *model.Link, size int64) {
-	if link.MFile != nil {
-		return
-	}
-	if link.RangeReader == nil && !strings.HasPrefix(link.URL, GetApiUrl(ctx)+"/") {
-		rrf, err := stream.GetRangeReaderFromLink(size, link)
-		if err != nil {
-			return
+func ProxyRange(ctx context.Context, link *model.Link, size int64) *model.Link {
+	if link.MFile == nil && link.RangeReader == nil && !strings.HasPrefix(link.URL, GetApiUrl(ctx)+"/") {
+		if link.ContentLength > 0 {
+			size = link.ContentLength
 		}
-		link.RangeReader = rrf
+		rrf, err := stream.GetRangeReaderFromLink(size, link)
+		if err == nil {
+			return &model.Link{
+				RangeReader:   rrf,
+				ContentLength: size,
+			}
+		}
 	}
+	return link
 }
 
 type InterceptResponseWriter struct {
