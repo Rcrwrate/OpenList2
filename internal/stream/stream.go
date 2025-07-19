@@ -174,7 +174,11 @@ func NewSeekableStream(fs *FileStream, link *model.Link) (*SeekableStream, error
 	}
 
 	if link != nil {
-		rr, err := GetRangeReaderFromLink(fs.GetSize(), link)
+		size := link.ContentLength
+		if size <= 0 {
+			size = fs.GetSize()
+		}
+		rr, err := GetRangeReaderFromLink(size, link)
 		if err != nil {
 			return nil, err
 		}

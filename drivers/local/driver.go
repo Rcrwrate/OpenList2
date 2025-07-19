@@ -234,11 +234,11 @@ func (d *Local) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 				open.Close()
 				return nil, err
 			}
-			link.Header.Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
+			link.ContentLength = int64(stat.Size())
 			link.MFile = open
 		} else {
 			link.MFile = bytes.NewReader(buf.Bytes())
-			link.Header.Set("Content-Length", strconv.Itoa(buf.Len()))
+			link.ContentLength = int64(buf.Len())
 		}
 	} else {
 		open, err := os.Open(fullPath)

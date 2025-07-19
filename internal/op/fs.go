@@ -2,9 +2,9 @@ package op
 
 import (
 	"context"
+	"fmt"
 	stdpath "path"
 	"slices"
-	"strconv"
 	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
@@ -259,12 +259,13 @@ func Link(ctx context.Context, storage driver.Driver, path string, args model.Li
 	if file.IsDir() {
 		return nil, nil, errors.WithStack(errs.NotFile)
 	}
+
 	key := Key(storage, path)
+	if len(args.Type) > 0 {
+		key = fmt.Sprintf("%s:type=%s", key, args.Type)
+	}
+
 	if link, ok := linkCache.Get(key); ok {
-		// For cached links, we need to create a proper file object for thumbnails
-		if args.Type == "thumb" {
-			return link, createThumbnailFileObj(file, link), nil
-		}
 		return link, file, nil
 	}
 
@@ -286,10 +287,6 @@ func Link(ctx context.Context, storage driver.Driver, path string, args model.Li
 		if err != nil {
 			return nil, nil, err
 		}
-		// For thumbnail requests, return a file object with correct size
-		if args.Type == "thumb" {
-			return link, createThumbnailFileObj(file, link), nil
-		}
 		return link, file, err
 	}
 
@@ -310,27 +307,8 @@ func Link(ctx context.Context, storage driver.Driver, path string, args model.Li
 	if err != nil {
 		return nil, nil, err
 	}
-	
-	// For thumbnail requests, return a file object with correct size
-	if args.Type == "thumb" {
-		return link, createThumbnailFileObj(file, link), nil
-	}
-	return link, file, err
-}
 
-// createThumbnailFileObj creates a file object wrapper that returns the thumbnail size
-func createThumbnailFileObj(originalFile model.Obj, link *model.Link) model.Obj {
-	// Try to get the size from Content-Length header
-	if contentLength := link.Header.Get("Content-Length"); contentLength != "" {
-		if size, err := strconv.ParseInt(contentLength, 10, 64); err == nil {
-			return &model.ThumbnailFileObj{
-				Obj:           originalFile,
-				ThumbnailSize: size,
-			}
-		}
-	}
-	// Fallback to original file if we can't determine thumbnail size
-	return originalFile
+	return link, file, err
 }
 
 // Other api
