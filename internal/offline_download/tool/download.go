@@ -6,11 +6,12 @@ import (
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
+	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/internal/setting"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
-	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
+	"github.com/OpenListTeam/OpenList/v4/internal/task_group"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -183,22 +184,24 @@ func (t *DownloadTask) Transfer() error {
 			return errors.WithMessage(err, "failed get dst storage")
 		}
 		taskCreator, _ := t.Ctx().Value(conf.UserKey).(*model.User)
-		task := &TransferTask{
-			TaskExtension: task.TaskExtension{
-				Creator: taskCreator,
-				ApiUrl:  t.ApiUrl,
+		tsk := &TransferTask{
+			Transfer: fs.Transfer{
+				TaskExtension: task.TaskExtension{
+					Creator: taskCreator,
+					ApiUrl:  t.ApiUrl,
+				},
+				SrcActualPath: t.TempDir,
+				DstActualPath: dstDirActualPath,
+				DstStorage:    dstStorage,
+				DstStorageMp:  dstStorage.GetStorage().MountPath,
+				GroupID:       t.DstDirPath,
 			},
-			SrcObjPath:   t.TempDir,
-			DstDirPath:   dstDirActualPath,
-			DstStorage:   dstStorage,
-			DstStorageMp: dstStorage.GetStorage().MountPath,
 			DeletePolicy: t.DeletePolicy,
 			Url:          t.Url,
-			targetPath:   t.DstDirPath,
 		}
-		task.SetTotalBytes(t.GetTotalBytes())
-		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(t.DstDirPath, nil)
-		TransferTaskManager.Add(task)
+		tsk.SetTotalBytes(t.GetTotalBytes())
+		task_group.TransferCoordinator.AddTask(tsk.GroupID, nil)
+		TransferTaskManager.Add(tsk)
 		return nil
 	}
 	return transferStd(t.Ctx(), t.TempDir, t.DstDirPath, t.DeletePolicy)

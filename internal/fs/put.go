@@ -6,7 +6,6 @@ import (
 	stdpath "path"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/v4/internal/task/batch_task"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
@@ -15,6 +14,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
+	"github.com/OpenListTeam/OpenList/v4/internal/task_group"
 	"github.com/OpenListTeam/tache"
 	"github.com/pkg/errors"
 )
@@ -42,21 +42,19 @@ func (t *UploadTask) Run() error {
 }
 
 func (t *UploadTask) OnSucceeded() {
-	targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
-	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+	task_group.TransferCoordinator.Done(stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath), true)
 }
 
 func (t *UploadTask) OnFailed() {
-	targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
-	batch_task.BatchTaskRefreshAndRemoveHook.MarkTaskFinish(targetPath)
+	task_group.TransferCoordinator.Done(stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath), false)
 }
 
 func (t *UploadTask) SetRetry(retry int, maxRetry int) {
-	if retry == 0 && t.GetErr() == nil && t.GetState() != tache.StatePending {
-		targetPath := stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath)
-		batch_task.BatchTaskRefreshAndRemoveHook.AddTask(targetPath, nil)
-	}
 	t.TaskExtension.SetRetry(retry, maxRetry)
+	if retry == 0 &&
+		(t.GetErr() == nil && t.GetState() != tache.StatePending) { // 手动重试
+		task_group.TransferCoordinator.AddTask(stdpath.Join(t.storage.GetStorage().MountPath, t.dstDirActualPath), nil)
+	}
 }
 
 var UploadTaskManager *tache.Manager[*UploadTask]
@@ -89,7 +87,7 @@ func putAsTask(ctx context.Context, dstDirPath string, file model.FileStreamer) 
 		file:             file,
 	}
 	t.SetTotalBytes(file.GetSize())
-	batch_task.BatchTaskRefreshAndRemoveHook.AddTask(dstDirPath, nil)
+	task_group.TransferCoordinator.AddTask(dstDirPath, nil)
 	UploadTaskManager.Add(t)
 	return t, nil
 }

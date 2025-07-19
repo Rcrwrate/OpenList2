@@ -1,4 +1,4 @@
-package batch_task
+package task_group
 
 import (
 	"context"
@@ -12,14 +12,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var BatchTaskRefreshAndRemoveHook *BatchTaskCoordinator
+type SrcPathToRemove string
 
-func InitBatchTaskHook() {
-	BatchTaskRefreshAndRemoveHook = NewBatchTaskCoordinator("refreshAndRemoveHook")
-	BatchTaskRefreshAndRemoveHook.SetAllFinishHook(refreshAndRemove)
-}
-
-type MoveSrcPathPayload string
+// ActualPath
+type DstPathToRefresh string
 
 func refreshAndRemove(dstPath string, payloads []any) {
 	dstStorage, dstActualPath, err := op.GetStorageAndActualPath(dstPath)
@@ -27,22 +23,28 @@ func refreshAndRemove(dstPath string, payloads []any) {
 		log.Error(errors.WithMessage(err, "failed get dst storage"))
 		return
 	}
-	if _, ok := dstStorage.(driver.PutResult); !ok && !dstStorage.Config().NoCache {
-		op.ClearCache(dstStorage, dstActualPath)
+	_, dstNeedRefresh := dstStorage.(driver.Put)
+	dstNeedRefresh = dstNeedRefresh && !dstStorage.Config().NoCache
+	if dstNeedRefresh {
+		op.ClearCacheNonRecursive(dstStorage, dstActualPath)
 	}
 	var ctx context.Context
 	for _, payload := range payloads {
-		if ctx == nil {
-			ctx = context.Background()
-		}
-
-		if srcPath, srcOk := payload.(MoveSrcPathPayload); srcOk {
-			srcStorage, srcActualPath, err := op.GetStorageAndActualPath(string(srcPath))
+		switch p := payload.(type) {
+		case DstPathToRefresh:
+			if dstNeedRefresh {
+				op.ClearCacheNonRecursive(dstStorage, string(p))
+			}
+		case SrcPathToRemove:
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			srcStorage, srcActualPath, err := op.GetStorageAndActualPath(string(p))
 			if err != nil {
 				log.Error(errors.WithMessage(err, "failed get src storage"))
 				continue
 			}
-			err = verifyAndRemove(ctx, srcStorage, dstStorage, srcActualPath, dstActualPath)
+			err = verifyAndRemove(ctx, srcStorage, dstStorage, srcActualPath, dstActualPath, dstNeedRefresh)
 			if err != nil {
 				log.Error(err)
 			}
@@ -50,7 +52,7 @@ func refreshAndRemove(dstPath string, payloads []any) {
 	}
 }
 
-func verifyAndRemove(ctx context.Context, srcStorage, dstStorage driver.Driver, srcPath, dstPath string) error {
+func verifyAndRemove(ctx context.Context, srcStorage, dstStorage driver.Driver, srcPath, dstPath string, refresh bool) error {
 	srcObj, err := op.Get(ctx, srcStorage, srcPath)
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", path.Join(srcStorage.GetStorage().MountPath, srcPath))
@@ -76,10 +78,13 @@ func verifyAndRemove(ctx context.Context, srcStorage, dstStorage driver.Driver, 
 		return errors.WithMessagef(err, "failed list src [%s] objs", path.Join(srcStorage.GetStorage().MountPath, srcPath))
 	}
 
+	if refresh {
+		op.ClearCacheNonRecursive(dstStorage, dstObjPath)
+	}
 	hasErr := false
 	for _, obj := range srcObjs {
 		srcSubPath := path.Join(srcPath, obj.GetName())
-		err := verifyAndRemove(ctx, srcStorage, dstStorage, srcSubPath, dstObjPath)
+		err := verifyAndRemove(ctx, srcStorage, dstStorage, srcSubPath, dstObjPath, refresh)
 		if err != nil {
 			log.Error(err)
 			hasErr = true
@@ -94,3 +99,5 @@ func verifyAndRemove(ctx context.Context, srcStorage, dstStorage driver.Driver, 
 	}
 	return nil
 }
+
+var TransferCoordinator *TaskGroupCoordinator = NewTaskGroupCoordinator("RefreshAndRemove", refreshAndRemove)
