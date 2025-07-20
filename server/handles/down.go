@@ -6,7 +6,6 @@ import (
 	"fmt"
 	stdpath "path"
 	"strconv"
-	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
@@ -14,7 +13,6 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/net"
 	"github.com/OpenListTeam/OpenList/v4/internal/setting"
-	"github.com/OpenListTeam/OpenList/v4/internal/sign"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/gin-gonic/gin"
@@ -58,24 +56,9 @@ func Proxy(c *gin.Context) {
 		return
 	}
 	if canProxy(storage, filename) {
-		downProxyUrl := storage.GetStorage().DownProxyUrl
-		if downProxyUrl != "" {
-			_, ok := c.GetQuery("d")
-			if !ok {
-				var URL string
-				if storage.GetStorage().DisableProxySign {
-					// 如果禁用代理签名，则不添加签名参数
-					URL = fmt.Sprintf("%s%s",
-						strings.Split(downProxyUrl, "\n")[0],
-						utils.EncodePath(rawPath, true))
-				} else {
-					// 如果启用代理签名，则添加签名参数（保持原有逻辑）
-					URL = fmt.Sprintf("%s%s?sign=%s",
-						strings.Split(downProxyUrl, "\n")[0],
-						utils.EncodePath(rawPath, true),
-						sign.Sign(rawPath))
-				}
-				c.Redirect(302, URL)
+		if _, ok := c.GetQuery("d"); !ok {
+			if url := common.GenerateDownProxyUrl(storage.GetStorage(), rawPath); len(url) > 0 {
+				c.Redirect(302, url)
 				return
 			}
 		}

@@ -285,16 +285,12 @@ func FsGet(c *gin.Context) {
 			return
 		}
 		if storage.Config().MustProxy() || storage.GetStorage().WebProxy {
-			query := ""
-			if isEncrypt(meta, reqPath) || setting.GetBool(conf.SignAll) {
-				query = "?sign=" + sign.Sign(reqPath)
-			}
-			if storage.GetStorage().DownProxyUrl != "" {
-				rawURL = fmt.Sprintf("%s%s?sign=%s",
-					strings.Split(storage.GetStorage().DownProxyUrl, "\n")[0],
-					utils.EncodePath(reqPath, true),
-					sign.Sign(reqPath))
-			} else {
+			rawURL = common.GenerateDownProxyUrl(storage.GetStorage(), reqPath)
+			if len(rawURL) == 0 {
+				query := ""
+				if isEncrypt(meta, reqPath) || setting.GetBool(conf.SignAll) {
+					query = "?sign=" + sign.Sign(reqPath)
+				}
 				rawURL = fmt.Sprintf("%s/p%s%s",
 					common.GetApiUrl(c),
 					utils.EncodePath(reqPath, true),
