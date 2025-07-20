@@ -18,8 +18,8 @@ type Archives struct {
 
 func (Archives) AcceptedExtensions() []string {
 	return []string{
-		".br", ".bz2", ".gz", ".lz4", ".lz", ".sz", ".s2", ".xz", ".zz", ".zst", ".tar",
-		".tar.zst", ".tzst", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar.xz", ".txz", ".tar.lz4",
+		".br", ".bz2", ".gz", ".lz4", ".lz", ".mz", ".sz", ".s2", ".xz", ".zz", ".zst", ".tar",
+		".tgz", ".tlz4", ".tbz2", ".txz", ".tzst",
 	}
 }
 
