@@ -62,10 +62,19 @@ func Proxy(c *gin.Context) {
 		if downProxyUrl != "" {
 			_, ok := c.GetQuery("d")
 			if !ok {
-				URL := fmt.Sprintf("%s%s?sign=%s",
-					strings.Split(downProxyUrl, "\n")[0],
-					utils.EncodePath(rawPath, true),
-					sign.Sign(rawPath))
+				var URL string
+				if storage.GetStorage().DisableProxySign {
+					// 如果禁用代理签名，则不添加签名参数
+					URL = fmt.Sprintf("%s%s",
+						strings.Split(downProxyUrl, "\n")[0],
+						utils.EncodePath(rawPath, true))
+				} else {
+					// 如果启用代理签名，则添加签名参数（保持原有逻辑）
+					URL = fmt.Sprintf("%s%s?sign=%s",
+						strings.Split(downProxyUrl, "\n")[0],
+						utils.EncodePath(rawPath, true),
+						sign.Sign(rawPath))
+				}
 				c.Redirect(302, URL)
 				return
 			}

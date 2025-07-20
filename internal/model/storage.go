@@ -28,10 +28,11 @@ type Sort struct {
 }
 
 type Proxy struct {
-	WebProxy     bool   `json:"web_proxy"`
-	WebdavPolicy string `json:"webdav_policy"`
-	ProxyRange   bool   `json:"proxy_range"`
-	DownProxyUrl string `json:"down_proxy_url"`
+	WebProxy         bool   `json:"web_proxy"`
+	WebdavPolicy     string `json:"webdav_policy"`
+	ProxyRange       bool   `json:"proxy_range"`
+	DownProxyUrl     string `json:"down_proxy_url"`
+	DisableProxySign bool   `json:"disable_proxy_sign"`
 }
 
 func (s *Storage) GetStorage() *Storage {
