@@ -3,7 +3,6 @@ package handles
 import (
 	"fmt"
 	stdpath "path"
-	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
@@ -205,12 +204,11 @@ func FsRename(c *gin.Context) {
 		return
 	}
 	reqPath, err := user.JoinPath(req.Path)
+	if err == nil {
+		req.Name, err = utils.CheckRelativePath(req.Name)
+	}
 	if err != nil {
 		common.ErrorResp(c, err, 403)
-		return
-	}
-	if strings.ContainsAny(req.Name, "/\\") || req.Name == "" || req.Name == "." || req.Name == ".." {
-		common.ErrorStrResp(c, "invalid filename", 400)
 		return
 	}
 	if !req.Overwrite {
