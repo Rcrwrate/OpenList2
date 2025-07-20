@@ -28,24 +28,17 @@ import (
 )
 
 type ArchiveDownloadTask struct {
-	task.TaskExtension
+	TaskData
 	model.ArchiveDecompressArgs
-	status       string
-	SrcObjPath   string
-	DstDirPath   string
-	srcStorage   driver.Driver
-	dstStorage   driver.Driver
-	SrcStorageMp string
-	DstStorageMp string
 }
 
 func (t *ArchiveDownloadTask) GetName() string {
-	return fmt.Sprintf("decompress [%s](%s)[%s] to [%s](%s) with password <%s>", t.SrcStorageMp, t.SrcObjPath,
-		t.InnerPath, t.DstStorageMp, t.DstDirPath, t.Password)
+	return fmt.Sprintf("decompress [%s](%s)[%s] to [%s](%s) with password <%s>", t.SrcStorageMp, t.SrcActualPath,
+		t.InnerPath, t.DstStorageMp, t.DstActualPath, t.Password)
 }
 
 func (t *ArchiveDownloadTask) GetStatus() string {
-	return t.status
+	return t.Status
 }
 
 func (t *ArchiveDownloadTask) Run() error {
@@ -67,13 +60,13 @@ func (t *ArchiveDownloadTask) Run() error {
 
 func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadTask, error) {
 	var err error
-	if t.srcStorage == nil {
-		t.srcStorage, err = op.GetStorageByMountPath(t.SrcStorageMp)
+	if t.SrcStorage == nil {
+		t.SrcStorage, err = op.GetStorageByMountPath(t.SrcStorageMp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	srcObj, tool, ss, err := op.GetArchiveToolAndStream(t.Ctx(), t.srcStorage, t.SrcObjPath, model.LinkArgs{})
+	srcObj, tool, ss, err := op.GetArchiveToolAndStream(t.Ctx(), t.SrcStorage, t.SrcActualPath, model.LinkArgs{})
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +86,7 @@ func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadT
 			total += s.GetSize()
 		}
 		t.SetTotalBytes(total)
-		t.status = "getting src object"
+		t.Status = "getting src object"
 		for _, s := range ss {
 			if s.GetFile() == nil {
 				_, err = stream.CacheFullInTempFileAndWriter(s, func(p float64) {
@@ -110,7 +103,7 @@ func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadT
 	} else {
 		decompressUp = t.SetProgress
 	}
-	t.status = "walking and decompressing"
+	t.Status = "walking and decompressing"
 	dir, err := os.MkdirTemp(conf.Conf.TempDir, "dir-*")
 	if err != nil {
 		return nil, err
@@ -128,8 +121,8 @@ func (t *ArchiveDownloadTask) RunWithoutPushUploadTask() (*ArchiveContentUploadT
 		ObjName:       baseName,
 		InPlace:       !t.PutIntoNewDir,
 		FilePath:      dir,
-		DstActualPath: t.DstDirPath,
-		dstStorage:    t.dstStorage,
+		DstActualPath: t.DstActualPath,
+		dstStorage:    t.DstStorage,
 		DstStorageMp:  t.DstStorageMp,
 	}
 	return uploadTask, nil
@@ -392,17 +385,19 @@ func archiveDecompress(ctx context.Context, srcObjPath, dstDirPath string, args 
 	}
 	taskCreator, _ := ctx.Value(conf.UserKey).(*model.User)
 	tsk := &ArchiveDownloadTask{
-		TaskExtension: task.TaskExtension{
-			Creator: taskCreator,
-			ApiUrl:  common.GetApiUrl(ctx),
+		TaskData: TaskData{
+			TaskExtension: task.TaskExtension{
+				Creator: taskCreator,
+				ApiUrl:  common.GetApiUrl(ctx),
+			},
+			SrcStorage:    srcStorage,
+			DstStorage:    dstStorage,
+			SrcActualPath: srcObjActualPath,
+			DstActualPath: dstDirActualPath,
+			SrcStorageMp:  srcStorage.GetStorage().MountPath,
+			DstStorageMp:  dstStorage.GetStorage().MountPath,
 		},
 		ArchiveDecompressArgs: args,
-		srcStorage:            srcStorage,
-		dstStorage:            dstStorage,
-		SrcObjPath:            srcObjActualPath,
-		DstDirPath:            dstDirActualPath,
-		SrcStorageMp:          srcStorage.GetStorage().MountPath,
-		DstStorageMp:          dstStorage.GetStorage().MountPath,
 	}
 	if ctx.Value(conf.NoTaskKey) != nil {
 		uploadTask, err := tsk.RunWithoutPushUploadTask()

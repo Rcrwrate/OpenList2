@@ -24,9 +24,10 @@ import (
 )
 
 type TransferTask struct {
-	fs.Transfer
+	fs.TaskData
 	DeletePolicy DeletePolicy `json:"delete_policy"`
 	Url          string       `json:"url"`
+	groupID      string       `json:"-"`
 }
 
 func (t *TransferTask) Run() error {
@@ -87,7 +88,7 @@ func (t *TransferTask) OnSucceeded() {
 			removeObjTemp(t)
 		}
 	}
-	task_group.TransferCoordinator.Done(t.GroupID, true)
+	task_group.TransferCoordinator.Done(t.groupID, true)
 }
 
 func (t *TransferTask) OnFailed() {
@@ -98,15 +99,15 @@ func (t *TransferTask) OnFailed() {
 			removeObjTemp(t)
 		}
 	}
-	task_group.TransferCoordinator.Done(t.GroupID, false)
+	task_group.TransferCoordinator.Done(t.groupID, false)
 }
 
 func (t *TransferTask) SetRetry(retry int, maxRetry int) {
 	if retry == 0 &&
-		(len(t.GroupID) == 0 || // 重启恢复
+		(len(t.groupID) == 0 || // 重启恢复
 			(t.GetErr() == nil && t.GetState() != tache.StatePending)) { // 手动重试
-		t.GroupID = stdpath.Join(t.DstStorageMp, t.DstActualPath)
-		task_group.TransferCoordinator.AddTask(t.GroupID, nil)
+		t.groupID = stdpath.Join(t.DstStorageMp, t.DstActualPath)
+		task_group.TransferCoordinator.AddTask(t.groupID, nil)
 	}
 	t.TaskExtension.SetRetry(retry, maxRetry)
 }
@@ -127,7 +128,7 @@ func transferStd(ctx context.Context, tempDir, dstDirPath string, deletePolicy D
 	taskCreator, _ := ctx.Value(conf.UserKey).(*model.User)
 	for _, entry := range entries {
 		t := &TransferTask{
-			Transfer: fs.Transfer{
+			TaskData: fs.TaskData{
 				TaskExtension: task.TaskExtension{
 					Creator: taskCreator,
 					ApiUrl:  common.GetApiUrl(ctx),
@@ -136,8 +137,8 @@ func transferStd(ctx context.Context, tempDir, dstDirPath string, deletePolicy D
 				DstActualPath: dstDirActualPath,
 				DstStorage:    dstStorage,
 				DstStorageMp:  dstStorage.GetStorage().MountPath,
-				GroupID:       dstDirPath,
 			},
+			groupID:      dstDirPath,
 			DeletePolicy: deletePolicy,
 		}
 		task_group.TransferCoordinator.AddTask(dstDirPath, nil)
@@ -159,11 +160,11 @@ func transferStdPath(t *TransferTask) error {
 			return err
 		}
 		dstDirActualPath := stdpath.Join(t.DstActualPath, info.Name())
-		task_group.TransferCoordinator.AppendPayload(t.GroupID, task_group.DstPathToRefresh(dstDirActualPath))
+		task_group.TransferCoordinator.AppendPayload(t.groupID, task_group.DstPathToRefresh(dstDirActualPath))
 		for _, entry := range entries {
 			srcRawPath := stdpath.Join(t.SrcActualPath, entry.Name())
 			task := &TransferTask{
-				Transfer: fs.Transfer{
+				TaskData: fs.TaskData{
 					TaskExtension: task.TaskExtension{
 						Creator: t.Creator,
 						ApiUrl:  t.ApiUrl,
@@ -173,11 +174,11 @@ func transferStdPath(t *TransferTask) error {
 					DstStorage:    t.DstStorage,
 					SrcStorageMp:  t.SrcStorageMp,
 					DstStorageMp:  t.DstStorageMp,
-					GroupID:       t.GroupID,
 				},
+				groupID:      t.groupID,
 				DeletePolicy: t.DeletePolicy,
 			}
-			task_group.TransferCoordinator.AddTask(t.GroupID, nil)
+			task_group.TransferCoordinator.AddTask(t.groupID, nil)
 			TransferTaskManager.Add(task)
 		}
 		t.Status = "src object is dir, added all transfer tasks of files"
@@ -238,7 +239,7 @@ func transferObj(ctx context.Context, tempDir, dstDirPath string, deletePolicy D
 	taskCreator, _ := ctx.Value(conf.UserKey).(*model.User) // taskCreator is nil when convert failed
 	for _, obj := range objs {
 		t := &TransferTask{
-			Transfer: fs.Transfer{
+			TaskData: fs.TaskData{
 				TaskExtension: task.TaskExtension{
 					Creator: taskCreator,
 					ApiUrl:  common.GetApiUrl(ctx),
@@ -249,8 +250,8 @@ func transferObj(ctx context.Context, tempDir, dstDirPath string, deletePolicy D
 				DstStorage:    dstStorage,
 				SrcStorageMp:  srcStorage.GetStorage().MountPath,
 				DstStorageMp:  dstStorage.GetStorage().MountPath,
-				GroupID:       dstDirPath,
 			},
+			groupID:      dstDirPath,
 			DeletePolicy: deletePolicy,
 		}
 		task_group.TransferCoordinator.AddTask(dstDirPath, nil)
@@ -272,15 +273,15 @@ func transferObjPath(t *TransferTask) error {
 			return errors.WithMessagef(err, "failed list src [%s] objs", t.SrcActualPath)
 		}
 		dstDirActualPath := stdpath.Join(t.DstActualPath, srcObj.GetName())
-		task_group.TransferCoordinator.AppendPayload(t.GroupID, task_group.DstPathToRefresh(dstDirActualPath))
+		task_group.TransferCoordinator.AppendPayload(t.groupID, task_group.DstPathToRefresh(dstDirActualPath))
 		for _, obj := range objs {
 			if utils.IsCanceled(t.Ctx()) {
 				return nil
 			}
 			srcObjPath := stdpath.Join(t.SrcActualPath, obj.GetName())
-			task_group.TransferCoordinator.AddTask(t.GroupID, nil)
+			task_group.TransferCoordinator.AddTask(t.groupID, nil)
 			TransferTaskManager.Add(&TransferTask{
-				Transfer: fs.Transfer{
+				TaskData: fs.TaskData{
 					TaskExtension: task.TaskExtension{
 						Creator: t.Creator,
 						ApiUrl:  t.ApiUrl,
@@ -291,8 +292,8 @@ func transferObjPath(t *TransferTask) error {
 					DstStorage:    t.DstStorage,
 					SrcStorageMp:  t.SrcStorageMp,
 					DstStorageMp:  t.DstStorageMp,
-					GroupID:       t.GroupID,
 				},
+				groupID:      t.groupID,
 				DeletePolicy: t.DeletePolicy,
 			})
 		}

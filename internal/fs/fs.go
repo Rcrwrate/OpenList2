@@ -67,7 +67,7 @@ func MakeDir(ctx context.Context, path string, lazyCache ...bool) error {
 }
 
 func Move(ctx context.Context, srcPath, dstDirPath string, lazyCache ...bool) (task.TaskExtensionInfo, error) {
-	req, err := _copyOrMove(ctx, false, srcPath, dstDirPath, lazyCache...)
+	req, err := transfer(ctx, move, srcPath, dstDirPath, lazyCache...)
 	if err != nil {
 		log.Errorf("failed move %s to %s: %+v", srcPath, dstDirPath, err)
 	}
@@ -75,7 +75,7 @@ func Move(ctx context.Context, srcPath, dstDirPath string, lazyCache ...bool) (t
 }
 
 func Copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool) (task.TaskExtensionInfo, error) {
-	res, err := _copyOrMove(ctx, true, srcObjPath, dstDirPath, lazyCache...)
+	res, err := transfer(ctx, copy, srcObjPath, dstDirPath, lazyCache...)
 	if err != nil {
 		log.Errorf("failed copy %s to %s: %+v", srcObjPath, dstDirPath, err)
 	}

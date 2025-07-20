@@ -185,7 +185,7 @@ func (t *DownloadTask) Transfer() error {
 		}
 		taskCreator, _ := t.Ctx().Value(conf.UserKey).(*model.User)
 		tsk := &TransferTask{
-			Transfer: fs.Transfer{
+			TaskData: fs.TaskData{
 				TaskExtension: task.TaskExtension{
 					Creator: taskCreator,
 					ApiUrl:  t.ApiUrl,
@@ -194,13 +194,13 @@ func (t *DownloadTask) Transfer() error {
 				DstActualPath: dstDirActualPath,
 				DstStorage:    dstStorage,
 				DstStorageMp:  dstStorage.GetStorage().MountPath,
-				GroupID:       t.DstDirPath,
 			},
+			groupID:      t.DstDirPath,
 			DeletePolicy: t.DeletePolicy,
 			Url:          t.Url,
 		}
 		tsk.SetTotalBytes(t.GetTotalBytes())
-		task_group.TransferCoordinator.AddTask(tsk.GroupID, nil)
+		task_group.TransferCoordinator.AddTask(tsk.groupID, nil)
 		TransferTaskManager.Add(tsk)
 		return nil
 	}
