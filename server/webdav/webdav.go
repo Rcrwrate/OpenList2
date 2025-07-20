@@ -237,36 +237,39 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 	}
 	// Let ServeContent determine the Content-Type header.
 	storage, _ := fs.GetStorage(reqPath, &fs.GetStoragesArgs{})
-	if storage.GetStorage().WebdavNative() {
-		link, _, err := fs.Link(ctx, reqPath, model.LinkArgs{Header: r.Header})
-		if err != nil {
-			return http.StatusInternalServerError, err
-		}
-		defer link.Close()
-		if storage.GetStorage().ProxyRange {
-			link = common.ProxyRange(ctx, link, fi.GetSize())
-		}
-		err = common.Proxy(w, r, link, fi)
-		if err != nil {
-			if statusCode, ok := errors.Unwrap(err).(net.ErrorHttpStatusCode); ok {
-				return int(statusCode), err
-			}
-			return http.StatusInternalServerError, fmt.Errorf("webdav proxy error: %+v", err)
-		}
-	} else {
-		if storage.GetStorage().WebdavProxy() {
-			if url := common.GenerateDownProxyUrl(storage.GetStorage(), reqPath); len(url) > 0 {
-				w.Header().Set("Cache-Control", "max-age=0, no-cache, no-store, must-revalidate")
-				http.Redirect(w, r, url, http.StatusFound)
-				return 0, nil
-			}
-		}
+	if storage.GetStorage().Webdav302() {
 		link, _, err := fs.Link(ctx, reqPath, model.LinkArgs{IP: utils.ClientIP(r), Header: r.Header, Redirect: true})
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
 		defer link.Close()
 		http.Redirect(w, r, link.URL, http.StatusFound)
+		return 0, nil
+	}
+
+	if storage.GetStorage().WebdavProxyUrl() {
+		if url := common.GenerateDownProxyUrl(storage.GetStorage(), reqPath); len(url) > 0 {
+			w.Header().Set("Cache-Control", "max-age=0, no-cache, no-store, must-revalidate")
+			http.Redirect(w, r, url, http.StatusFound)
+			return 0, nil
+		}
+	}
+
+	link, _, err := fs.Link(ctx, reqPath, model.LinkArgs{Header: r.Header})
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	defer link.Close()
+
+	if storage.GetStorage().ProxyRange {
+		link = common.ProxyRange(ctx, link, fi.GetSize())
+	}
+	err = common.Proxy(w, r, link, fi)
+	if err != nil {
+		if statusCode, ok := errors.Unwrap(err).(net.ErrorHttpStatusCode); ok {
+			return int(statusCode), err
+		}
+		return http.StatusInternalServerError, fmt.Errorf("webdav proxy error: %+v", err)
 	}
 	return 0, nil
 }

@@ -51,10 +51,6 @@ func (p Proxy) Webdav302() bool {
 	return p.WebdavPolicy == "302_redirect"
 }
 
-func (p Proxy) WebdavProxy() bool {
+func (p Proxy) WebdavProxyUrl() bool {
 	return p.WebdavPolicy == "use_proxy_url"
-}
-
-func (p Proxy) WebdavNative() bool {
-	return !p.Webdav302() && !p.WebdavProxy()
 }
