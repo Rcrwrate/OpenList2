@@ -28,11 +28,12 @@ type Sort struct {
 }
 
 type Proxy struct {
-	WebProxy         bool   `json:"web_proxy"`
-	WebdavPolicy     string `json:"webdav_policy"`
-	ProxyRange       bool   `json:"proxy_range"`
-	DownProxyUrl     string `json:"down_proxy_url"`
-	DisableProxySign bool   `json:"disable_proxy_sign"`
+	WebProxy     bool   `json:"web_proxy"`
+	WebdavPolicy string `json:"webdav_policy"`
+	ProxyRange   bool   `json:"proxy_range"`
+	DownProxyURL string `json:"down_proxy_url"`
+	//Disable sign for DownProxyURL
+	DisableProxySign bool `json:"disable_proxy_sign"`
 }
 
 func (s *Storage) GetStorage() *Storage {
@@ -51,6 +52,6 @@ func (p Proxy) Webdav302() bool {
 	return p.WebdavPolicy == "302_redirect"
 }
 
-func (p Proxy) WebdavProxyUrl() bool {
+func (p Proxy) WebdavProxyURL() bool {
 	return p.WebdavPolicy == "use_proxy_url"
 }

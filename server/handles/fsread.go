@@ -285,8 +285,8 @@ func FsGet(c *gin.Context) {
 			return
 		}
 		if storage.Config().MustProxy() || storage.GetStorage().WebProxy {
-			rawURL = common.GenerateDownProxyUrl(storage.GetStorage(), reqPath)
-			if len(rawURL) == 0 {
+			rawURL = common.GenerateDownProxyURL(storage.GetStorage(), reqPath)
+			if rawURL == "" {
 				query := ""
 				if isEncrypt(meta, reqPath) || setting.GetBool(conf.SignAll) {
 					query = "?sign=" + sign.Sign(reqPath)

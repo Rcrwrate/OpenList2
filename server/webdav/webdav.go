@@ -247,8 +247,8 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		return 0, nil
 	}
 
-	if storage.GetStorage().WebdavProxyUrl() {
-		if url := common.GenerateDownProxyUrl(storage.GetStorage(), reqPath); len(url) > 0 {
+	if storage.GetStorage().WebdavProxyURL() {
+		if url := common.GenerateDownProxyURL(storage.GetStorage(), reqPath); url != "" {
 			w.Header().Set("Cache-Control", "max-age=0, no-cache, no-store, must-revalidate")
 			http.Redirect(w, r, url, http.StatusFound)
 			return 0, nil

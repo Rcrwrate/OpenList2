@@ -142,8 +142,8 @@ func (ww *WrittenResponseWriter) IsWritten() bool {
 	return ww.written
 }
 
-func GenerateDownProxyUrl(storage *model.Storage, reqPath string) string {
-	if len(storage.DownProxyUrl) == 0 {
+func GenerateDownProxyURL(storage *model.Storage, reqPath string) string {
+	if storage.DownProxyURL == "" {
 		return ""
 	}
 	query := ""
@@ -151,7 +151,7 @@ func GenerateDownProxyUrl(storage *model.Storage, reqPath string) string {
 		query = "?sign=" + sign.Sign(reqPath)
 	}
 	return fmt.Sprintf("%s%s%s",
-		strings.Split(storage.DownProxyUrl, "\n")[0],
+		strings.Split(storage.DownProxyURL, "\n")[0],
 		utils.EncodePath(reqPath, true),
 		query,
 	)
