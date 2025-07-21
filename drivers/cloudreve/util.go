@@ -247,15 +247,15 @@ func (d *Cloudreve) upRemote(ctx context.Context, stream model.FileStreamer, u U
 		}
 		left := stream.GetSize() - finish
 		byteSize := min(left, DEFAULT)
-		utils.Log.Debugf("[Cloudreve-Remote] upload range: %d-%d/%d", finish, finish+byteSize-1, stream.GetSize())
-		byteData := make([]byte, byteSize)
-		n, err := io.ReadFull(stream, byteData)
-		utils.Log.Debug(err, n)
-		if err != nil {
-			return err
-		}
-		err = retry.Do(
+		err := retry.Do(
 			func() error {
+				utils.Log.Debugf("[Cloudreve-Remote] upload range: %d-%d/%d", finish, finish+byteSize-1, stream.GetSize())
+				byteData := make([]byte, byteSize)
+				n, err := io.ReadFull(stream, byteData)
+				utils.Log.Debug(err, n)
+				if err != nil {
+					return err
+				}
 				req, err := http.NewRequestWithContext(ctx, http.MethodPost, uploadUrl+"?chunk="+strconv.Itoa(chunk),
 					driver.NewLimitedUploadStream(ctx, bytes.NewReader(byteData)))
 				if err != nil {
@@ -310,15 +310,15 @@ func (d *Cloudreve) upOneDrive(ctx context.Context, stream model.FileStreamer, u
 		}
 		left := stream.GetSize() - finish
 		byteSize := min(left, DEFAULT)
-		utils.Log.Debugf("[Cloudreve-OneDrive] upload range: %d-%d/%d", finish, finish+byteSize-1, stream.GetSize())
-		byteData := make([]byte, byteSize)
-		n, err := io.ReadFull(stream, byteData)
-		utils.Log.Debug(err, n)
-		if err != nil {
-			return err
-		}
-		err = retry.Do(
+		err := retry.Do(
 			func() error {
+				utils.Log.Debugf("[Cloudreve-OneDrive] upload range: %d-%d/%d", finish, finish+byteSize-1, stream.GetSize())
+				byteData := make([]byte, byteSize)
+				n, err := io.ReadFull(stream, byteData)
+				utils.Log.Debug(err, n)
+				if err != nil {
+					return err
+				}
 				req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadUrl,
 					driver.NewLimitedUploadStream(ctx, bytes.NewReader(byteData)))
 				if err != nil {
@@ -369,15 +369,15 @@ func (d *Cloudreve) upS3(ctx context.Context, stream model.FileStreamer, u Uploa
 		}
 		left := stream.GetSize() - finish
 		byteSize := min(left, DEFAULT)
-		utils.Log.Debugf("[Cloudreve-S3] upload range: %d-%d/%d", finish, finish+byteSize-1, stream.GetSize())
-		byteData := make([]byte, byteSize)
-		n, err := io.ReadFull(stream, byteData)
-		utils.Log.Debug(err, n)
-		if err != nil {
-			return err
-		}
-		err = retry.Do(
+		err := retry.Do(
 			func() error {
+				utils.Log.Debugf("[Cloudreve-S3] upload range: %d-%d/%d", finish, finish+byteSize-1, stream.GetSize())
+				byteData := make([]byte, byteSize)
+				n, err := io.ReadFull(stream, byteData)
+				utils.Log.Debug(err, n)
+				if err != nil {
+					return err
+				}
 				req, err := http.NewRequestWithContext(ctx, http.MethodPut, u.UploadURLs[chunk],
 					driver.NewLimitedUploadStream(ctx, bytes.NewBuffer(byteData)))
 				if err != nil {
