@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"fmt"
 	stdlog "log"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -51,8 +52,12 @@ func InitDB() {
 				if !(strings.HasSuffix(database.DBFile, ".db") && len(database.DBFile) > 3) {
 					log.Fatalf("db name error.")
 				}
+				dbPath := database.DBFile
+				if !filepath.IsAbs(dbPath) {
+					dbPath = filepath.Join(flags.DataDir, dbPath)
+				}
 				dB, err = gorm.Open(sqlite.Open(fmt.Sprintf("%s?_journal=WAL&_vacuum=incremental",
-					database.DBFile)), gormConfig)
+					dbPath)), gormConfig)
 			}
 		case "mysql":
 			{
