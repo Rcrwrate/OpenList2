@@ -83,22 +83,18 @@ func InitConfig() {
 		confFromEnv()
 	}
 	// convert abs path
-	if !filepath.IsAbs(conf.Conf.TempDir) {
-		conf.Conf.TempDir = filepath.Join(pwd, conf.Conf.TempDir)
+	convertAbsPath := func(path *string) {
+		if !filepath.IsAbs(*path) {
+			*path = filepath.Join(pwd, *path)
+		}
 	}
-	if !filepath.IsAbs(conf.Conf.BleveDir) {
-		conf.Conf.BleveDir = filepath.Join(pwd, conf.Conf.BleveDir)
+	convertAbsPath(&conf.Conf.TempDir)
+	convertAbsPath(&conf.Conf.BleveDir)
+	convertAbsPath(&conf.Conf.Log.Name)
+	convertAbsPath(&conf.Conf.Database.DBFile)
+	if conf.Conf.DistDir != "" {
+		convertAbsPath(&conf.Conf.DistDir)
 	}
-	if !filepath.IsAbs(conf.Conf.Log.Name) {
-		conf.Conf.Log.Name = filepath.Join(pwd, conf.Conf.Log.Name)
-	}
-	if !filepath.IsAbs(conf.Conf.Database.DBFile) {
-		conf.Conf.Database.DBFile = filepath.Join(pwd, conf.Conf.Database.DBFile)
-	}
-	if conf.Conf.DistDir != "" && !filepath.IsAbs(conf.Conf.DistDir) {
-		conf.Conf.DistDir = filepath.Join(pwd, conf.Conf.DistDir)
-	}
-
 	err := os.MkdirAll(conf.Conf.TempDir, 0o777)
 	if err != nil {
 		log.Fatalf("create temp dir error: %+v", err)
