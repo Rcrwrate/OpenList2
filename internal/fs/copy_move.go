@@ -20,12 +20,29 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (t *FileTransferTask) GetName() string {
-	return fmt.Sprintf("%s [%s](%s) to [%s](%s)", t.TaskType, t.SrcStorageMp, t.SrcActualPath, t.DstStorageMp, t.DstActualPath)
+type taskType uint8
+
+func (t taskType) String() string {
+	if t == 0 {
+		return "copy"
+	} else {
+		return "move"
+	}
 }
 
-func (t *FileTransferTask) GetStatus() string {
-	return t.Status
+const (
+	copy taskType = iota
+	move
+)
+
+type FileTransferTask struct {
+	TaskData
+	TaskType taskType
+	groupID  string
+}
+
+func (t *FileTransferTask) GetName() string {
+	return fmt.Sprintf("%s [%s](%s) to [%s](%s)", t.TaskType, t.SrcStorageMp, t.SrcActualPath, t.DstStorageMp, t.DstActualPath)
 }
 
 func (t *FileTransferTask) Run() error {
@@ -68,27 +85,6 @@ func (t *FileTransferTask) SetRetry(retry int, maxRetry int) {
 		}
 		task_group.TransferCoordinator.AddTask(t.groupID, payload)
 	}
-}
-
-type taskType uint8
-
-func (t taskType) String() string {
-	if t == 0 {
-		return "copy"
-	} else {
-		return "move"
-	}
-}
-
-const (
-	copy taskType = iota
-	move
-)
-
-type FileTransferTask struct {
-	TaskData
-	TaskType taskType
-	groupID  string
 }
 
 func transfer(ctx context.Context, taskType taskType, srcObjPath, dstDirPath string, lazyCache ...bool) (task.TaskExtensionInfo, error) {

@@ -37,10 +37,6 @@ func (t *ArchiveDownloadTask) GetName() string {
 		t.InnerPath, t.DstStorageMp, t.DstActualPath, t.Password)
 }
 
-func (t *ArchiveDownloadTask) GetStatus() string {
-	return t.Status
-}
-
 func (t *ArchiveDownloadTask) Run() error {
 	if err := t.ReinitCtx(); err != nil {
 		return err

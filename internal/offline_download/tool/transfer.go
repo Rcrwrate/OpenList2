@@ -76,10 +76,6 @@ func (t *TransferTask) GetName() string {
 	return fmt.Sprintf("transfer [%s](%s) to [%s](%s)", t.SrcStorageMp, t.SrcActualPath, t.DstStorageMp, t.DstActualPath)
 }
 
-func (t *TransferTask) GetStatus() string {
-	return t.Status
-}
-
 func (t *TransferTask) OnSucceeded() {
 	if t.DeletePolicy == DeleteOnUploadSucceed || t.DeletePolicy == DeleteAlways {
 		if t.SrcStorage == nil {

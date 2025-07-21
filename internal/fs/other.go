@@ -53,3 +53,7 @@ type TaskData struct {
 	SrcStorageMp  string        `json:"src_storage_mp"`
 	DstStorageMp  string        `json:"dst_storage_mp"`
 }
+
+func (t *TaskData) GetStatus() string {
+	return t.Status
+}
