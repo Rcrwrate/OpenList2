@@ -25,7 +25,7 @@ func PWD() string {
 		pwd := filepath.Dir(ex)
 		return pwd
 	}
-	d, err := filepath.Abs(".")
+	d, err := os.Getwd()
 	if err != nil {
 		d = "."
 	}
