@@ -247,15 +247,15 @@ func (d *Onedrive) upBig(ctx context.Context, dstDir model.Obj, stream model.Fil
 		}
 		left := stream.GetSize() - finish
 		byteSize := min(left, DEFAULT)
-		utils.Log.Debugf("[Onedrive] upload range: %d-%d/%d", finish, finish+byteSize-1, stream.GetSize())
-		byteData := make([]byte, byteSize)
-		n, err := io.ReadFull(stream, byteData)
-		utils.Log.Debug(err, n)
-		if err != nil {
-			return err
-		}
 		err = retry.Do(
 			func() error {
+				utils.Log.Debugf("[Onedrive] upload range: %d-%d/%d", finish, finish+byteSize-1, stream.GetSize())
+				byteData := make([]byte, byteSize)
+				n, err := io.ReadFull(stream, byteData)
+				utils.Log.Debug(err, n)
+				if err != nil {
+					return err
+				}
 				req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadUrl,
 					driver.NewLimitedUploadStream(ctx, bytes.NewReader(byteData)))
 				if err != nil {
