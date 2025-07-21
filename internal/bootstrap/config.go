@@ -92,6 +92,9 @@ func InitConfig() {
 	if !filepath.IsAbs(conf.Conf.Log.Name) {
 		conf.Conf.Log.Name = filepath.Join(pwd, conf.Conf.Log.Name)
 	}
+	if !filepath.IsAbs(conf.Conf.Database.DBFile) {
+		conf.Conf.Database.DBFile = filepath.Join(pwd, conf.Conf.Database.DBFile)
+	}
 	if conf.Conf.DistDir != "" && !filepath.IsAbs(conf.Conf.DistDir) {
 		conf.Conf.DistDir = filepath.Join(pwd, conf.Conf.DistDir)
 	}
