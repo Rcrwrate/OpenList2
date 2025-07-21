@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"fmt"
 	stdlog "log"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -54,7 +55,12 @@ func InitDB() {
 				}
 				dbPath := database.DBFile
 				if !filepath.IsAbs(dbPath) {
-					dbPath = filepath.Join(flags.DataDir, dbPath)
+					ex, err := os.Executable()
+					if err != nil {
+						log.Fatalf("failed to get executable path: %+v", err)
+					}
+					exPath := filepath.Dir(ex)
+					dbPath = filepath.Join(exPath, dbPath)
 				}
 				dB, err = gorm.Open(sqlite.Open(fmt.Sprintf("%s?_journal=WAL&_vacuum=incremental",
 					dbPath)), gormConfig)
