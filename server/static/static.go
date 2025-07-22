@@ -112,9 +112,9 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 	utils.Log.Debug("Setting up static routes...")
 	initStatic()
 	initIndex()
+	folders := []string{"assets", "images", "streamer", "static"}
 	if conf.Conf.Cdn == "" {
 		utils.Log.Debug("Setting up static file serving...")
-		folders := []string{"assets", "images", "streamer", "static"}
 		r.Use(func(c *gin.Context) {
 			for _, folder := range folders {
 				if strings.HasPrefix(c.Request.RequestURI, fmt.Sprintf("/%s/", folder)) {
@@ -129,6 +129,14 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 			}
 			utils.Log.Debugf("Setting up route for folder: %s", folder)
 			r.StaticFS(fmt.Sprintf("/%s/", folder), http.FS(sub))
+		}
+	} else {
+		// Ensure static file redirected to CDN
+		for _, folder := range folders {
+			r.GET(fmt.Sprintf("/%s/*filepath", folder), func(c *gin.Context) {
+				filepath := c.Param("filepath")
+				c.Redirect(http.StatusFound, fmt.Sprintf("%s/%s%s", conf.Conf.Cdn, folder, filepath))
+			})
 		}
 	}
 
