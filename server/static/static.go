@@ -20,15 +20,18 @@ import (
 var static fs.FS
 
 func initStatic() {
+	utils.Log.Debug("Initializing static file system...")
 	if conf.Conf.DistDir == "" {
 		dist, err := fs.Sub(public.Public, "dist")
 		if err != nil {
 			utils.Log.Fatalf("failed to read dist dir: %v", err)
 		}
 		static = dist
+		utils.Log.Debug("Using embedded dist directory")
 		return
 	}
 	static = os.DirFS(conf.Conf.DistDir)
+	utils.Log.Infof("Using custom dist directory: %s", conf.Conf.DistDir)
 }
 
 func replaceStrings(content string, replacements map[string]string) string {
@@ -39,9 +42,10 @@ func replaceStrings(content string, replacements map[string]string) string {
 }
 
 func initIndex() {
+	utils.Log.Debug("Initializing index.html...")
 	siteConfig := getSiteConfig()
 	if conf.Conf.DistDir != "" || (conf.Conf.Cdn != "" && (conf.WebVersion == "" || conf.WebVersion == "beta" || conf.WebVersion == "dev")) {
-		// fetch index.html from cdn
+		utils.Log.Infof("Fetching index.html from CDN: %s/index.html...", conf.Conf.Cdn)
 		resp, err := base.RestyClient.R().
 			SetHeader("Accept", "text/html").
 			Get(fmt.Sprintf("%s/index.html", siteConfig.Cdn))
@@ -52,8 +56,9 @@ func initIndex() {
 			utils.Log.Fatalf("failed to fetch index.html from CDN, status code: %d", resp.StatusCode())
 		}
 		conf.RawIndexHtml = string(resp.Body())
+		utils.Log.Info("Successfully fetched index.html from CDN")
 	} else {
-		// read index.html from static files system
+		utils.Log.Debug("Reading index.html from static files system...")
 		indexFile, err := static.Open("index.html")
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
@@ -69,7 +74,9 @@ func initIndex() {
 			utils.Log.Fatalf("failed to read dist/index.html")
 		}
 		conf.RawIndexHtml = string(index)
+		utils.Log.Debug("Successfully read index.html from static files system")
 	}
+	utils.Log.Debug("Replacing placeholders in index.html...")
 	replaceMap := map[string]string{
 		"cdn: undefined":       fmt.Sprintf("cdn: '%s'", siteConfig.Cdn),
 		"base_path: undefined": fmt.Sprintf("base_path: '%s'", siteConfig.BasePath),
@@ -79,28 +86,34 @@ func initIndex() {
 }
 
 func UpdateIndex() {
+	utils.Log.Debug("Updating index.html with settings...")
 	favicon := setting.GetStr(conf.Favicon)
 	title := setting.GetStr(conf.SiteTitle)
 	customizeHead := setting.GetStr(conf.CustomizeHead)
 	customizeBody := setting.GetStr(conf.CustomizeBody)
 	mainColor := setting.GetStr(conf.MainColor)
+	utils.Log.Debug("Applying replacements for default pages...")
 	replaceMap1 := map[string]string{
 		"https://cdn.oplist.org/gh/OpenListTeam/Logo@main/logo.svg": favicon,
 		"Loading...":            title,
 		"main_color: undefined": fmt.Sprintf("main_color: '%s'", mainColor),
 	}
 	conf.ManageHtml = replaceStrings(conf.RawIndexHtml, replaceMap1)
+	utils.Log.Debug("Applying replacements for manage pages...")
 	replaceMap2 := map[string]string{
 		"<!-- customize head -->": customizeHead,
 		"<!-- customize body -->": customizeBody,
 	}
 	conf.IndexHtml = replaceStrings(conf.ManageHtml, replaceMap2)
+	utils.Log.Debug("Index.html update completed")
 }
 
 func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
+	utils.Log.Debug("Setting up static routes...")
 	initStatic()
 	initIndex()
 	if conf.Conf.Cdn == "" {
+		utils.Log.Debug("Setting up static file serving...")
 		folders := []string{"assets", "images", "streamer", "static"}
 		r.Use(func(c *gin.Context) {
 			for _, folder := range folders {
@@ -114,10 +127,12 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 			if err != nil {
 				utils.Log.Fatalf("can't find folder: %s", folder)
 			}
+			utils.Log.Debugf("Setting up route for folder: %s", folder)
 			r.StaticFS(fmt.Sprintf("/%s/", folder), http.FS(sub))
 		}
 	}
 
+	utils.Log.Debug("Setting up catch-all route...")
 	noRoute(func(c *gin.Context) {
 		if c.Request.Method != "GET" && c.Request.Method != "POST" {
 			c.Status(405)
