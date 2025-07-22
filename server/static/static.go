@@ -23,12 +23,19 @@ func initStatic() {
 	if conf.Conf.DistDir == "" {
 		dist, err := fs.Sub(public.Public, "dist")
 		if err != nil {
-			utils.Log.Fatalf("failed to read dist dir")
+			utils.Log.Fatalf("failed to read dist dir: %v", err)
 		}
 		static = dist
 		return
 	}
 	static = os.DirFS(conf.Conf.DistDir)
+}
+
+func replaceStrings(content string, replacements map[string]string) string {
+	for old, new := range replacements {
+		content = strings.Replace(content, old, new, 1)
+	}
+	return content
 }
 
 func initIndex() {
@@ -67,9 +74,7 @@ func initIndex() {
 		"cdn: undefined":       fmt.Sprintf("cdn: '%s'", siteConfig.Cdn),
 		"base_path: undefined": fmt.Sprintf("base_path: '%s'", siteConfig.BasePath),
 	}
-	for k, v := range replaceMap {
-		conf.RawIndexHtml = strings.Replace(conf.RawIndexHtml, k, v, 1)
-	}
+	conf.RawIndexHtml = replaceStrings(conf.RawIndexHtml, replaceMap)
 	UpdateIndex()
 }
 
@@ -79,23 +84,17 @@ func UpdateIndex() {
 	customizeHead := setting.GetStr(conf.CustomizeHead)
 	customizeBody := setting.GetStr(conf.CustomizeBody)
 	mainColor := setting.GetStr(conf.MainColor)
-	conf.ManageHtml = conf.RawIndexHtml
 	replaceMap1 := map[string]string{
 		"https://cdn.oplist.org/gh/OpenListTeam/Logo@main/logo.svg": favicon,
 		"Loading...":            title,
 		"main_color: undefined": fmt.Sprintf("main_color: '%s'", mainColor),
 	}
-	for k, v := range replaceMap1 {
-		conf.ManageHtml = strings.Replace(conf.ManageHtml, k, v, 1)
-	}
-	conf.IndexHtml = conf.ManageHtml
+	conf.ManageHtml = replaceStrings(conf.RawIndexHtml, replaceMap1)
 	replaceMap2 := map[string]string{
 		"<!-- customize head -->": customizeHead,
 		"<!-- customize body -->": customizeBody,
 	}
-	for k, v := range replaceMap2 {
-		conf.IndexHtml = strings.Replace(conf.IndexHtml, k, v, 1)
-	}
+	conf.IndexHtml = replaceStrings(conf.ManageHtml, replaceMap2)
 }
 
 func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
