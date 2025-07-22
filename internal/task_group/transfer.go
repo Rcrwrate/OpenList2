@@ -26,14 +26,14 @@ func refreshAndRemove(dstPath string, payloads []any) {
 	_, dstNeedRefresh := dstStorage.(driver.Put)
 	dstNeedRefresh = dstNeedRefresh && !dstStorage.Config().NoCache
 	if dstNeedRefresh {
-		op.ClearCacheNonRecursive(dstStorage, dstActualPath)
+		op.DeleteCache(dstStorage, dstActualPath)
 	}
 	var ctx context.Context
 	for _, payload := range payloads {
 		switch p := payload.(type) {
 		case DstPathToRefresh:
 			if dstNeedRefresh {
-				op.ClearCacheNonRecursive(dstStorage, string(p))
+				op.DeleteCache(dstStorage, string(p))
 			}
 		case SrcPathToRemove:
 			if ctx == nil {
@@ -79,7 +79,7 @@ func verifyAndRemove(ctx context.Context, srcStorage, dstStorage driver.Driver, 
 	}
 
 	if refresh {
-		op.ClearCacheNonRecursive(dstStorage, dstObjPath)
+		op.DeleteCache(dstStorage, dstObjPath)
 	}
 	hasErr := false
 	for _, obj := range srcObjs {
