@@ -72,7 +72,7 @@ body:
     attributes:
       label: 日志（可选）
       description: |
-        请复制粘贴错误日志，或者截图。(可隐藏隐私字段)
+        请复制粘贴错误日志，或者截图。(可隐藏隐私字段) [查看方法](https://doc.oplist.org/faq/howto#%E5%A6%82%E4%BD%95%E5%BF%AB%E9%80%9F%E5%AE%9A%E4%BD%8Dbug)
   - type: textarea
     id: reproduction
     attributes:

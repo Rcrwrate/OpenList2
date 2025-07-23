@@ -72,7 +72,7 @@ body:
     attributes:
       label: Logs (optional)
       description: |
-        Please copy and paste any relevant log output or screenshots. (You may mask sensitive fields)
+        Please copy and paste any relevant log output or screenshots. (You may mask sensitive fields) [Guide](https://doc.oplist.org/faq/howto#how-to-quickly-locate-bugs)
   - type: textarea
     id: reproduction
     attributes:
