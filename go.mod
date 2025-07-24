@@ -11,15 +11,15 @@ require (
 	github.com/OpenListTeam/tache v0.2.0
 	github.com/OpenListTeam/times v0.1.0
 	github.com/OpenListTeam/wopan-sdk-go v0.1.5
-	github.com/ProtonMail/go-crypto v1.0.0
+	github.com/ProtonMail/go-crypto v1.3.0
 	github.com/SheltonZhu/115driver v1.0.34
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.55.7
 	github.com/blevesearch/bleve/v2 v2.5.2
 	github.com/caarlos0/env/v9 v9.0.0
-	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/bubbles v0.21.0
+	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/city404/v6-public-rpc-proto/go v0.0.0-20240817070657-90f8e24b653e
 	github.com/coreos/go-oidc v2.2.1+incompatible
@@ -103,7 +103,7 @@ require (
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/charmbracelet/x/ansi v0.9.3 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
-	github.com/cloudflare/circl v1.3.7 // indirect
+	github.com/cloudflare/circl v1.6.0 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
