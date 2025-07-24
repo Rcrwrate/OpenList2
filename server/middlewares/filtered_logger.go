@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"encoding/json"
-	"net"
+	"net/netip"
 	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
@@ -11,9 +11,9 @@ import (
 )
 
 type filter struct {
-	CIDR   *net.IPNet `json:"cidr,omitempty"`
-	Path   *string    `json:"path,omitempty"`
-	Method *string    `json:"method,omitempty"`
+	CIDR   *netip.Prefix `json:"cidr,omitempty"`
+	Path   *string       `json:"path,omitempty"`
+	Method *string       `json:"method,omitempty"`
 }
 
 var filterList []*filter
@@ -47,7 +47,7 @@ func skiperDecider(c *gin.Context) bool {
 
 	for _, f := range filterList {
 		if f.CIDR != nil {
-			cip := net.ParseIP(c.ClientIP())
+			cip := netip.MustParseAddr(c.ClientIP())
 			if !f.CIDR.Contains(cip) {
 				continue
 			}
