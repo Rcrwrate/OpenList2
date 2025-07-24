@@ -274,19 +274,8 @@ BuildReleaseFreeBSD() {
   rm -rf .git/
   mkdir -p "build/freebsd"
   
-  # Get latest FreeBSD 14.x release version from GitHub 
-  freebsd_version=$(eval "curl -fsSL --max-time 2 $githubAuthArgs \"https://api.github.com/repos/freebsd/freebsd-src/tags\"" | \
-    jq -r '.[].name' | \
-    grep '^release/14\.' | \
-    sort -V | \
-    tail -1 | \
-    sed 's/release\///' | \
-    sed 's/\.0$//')
-  
-  if [ -z "$freebsd_version" ]; then
-    echo "Failed to get FreeBSD version, falling back to 14.3"
-    freebsd_version="14.3"
-  fi
+  # FreeBSD version, if outdated, update the variable below
+  freebsd_version="14.3"
 
   echo "Using FreeBSD version: $freebsd_version"
   
