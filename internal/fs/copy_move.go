@@ -109,42 +109,37 @@ func transfer(ctx context.Context, taskType taskType, srcObjPath, dstDirPath str
 				return nil, err
 			}
 		}
-	} else if ctx.Value(conf.NoTaskKey) != nil {
-		return nil, fmt.Errorf("can't %s files between two storages, please use the front-end ", taskType)
 	}
 
-	// if ctx.Value(conf.NoTaskKey) != nil { // webdav
-	// 	srcObj, err := op.Get(ctx, srcStorage, srcObjActualPath)
-	// 	if err != nil {
-	// 		return nil, errors.WithMessagef(err, "failed get src [%s] file", srcObjPath)
-	// 	}
-	// 	if !srcObj.IsDir() {
-	// 		// copy file directly
-	// 		link, _, err := op.Link(ctx, srcStorage, srcObjActualPath, model.LinkArgs{})
-	// 		if err != nil {
-	// 			return nil, errors.WithMessagef(err, "failed get [%s] link", srcObjPath)
-	// 		}
-	// 		// any link provided is seekable
-	// 		ss, err := stream.NewSeekableStream(&stream.FileStream{
-	// 			Obj: srcObj,
-	// 			Ctx: ctx,
-	// 		}, link)
-	// 		if err != nil {
-	// 			_ = link.Close()
-	// 			return nil, errors.WithMessagef(err, "failed get [%s] stream", srcObjPath)
-	// 		}
-	// 		if taskType == move {
-	// 			defer func() {
-	// 				task_group.TransferCoordinator.Done(dstDirPath, err == nil)
-	// 			}()
-	// 			task_group.TransferCoordinator.AddTask(dstDirPath, task_group.SrcPathToRemove(srcObjPath))
-	// 		}
-	// 		err = op.Put(ctx, dstStorage, dstDirActualPath, ss, nil, taskType == move)
-	// 		return nil, err
-	// 	} else {
-	// 		return nil, fmt.Errorf("can't %s dir two storages, please use the front-end ", taskType)
-	// 	}
-	// }
+	if ctx.Value(conf.NoTaskKey) != nil { // webdav
+		srcObj, err := op.Get(ctx, srcStorage, srcObjActualPath)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "failed get src [%s] file", srcObjPath)
+		}
+		if !srcObj.IsDir() {
+			// copy file directly
+			link, _, err := op.Link(ctx, srcStorage, srcObjActualPath, model.LinkArgs{})
+			if err != nil {
+				return nil, errors.WithMessagef(err, "failed get [%s] link", srcObjPath)
+			}
+			// any link provided is seekable
+			ss, err := stream.NewSeekableStream(&stream.FileStream{
+				Obj: srcObj,
+				Ctx: ctx,
+			}, link)
+			if err != nil {
+				_ = link.Close()
+				return nil, errors.WithMessagef(err, "failed get [%s] stream", srcObjPath)
+			}
+			err = op.Put(ctx, dstStorage, dstDirActualPath, ss, nil, taskType == move)
+			if taskType == move && err == nil {
+				task_group.RefreshAndRemove(dstDirPath, task_group.SrcPathToRemove(srcObjPath))
+			}
+			return nil, err
+		} else {
+			return nil, fmt.Errorf("can't %s dir two storages, please use the front-end ", taskType)
+		}
+	}
 
 	// not in the same storage
 	taskCreator, _ := ctx.Value(conf.UserKey).(*model.User)

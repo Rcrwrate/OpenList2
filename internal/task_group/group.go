@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type OnCompletionFunc func(groupID string, payloads []any)
+type OnCompletionFunc func(groupID string, payloads ...any)
 type TaskGroupCoordinator struct {
 	name string
 	mu   sync.Mutex
