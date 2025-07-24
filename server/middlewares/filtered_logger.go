@@ -1,101 +1,81 @@
 package middlewares
 
 import (
-	"fmt"
-	"io"
+	"encoding/json"
+	"net"
 	"strings"
-	"time"
 
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
 
-// FilteredLoggerConfig defines the configuration for the filtered logger
-type FilteredLoggerConfig struct {
-	// SkipPaths is a list of URL paths to skip logging
-	SkipPaths []string
-	// SkipMethods is a list of HTTP methods to skip logging
-	SkipMethods []string
-	// SkipPathPrefixes is a list of URL path prefixes to skip logging
-	SkipPathPrefixes []string
-	// Output is the writer where logs will be written
-	Output io.Writer
+type filter struct {
+	CIDR   *net.IPNet `json:"cidr,omitempty"`
+	Path   *string    `json:"path,omitempty"`
+	Method *string    `json:"method,omitempty"`
 }
 
-// FilteredLoggerWithConfig returns a gin.HandlerFunc (middleware) that logs requests
-// but skips logging for specified paths, methods, or path prefixes
-func FilteredLoggerWithConfig(config FilteredLoggerConfig) gin.HandlerFunc {
-	if config.Output == nil {
-		config.Output = log.StandardLogger().Out
+var filterList []*filter
+
+func initFilterList() {
+	for _, s := range conf.Conf.Log.Filter.Filters {
+		f := new(filter)
+
+		err := json.Unmarshal([]byte(s), &f)
+		if err != nil {
+			log.Warnf("failed to parse filter %s: %v", s, err)
+			continue
+		}
+
+		if f.CIDR == nil && f.Path == nil && f.Method == nil {
+			log.Warnf("filter %s is empty, skipping", s)
+			continue
+		}
+
+		filterList = append(filterList, f)
+		log.Debugf("added filter: %+v", f)
 	}
 
-	return gin.LoggerWithConfig(gin.LoggerConfig{
-		Output: config.Output,
-		SkipPaths: config.SkipPaths,
-		Formatter: func(param gin.LogFormatterParams) string {
-			// Skip logging for health check endpoints
-			if shouldSkipLogging(param.Path, param.Method, config) {
-				return ""
+	log.Infof("Loaded %d log filters.", len(filterList))
+}
+
+func skiperDecider(c *gin.Context) bool {
+	// every filter need metch all condithon as filter match
+	// so if any condithon not metch, skip this filter
+	// all filters misatch, log this request
+
+	for _, f := range filterList {
+		if f.CIDR != nil {
+			cip := net.ParseIP(c.ClientIP())
+			if !f.CIDR.Contains(cip) {
+				continue
 			}
-
-			// Use a custom log format similar to Gin's default
-			return defaultLogFormatter(param)
-		},
-	})
-}
-
-
-// shouldSkipLogging determines if a request should be skipped from logging
-func shouldSkipLogging(path, method string, config FilteredLoggerConfig) bool {
-	// Check if path should be skipped
-	for _, skipPath := range config.SkipPaths {
-		if path == skipPath {
-			return true
 		}
-	}
-
-	// Check if method should be skipped
-	for _, skipMethod := range config.SkipMethods {
-		if method == skipMethod {
-			return true
+		if f.Path != nil {
+			// match path as prefix
+			if !strings.HasPrefix(c.Request.URL.Path, *f.Path) {
+				continue
+			}
 		}
-	}
 
-	// Check if path prefix should be skipped
-	for _, skipPrefix := range config.SkipPathPrefixes {
-		if strings.HasPrefix(path, skipPrefix) {
-			return true
+		if f.Method != nil {
+			if *f.Method != c.Request.Method {
+				continue
+			}
 		}
-	}
 
-	// Special case: Skip PROPFIND requests (common in WebDAV)
-	if method == "PROPFIND" {
 		return true
 	}
 
 	return false
 }
 
-// defaultLogFormatter provides a default log format similar to Gin's built-in formatter
-func defaultLogFormatter(param gin.LogFormatterParams) string {
-	var statusColor, methodColor, resetColor string
-	if param.IsOutputColor() {
-		statusColor = param.StatusCodeColor()
-		methodColor = param.MethodColor()
-		resetColor = param.ResetColor()
-	}
+func FilteredLogger() gin.HandlerFunc {
+	initFilterList()
 
-	if param.Latency > time.Minute {
-		param.Latency = param.Latency.Truncate(time.Second)
-	}
-
-	return fmt.Sprintf("[GIN] %v |%s %3d %s| %13v | %15s |%s %-7s %s %#v\n%s",
-		param.TimeStamp.Format("2006/01/02 - 15:04:05"),
-		statusColor, param.StatusCode, resetColor,
-		param.Latency,
-		param.ClientIP,
-		methodColor, param.Method, resetColor,
-		param.Path,
-		param.ErrorMessage,
-	)
+	return gin.LoggerWithConfig(gin.LoggerConfig{
+		Output: log.StandardLogger().Out,
+		Skip:   skiperDecider,
+	})
 }
