@@ -3,7 +3,6 @@ package fs
 import (
 	"context"
 	"fmt"
-	"net/http"
 	stdpath "path"
 	"time"
 
@@ -46,6 +45,7 @@ func (t *CopyTask) Run() error {
 	t.ClearEndTime()
 	t.SetStartTime(time.Now())
 	defer func() { t.SetEndTime(time.Now()) }()
+	
 	var err error
 	if t.srcStorage == nil {
 		t.srcStorage, err = op.GetStorageByMountPath(t.SrcStorageMp)
@@ -56,10 +56,26 @@ func (t *CopyTask) Run() error {
 	if err != nil {
 		return errors.WithMessage(err, "failed get storage")
 	}
-	return copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+	
+	// Use the task object's memory address as a unique identifier
+	taskID := fmt.Sprintf("%p", t)
+	
+	// Register task to batch tracker
+	copyBatchTracker.RegisterTask(taskID, t.dstStorage, t.DstDirPath)
+	
+	// Execute copy operation
+	err = copyBetween2Storages(t, t.srcStorage, t.dstStorage, t.SrcObjPath, t.DstDirPath)
+	
+	// Mark task completed and automatically refresh cache if needed
+	copyBatchTracker.MarkTaskCompletedWithRefresh(taskID)
+	
+	return err
 }
 
 var CopyTaskManager *tache.Manager[*CopyTask]
+
+// Batch tracker for copy operations
+var copyBatchTracker = NewBatchTracker("copy")
 
 // Copy if in the same storage, call move method
 // if not, add copy task
@@ -76,6 +92,10 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 	if srcStorage.GetStorage() == dstStorage.GetStorage() {
 		err = op.Copy(ctx, srcStorage, srcObjActualPath, dstDirActualPath, lazyCache...)
 		if !errors.Is(err, errs.NotImplement) && !errors.Is(err, errs.NotSupport) {
+			if err == nil {
+				// Refresh target directory cache after successful same-storage copy
+				op.ClearCache(dstStorage, dstDirActualPath)
+			}
 			return nil, err
 		}
 	}
@@ -86,26 +106,29 @@ func _copy(ctx context.Context, srcObjPath, dstDirPath string, lazyCache ...bool
 		}
 		if !srcObj.IsDir() {
 			// copy file directly
-			link, _, err := op.Link(ctx, srcStorage, srcObjActualPath, model.LinkArgs{
-				Header: http.Header{},
-			})
+			link, _, err := op.Link(ctx, srcStorage, srcObjActualPath, model.LinkArgs{})
 			if err != nil {
 				return nil, errors.WithMessagef(err, "failed get [%s] link", srcObjPath)
 			}
-			fs := stream.FileStream{
+			// any link provided is seekable
+			ss, err := stream.NewSeekableStream(&stream.FileStream{
 				Obj: srcObj,
 				Ctx: ctx,
-			}
-			// any link provided is seekable
-			ss, err := stream.NewSeekableStream(fs, link)
+			}, link)
 			if err != nil {
+				_ = link.Close()
 				return nil, errors.WithMessagef(err, "failed get [%s] stream", srcObjPath)
 			}
-			return nil, op.Put(ctx, dstStorage, dstDirActualPath, ss, nil, false)
+			err = op.Put(ctx, dstStorage, dstDirActualPath, ss, nil, false)
+			if err == nil {
+				// Refresh target directory cache after successful direct file copy
+				op.ClearCache(dstStorage, dstDirActualPath)
+			}
+			return nil, err
 		}
 	}
 	// not in the same storage
-	taskCreator, _ := ctx.Value("user").(*model.User)
+	taskCreator, _ := ctx.Value(conf.UserKey).(*model.User)
 	t := &CopyTask{
 		TaskExtension: task.TaskExtension{
 			Creator: taskCreator,
@@ -134,6 +157,7 @@ func copyBetween2Storages(t *CopyTask, srcStorage, dstStorage driver.Driver, src
 		if err != nil {
 			return errors.WithMessagef(err, "failed list src [%s] objs", srcObjPath)
 		}
+		
 		for _, obj := range objs {
 			if utils.IsCanceled(t.Ctx()) {
 				return nil
@@ -164,21 +188,19 @@ func copyFileBetween2Storages(tsk *CopyTask, srcStorage, dstStorage driver.Drive
 	if err != nil {
 		return errors.WithMessagef(err, "failed get src [%s] file", srcFilePath)
 	}
-	tsk.SetTotalBytes(srcFile.GetSize())
-	link, _, err := op.Link(tsk.Ctx(), srcStorage, srcFilePath, model.LinkArgs{
-		Header: http.Header{},
-	})
+	link, _, err := op.Link(tsk.Ctx(), srcStorage, srcFilePath, model.LinkArgs{})
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] link", srcFilePath)
 	}
-	fs := stream.FileStream{
+	// any link provided is seekable
+	ss, err := stream.NewSeekableStream(&stream.FileStream{
 		Obj: srcFile,
 		Ctx: tsk.Ctx(),
-	}
-	// any link provided is seekable
-	ss, err := stream.NewSeekableStream(fs, link)
+	}, link)
 	if err != nil {
+		_ = link.Close()
 		return errors.WithMessagef(err, "failed get [%s] stream", srcFilePath)
 	}
+	tsk.SetTotalBytes(ss.GetSize())
 	return op.Put(tsk.Ctx(), dstStorage, dstDirPath, ss, tsk.SetProgress, true)
 }

@@ -5,11 +5,13 @@ import (
 	"regexp"
 	"slices"
 
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/pkg/generic"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -28,7 +30,7 @@ func FsRecursiveMove(c *gin.Context) {
 		return
 	}
 
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !user.CanMove() {
 		common.ErrorResp(c, errs.PermissionDenied, 403)
 		return
@@ -51,9 +53,9 @@ func FsRecursiveMove(c *gin.Context) {
 			return
 		}
 	}
-	c.Set("meta", meta)
+	common.GinWithValue(c, conf.MetaKey, meta)
 
-	rootFiles, err := fs.List(c, srcDir, &fs.ListArgs{})
+	rootFiles, err := fs.List(c.Request.Context(), srcDir, &fs.ListArgs{})
 	if err != nil {
 		common.ErrorResp(c, err, 500)
 		return
@@ -61,7 +63,7 @@ func FsRecursiveMove(c *gin.Context) {
 
 	var existingFileNames []string
 	if req.ConflictPolicy != OVERWRITE {
-		dstFiles, err := fs.List(c, dstDir, &fs.ListArgs{})
+		dstFiles, err := fs.List(c.Request.Context(), dstDir, &fs.ListArgs{})
 		if err != nil {
 			common.ErrorResp(c, err, 500)
 			return
@@ -89,7 +91,7 @@ func FsRecursiveMove(c *gin.Context) {
 		if movingFile.IsDir() {
 			// directory, recursive move
 			subFilePath := movingFileName
-			subFiles, err := fs.List(c, movingFileName, &fs.ListArgs{Refresh: true})
+			subFiles, err := fs.List(c.Request.Context(), movingFileName, &fs.ListArgs{Refresh: true})
 			if err != nil {
 				common.ErrorResp(c, err, 500)
 				return
@@ -123,7 +125,7 @@ func FsRecursiveMove(c *gin.Context) {
 	var count = 0
 	for i, fileName := range movingFileNames {
 		// move
-		err := fs.Move(c, fileName, dstDir, len(movingFileNames) > i+1)
+		err := fs.Move(c.Request.Context(), fileName, dstDir, len(movingFileNames) > i+1)
 		if err != nil {
 			common.ErrorResp(c, err, 500)
 			return
@@ -148,7 +150,7 @@ func FsBatchRename(c *gin.Context) {
 		common.ErrorResp(c, err, 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !user.CanRename() {
 		common.ErrorResp(c, errs.PermissionDenied, 403)
 		return
@@ -167,13 +169,18 @@ func FsBatchRename(c *gin.Context) {
 			return
 		}
 	}
-	c.Set("meta", meta)
+	common.GinWithValue(c, conf.MetaKey, meta)
 	for _, renameObject := range req.RenameObjects {
 		if renameObject.SrcName == "" || renameObject.NewName == "" {
 			continue
 		}
+		renameObject.NewName, err = utils.CheckRelativePath(renameObject.NewName)
+		if err != nil {
+			common.ErrorResp(c, err, 403)
+			return
+		}
 		filePath := fmt.Sprintf("%s/%s", reqPath, renameObject.SrcName)
-		if err := fs.Rename(c, filePath, renameObject.NewName); err != nil {
+		if err := fs.Rename(c.Request.Context(), filePath, renameObject.NewName); err != nil {
 			common.ErrorResp(c, err, 500)
 			return
 		}
@@ -193,7 +200,7 @@ func FsRegexRename(c *gin.Context) {
 		common.ErrorResp(c, err, 400)
 		return
 	}
-	user := c.MustGet("user").(*model.User)
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	if !user.CanRename() {
 		common.ErrorResp(c, errs.PermissionDenied, 403)
 		return
@@ -212,7 +219,7 @@ func FsRegexRename(c *gin.Context) {
 			return
 		}
 	}
-	c.Set("meta", meta)
+	common.GinWithValue(c, conf.MetaKey, meta)
 
 	srcRegexp, err := regexp.Compile(req.SrcNameRegex)
 	if err != nil {
@@ -220,18 +227,21 @@ func FsRegexRename(c *gin.Context) {
 		return
 	}
 
-	files, err := fs.List(c, reqPath, &fs.ListArgs{})
+	files, err := fs.List(c.Request.Context(), reqPath, &fs.ListArgs{})
 	if err != nil {
 		common.ErrorResp(c, err, 500)
 		return
 	}
 
 	for _, file := range files {
-
 		if srcRegexp.MatchString(file.GetName()) {
+			newFileName, err := utils.CheckRelativePath(srcRegexp.ReplaceAllString(file.GetName(), req.NewNameRegex))
+			if err != nil {
+				common.ErrorResp(c, err, 403)
+				return
+			}
 			filePath := fmt.Sprintf("%s/%s", reqPath, file.GetName())
-			newFileName := srcRegexp.ReplaceAllString(file.GetName(), req.NewNameRegex)
-			if err := fs.Rename(c, filePath, newFileName); err != nil {
+			if err := fs.Rename(c.Request.Context(), filePath, newFileName); err != nil {
 				common.ErrorResp(c, err, 500)
 				return
 			}
