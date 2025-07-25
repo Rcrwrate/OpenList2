@@ -2,6 +2,7 @@ package handles
 
 import (
 	"fmt"
+	stdpath "path"
 	"regexp"
 	"slices"
 
@@ -179,6 +180,7 @@ func FsBatchRename(c *gin.Context) {
 			common.ErrorResp(c, err, 403)
 			return
 		}
+		renameObject.NewName = stdpath.Base(renameObject.NewName)
 		filePath := fmt.Sprintf("%s/%s", reqPath, renameObject.SrcName)
 		if err := fs.Rename(c.Request.Context(), filePath, renameObject.NewName); err != nil {
 			common.ErrorResp(c, err, 500)
@@ -240,6 +242,7 @@ func FsRegexRename(c *gin.Context) {
 				common.ErrorResp(c, err, 403)
 				return
 			}
+			newFileName = stdpath.Base(newFileName)
 			filePath := fmt.Sprintf("%s/%s", reqPath, file.GetName())
 			if err := fs.Rename(c.Request.Context(), filePath, newFileName); err != nil {
 				common.ErrorResp(c, err, 500)

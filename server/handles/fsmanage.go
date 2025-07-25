@@ -211,6 +211,7 @@ func FsRename(c *gin.Context) {
 		common.ErrorResp(c, err, 403)
 		return
 	}
+	req.Name = stdpath.Base(req.Name)
 	if !req.Overwrite {
 		dstPath := stdpath.Join(stdpath.Dir(reqPath), req.Name)
 		if dstPath != reqPath {
