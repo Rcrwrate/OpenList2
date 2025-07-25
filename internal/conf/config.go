@@ -49,7 +49,13 @@ type LogConfig struct {
 
 type LogFilterConfig struct {
 	Enable  bool     `json:"enable" env:"ENABLE"`
-	Filters []string `json:"filters"`
+	Filters []Filter `json:"filters"`
+}
+
+type Filter struct {
+	CIDR   string `json:"cidr"`
+	Path   string `json:"path"`
+	Method string `json:"method"`
 }
 
 type TaskConfig struct {
@@ -160,10 +166,10 @@ func DefaultConfig(dataDir string) *Config {
 			MaxAge:     28,
 			Filter: LogFilterConfig{
 				Enable: false,
-				Filters: []string{
-					"{\"path\":\"/ping\"}",
-					"{\"method\":\"HEAD\"}",
-					"{\"path\":\"/dav/\",\"method\":\"PROPFIND\"}",
+				Filters: []Filter{
+					{Path: "/ping"},
+					{Method: "HEAD"},
+					{Path: "/dav/", Method: "PROPFIND"},
 				},
 			},
 		},

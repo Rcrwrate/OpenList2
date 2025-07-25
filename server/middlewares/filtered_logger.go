@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"encoding/json"
 	"net/netip"
 	"strings"
 
@@ -22,10 +21,21 @@ func initFilterList() {
 	for _, s := range conf.Conf.Log.Filter.Filters {
 		f := new(filter)
 
-		err := json.Unmarshal([]byte(s), &f)
-		if err != nil {
-			log.Warnf("failed to parse filter %s: %v", s, err)
-			continue
+		if s.CIDR != "" {
+			cidr, err := netip.ParsePrefix(s.CIDR)
+			if err != nil {
+				log.Errorf("failed to parse CIDR %s: %v", s.CIDR, err)
+				continue
+			}
+			f.CIDR = &cidr
+		}
+
+		if s.Path != "" {
+			f.Path = &s.Path
+		}
+
+		if s.Method != "" {
+			f.Method = &s.Method
 		}
 
 		if f.CIDR == nil && f.Path == nil && f.Method == nil {
