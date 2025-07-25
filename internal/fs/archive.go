@@ -229,11 +229,11 @@ func (t *ArchiveContentUploadTask) RunWithNextTaskCallback(f func(nextTask *Arch
 			return es
 		}
 	} else {
-		t.SetTotalBytes(info.Size())
 		file, err := os.Open(t.FilePath)
 		if err != nil {
 			return err
 		}
+		t.SetTotalBytes(info.Size())
 		fs := &stream.FileStream{
 			Obj: &model.Object{
 				Name:     t.ObjName,

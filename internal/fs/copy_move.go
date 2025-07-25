@@ -109,34 +109,6 @@ func transfer(ctx context.Context, taskType taskType, srcObjPath, dstDirPath str
 		}
 	}
 
-	// if ctx.Value(conf.NoTaskKey) != nil { // webdav
-	// 	srcObj, err := op.Get(ctx, srcStorage, srcObjActualPath)
-	// 	if err != nil {
-	// 		return nil, errors.WithMessagef(err, "failed get src [%s] file", srcObjPath)
-	// 	}
-	// 	if !srcObj.IsDir() {
-	// 		// copy file directly
-	// 		link, _, err := op.Link(ctx, srcStorage, srcObjActualPath, model.LinkArgs{})
-	// 		if err != nil {
-	// 			return nil, errors.WithMessagef(err, "failed get [%s] link", srcObjPath)
-	// 		}
-	// 		// any link provided is seekable
-	// 		ss, err := stream.NewSeekableStream(&stream.FileStream{
-	// 			Obj: srcObj,
-	// 			Ctx: ctx,
-	// 		}, link)
-	// 		if err != nil {
-	// 			_ = link.Close()
-	// 			return nil, errors.WithMessagef(err, "failed get [%s] stream", srcObjPath)
-	// 		}
-	// 		err = op.Put(ctx, dstStorage, dstDirActualPath, ss, nil, taskType == move)
-	// 		if taskType == move && err == nil {
-	// 			task_group.RefreshAndRemove(dstDirPath, task_group.SrcPathToRemove(srcObjPath))
-	// 		}
-	// 		return nil, err
-	// 	}
-	// }
-
 	// not in the same storage
 	t := &FileTransferTask{
 		TaskData: TaskData{
@@ -163,7 +135,7 @@ func transfer(ctx context.Context, taskType taskType, srcObjPath, dstDirPath str
 		}
 		t.Base.SetCtx(ctx)
 		err = t.RunWithNextTaskCallback(callback)
-		if hasSuccess {
+		if hasSuccess || err == nil {
 			if taskType == move {
 				task_group.RefreshAndRemove(dstDirPath, task_group.SrcPathToRemove(srcObjPath))
 			} else {
@@ -233,7 +205,6 @@ func (t *FileTransferTask) RunWithNextTaskCallback(f func(nextTask *FileTransfer
 		return nil
 	}
 
-	t.SetTotalBytes(srcObj.GetSize())
 	link, _, err := op.Link(t.Ctx(), t.SrcStorage, t.SrcActualPath, model.LinkArgs{})
 	if err != nil {
 		return errors.WithMessagef(err, "failed get [%s] link", t.SrcActualPath)
