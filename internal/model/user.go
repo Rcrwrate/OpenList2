@@ -20,7 +20,7 @@ const (
 	ADMIN
 )
 
-const StaticHashSalt = "https://github.com/alist-org/alist"
+const StaticHashSalt = "https://github.com/OpenListTeam/OpenList"
 
 var LoginCache = cache.NewMemCache[int]()
 
