@@ -3,6 +3,7 @@ package handles
 import (
 	"fmt"
 	stdpath "path"
+	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/task"
@@ -205,13 +206,12 @@ func FsRename(c *gin.Context) {
 	}
 	reqPath, err := user.JoinPath(req.Path)
 	if err == nil {
-		req.Name, err = utils.CheckRelativePath(req.Name)
+		req.Name, err = checkRelativePath(req.Name)
 	}
 	if err != nil {
 		common.ErrorResp(c, err, 403)
 		return
 	}
-	req.Name = stdpath.Base(req.Name)
 	if !req.Overwrite {
 		dstPath := stdpath.Join(stdpath.Dir(reqPath), req.Name)
 		if dstPath != reqPath {
@@ -226,6 +226,15 @@ func FsRename(c *gin.Context) {
 		return
 	}
 	common.SuccessResp(c)
+}
+
+func checkRelativePath(path string) (string, error) {
+	isRelativePath := strings.Contains(path, "..")
+	path = stdpath.Clean(strings.ReplaceAll(path, "\\", "/"))
+	if isRelativePath && !strings.Contains(path, "..") {
+		return "", errs.RelativePath
+	}
+	return path, nil
 }
 
 type RemoveReq struct {
