@@ -62,10 +62,18 @@ func skiperDecider(c *gin.Context) bool {
 				continue
 			}
 		}
+
 		if f.Path != nil {
-			// match path as prefix
-			if !strings.HasPrefix(c.Request.URL.Path, *f.Path) {
-				continue
+			if (*f.Path)[0] == '/' {
+				// match path as prefix/exact path
+				if !strings.HasPrefix(c.Request.URL.Path, *f.Path) {
+					continue
+				}
+			} else {
+				// match path as relative path
+				if !strings.Contains(c.Request.URL.Path, "/"+*f.Path) {
+					continue
+				}
 			}
 		}
 
