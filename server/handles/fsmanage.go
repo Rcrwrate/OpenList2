@@ -206,7 +206,7 @@ func FsRename(c *gin.Context) {
 	}
 	reqPath, err := user.JoinPath(req.Path)
 	if err == nil {
-		req.Name, err = checkRelativePath(req.Name)
+		err = checkRelativePath(req.Name)
 	}
 	if err != nil {
 		common.ErrorResp(c, err, 403)
@@ -228,11 +228,11 @@ func FsRename(c *gin.Context) {
 	common.SuccessResp(c)
 }
 
-func checkRelativePath(path string) (string, error) {
+func checkRelativePath(path string) error {
 	if strings.ContainsAny(path, "/\\") || path == "" || path == "." || path == ".." {
-		return "", errs.RelativePath
+		return errs.RelativePath
 	}
-	return path, nil
+	return nil
 }
 
 type RemoveReq struct {

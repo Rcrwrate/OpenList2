@@ -173,7 +173,7 @@ func FsBatchRename(c *gin.Context) {
 		if renameObject.SrcName == "" || renameObject.NewName == "" {
 			continue
 		}
-		renameObject.NewName, err = checkRelativePath(renameObject.NewName)
+		err = checkRelativePath(renameObject.NewName)
 		if err != nil {
 			common.ErrorResp(c, err, 403)
 			return
@@ -234,7 +234,8 @@ func FsRegexRename(c *gin.Context) {
 
 	for _, file := range files {
 		if srcRegexp.MatchString(file.GetName()) {
-			newFileName, err := checkRelativePath(srcRegexp.ReplaceAllString(file.GetName(), req.NewNameRegex))
+			newFileName := srcRegexp.ReplaceAllString(file.GetName(), req.NewNameRegex)
+			err := checkRelativePath(newFileName)
 			if err != nil {
 				common.ErrorResp(c, err, 403)
 				return
