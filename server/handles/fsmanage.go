@@ -229,9 +229,7 @@ func FsRename(c *gin.Context) {
 }
 
 func checkRelativePath(path string) (string, error) {
-	isRelativePath := strings.Contains(path, "..")
-	path = stdpath.Clean(strings.ReplaceAll(path, "\\", "/"))
-	if isRelativePath && !strings.Contains(path, "..") {
+	if strings.ContainsAny(path, "/\\") || path == "" || path == "." || path == ".." {
 		return "", errs.RelativePath
 	}
 	return path, nil
