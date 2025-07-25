@@ -173,11 +173,8 @@ func transfer(ctx context.Context, taskType taskType, srcObjPath, dstDirPath str
 		return nil, err
 	}
 
-	taskCreator, _ := ctx.Value(conf.UserKey).(*model.User)
-	t.TaskExtension = task.TaskExtension{
-		Creator: taskCreator,
-		ApiUrl:  common.GetApiUrl(ctx),
-	}
+	t.Creator, _ = ctx.Value(conf.UserKey).(*model.User)
+	t.ApiUrl = common.GetApiUrl(ctx)
 	t.groupID = dstDirPath
 	if taskType == copy {
 		task_group.TransferCoordinator.AddTask(dstDirPath, nil)
@@ -217,7 +214,7 @@ func (t *FileTransferTask) RunWithNextTaskCallback(f func(nextTask *FileTransfer
 				TaskType: t.TaskType,
 				TaskData: TaskData{
 					TaskExtension: task.TaskExtension{
-						Creator: t.GetCreator(),
+						Creator: t.Creator,
 						ApiUrl:  t.ApiUrl,
 					},
 					SrcStorage:    t.SrcStorage,
