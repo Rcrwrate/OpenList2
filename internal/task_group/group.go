@@ -71,7 +71,7 @@ func (tgc *TaskGroupCoordinator) Done(groupID string, success bool) {
 		if tgc.onCompletion != nil && state.hasSuccess {
 			logrus.Debugf("OnCompletion:%s", groupID)
 			tgc.mu.Unlock()
-			tgc.onCompletion(groupID, payloads)
+			tgc.onCompletion(groupID, payloads...)
 			tgc.mu.Lock()
 		}
 		return

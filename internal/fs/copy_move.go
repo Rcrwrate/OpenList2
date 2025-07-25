@@ -136,8 +136,8 @@ func transfer(ctx context.Context, taskType taskType, srcObjPath, dstDirPath str
 				task_group.RefreshAndRemove(dstDirPath, task_group.SrcPathToRemove(srcObjPath))
 			}
 			return nil, err
-		} else {
-			return nil, fmt.Errorf("can't %s dir two storages, please use the front-end ", taskType)
+			// } else {
+			// 	return nil, fmt.Errorf("can't %s dir two storages, please use the front-end ", taskType)
 		}
 	}
 
