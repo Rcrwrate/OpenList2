@@ -96,11 +96,6 @@ BuildWinArm64() {
 }
 
 BuildWin7() {
-  # Install MinGW-w64 cross-compilation toolchain for Win7 compatibility
-  echo "Installing MinGW-w64 toolchain for Windows 7 compatibility..."
-  sudo apt-get update
-  sudo apt-get install -y gcc-mingw-w64-x86-64 gcc-mingw-w64-i686
-  
   # Setup Win7 Go compiler (patched version that supports Windows 7)
   go_version=$(go version | grep -o 'go[0-9]\+\.[0-9]\+\.[0-9]\+' | sed 's/go//')
   echo "Detected Go version: $go_version"
