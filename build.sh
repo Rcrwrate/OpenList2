@@ -120,7 +120,7 @@ BuildWin7() {
   
   # Build for both 386 and amd64 architectures
   for arch in "386" "amd64"; do
-    echo "building for windows-7-${arch}"
+    echo "building for windows7-${arch}"
     export GOOS=windows
     export GOARCH=${arch}
     export CGO_ENABLED=1
@@ -230,7 +230,7 @@ BuildRelease() {
   rm -rf .git/
   mkdir -p "build"
   BuildWinArm64 ./build/"$appName"-windows-arm64.exe
-  BuildWin7 ./build/"$appName"-windows-7
+  BuildWin7 ./build/"$appName"-windows7
   xgo -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
   # why? Because some target platforms seem to have issues with upx compression
   # upx -9 ./"$appName"-linux-amd64
@@ -548,7 +548,7 @@ MakeRelease() {
     tar -czvf compress/"$i$liteSuffix".tar.gz "$appName"
     rm -f "$appName"
   done
-  for i in $(find . -type f -name "$appName-windows-*"); do
+  for i in $(find . -type f \( -name "$appName-windows-*" -o -name "$appName-windows7-*" \)); do
     cp "$i" "$appName".exe
     zip compress/$(echo $i | sed 's/\.[^.]*$//')$liteSuffix.zip "$appName".exe
     rm -f "$appName".exe
