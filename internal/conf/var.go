@@ -10,7 +10,7 @@ var (
 	GitAuthor  string = "unknown"
 	GitCommit  string = "unknown"
 	Version    string = "dev"
-	WebVersion string = "dev"
+	WebVersion string = "rolling"
 )
 
 var (
