@@ -58,7 +58,7 @@ func (m *Meilisearch) Search(ctx context.Context, req model.SearchReq) ([]model.
 		mReq.Filter = strings.Join(filters, " AND ")
 	}
 
-	search, err := m.Client.Index(m.IndexUid).Search(req.Keywords, mReq)
+	search, err := m.Client.Index(m.IndexUid).SearchWithContext(ctx, req.Keywords, mReq)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -130,7 +130,7 @@ func (m *Meilisearch) getDocumentsByParent(ctx context.Context, parent string) (
 		parentHash := hashPath(parent)
 		query.Filter = fmt.Sprintf("parent_hash = '%s'", parentHash)
 	}
-	err := m.Client.Index(m.IndexUid).GetDocuments(query, &result)
+	err := m.Client.Index(m.IndexUid).GetDocumentsWithContext(ctx, query, &result)
 	if err != nil {
 		return nil, err
 	}
@@ -149,12 +149,12 @@ func (m *Meilisearch) Get(ctx context.Context, parent string) ([]model.SearchNod
 	})
 }
 
-func (m *Meilisearch) getDocumentInPath(parent string, name string) (*searchDocument, error) {
+func (m *Meilisearch) getDocumentInPath(ctx context.Context, parent string, name string) (*searchDocument, error) {
 	var result searchDocument
 	// join them and calculate the hash to exactly identify the node
 	nodePath := path.Join(parent, name)
 	nodePathHash := hashPath(nodePath)
-	err := m.Client.Index(m.IndexUid).GetDocument(nodePathHash, nil, &result)
+	err := m.Client.Index(m.IndexUid).GetDocumentWithContext(ctx, nodePathHash, nil, &result)
 	if err != nil {
 		// return nil for documents that no exists
 		if err.(*meilisearch.Error).StatusCode == 404 {
@@ -171,18 +171,9 @@ func (m *Meilisearch) delDirChild(ctx context.Context, prefix string) error {
 	// so no longer need to walk through the directories to get their IDs,
 	// speeding up the deletion process with easy maintained codebase
 	filter := fmt.Sprintf("parent_path_hashes = '%s'", prefix)
-	task, err := m.Client.Index(m.IndexUid).DeleteDocumentsByFilter(filter)
-	if err != nil {
-		return err
-	}
-	taskStatus, err := m.getTaskStatus(ctx, task.TaskUID)
-	if err != nil {
-		return err
-	}
-	if taskStatus != meilisearch.TaskStatusSucceeded {
-		return fmt.Errorf("delDirChild failed, task status is %s", taskStatus)
-	}
-	return nil
+	_, err := m.Client.Index(m.IndexUid).DeleteDocumentsByFilterWithContext(ctx, filter)
+	// task was enqueued (if succeed), no need to wait
+	return err
 }
 
 func (m *Meilisearch) Del(ctx context.Context, prefix string) error {
@@ -192,7 +183,7 @@ func (m *Meilisearch) Del(ctx context.Context, prefix string) error {
 		dir = dir[:len(dir)-1]
 	}
 
-	document, err := m.getDocumentInPath(dir, name)
+	document, err := m.getDocumentInPath(ctx, dir, name)
 	if err != nil {
 		return err
 	}
@@ -206,18 +197,9 @@ func (m *Meilisearch) Del(ctx context.Context, prefix string) error {
 			return err
 		}
 	}
-	task, err := m.Client.Index(m.IndexUid).DeleteDocument(document.ID)
-	if err != nil {
-		return err
-	}
-	taskStatus, err := m.getTaskStatus(ctx, task.TaskUID)
-	if err != nil {
-		return err
-	}
-	if taskStatus != meilisearch.TaskStatusSucceeded {
-		return fmt.Errorf("DelDir failed, task status is %s", taskStatus)
-	}
-	return nil
+	_, err = m.Client.Index(m.IndexUid).DeleteDocumentWithContext(ctx, document.ID)
+	// task was enqueued (if succeed), no need to wait
+	return err
 }
 
 func (m *Meilisearch) Release(ctx context.Context) error {
@@ -225,7 +207,8 @@ func (m *Meilisearch) Release(ctx context.Context) error {
 }
 
 func (m *Meilisearch) Clear(ctx context.Context) error {
-	_, err := m.Client.Index(m.IndexUid).DeleteAllDocuments()
+	_, err := m.Client.Index(m.IndexUid).DeleteAllDocumentsWithContext(ctx)
+	// task was enqueued (if succeed), no need to wait
 	return err
 }
 
