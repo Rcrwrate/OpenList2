@@ -51,7 +51,7 @@ func Plist(c *gin.Context) {
 		return
 	}
 	name := fullName
-	identifier := fmt.Sprintf("ci.nn.%s", fullName)
+	identifier := fmt.Sprintf("org.oplist.%s", fullName)
 	if strings.Contains(fullName, "@") {
 		ss := strings.Split(fullName, "@")
 		name = strings.Join(ss[:len(ss)-1], "@")
