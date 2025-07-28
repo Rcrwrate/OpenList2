@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/OpenListTeam/OpenList/v4/cmd/flags"
@@ -39,6 +40,7 @@ func initUser() {
 				panic(err)
 			} else {
 				utils.Log.Infof("Successfully created the admin user and the initial password is: %s", adminPassword)
+				fmt.Printf("Successfully created the admin user and the initial password is: %s\n", adminPassword)
 			}
 		} else {
 			utils.Log.Fatalf("[init user] Failed to get admin user: %v", err)
