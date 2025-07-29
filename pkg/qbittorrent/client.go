@@ -36,7 +36,7 @@ func New(webuiUrl string) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	transport := &http.Transport{
 		MaxIdleConns:        10,
 		MaxIdleConnsPerHost: 2,
@@ -363,23 +363,23 @@ func (c *client) Delete(id string, deleteFiles bool) error {
 	} else {
 		v.Set("deleteFiles", "false")
 	}
-	response, err := c.post("/api/v2/torrents/delete", v)
+	deleteResp, err := c.post("/api/v2/torrents/delete", v)
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
-	if response.StatusCode != 200 {
+	defer deleteResp.Body.Close()
+	if deleteResp.StatusCode != 200 {
 		return errors.New("failed to delete qbittorrent task")
 	}
 
 	v = url.Values{}
 	v.Set("tags", "openlist-"+id)
-	response, err = c.post("/api/v2/torrents/deleteTags", v)
+	deleteTagsResp, err := c.post("/api/v2/torrents/deleteTags", v)
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
-	if response.StatusCode != 200 {
+	defer deleteTagsResp.Body.Close()
+	if deleteTagsResp.StatusCode != 200 {
 		return errors.New("failed to delete qbittorrent tag")
 	}
 	return nil
