@@ -255,9 +255,20 @@ func Link(ctx context.Context, storage driver.Driver, path string, args model.Li
 	if storage.Config().CheckStatus && storage.GetStorage().Status != WORK {
 		return nil, nil, errors.Errorf("storage not init: %s", storage.GetStorage().Status)
 	}
-	file, err := GetUnwrap(ctx, storage, path)
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "failed to get file")
+	var (
+		file model.Obj
+		err  error
+	)
+	if g, ok := storage.(driver.GetObjInfo); ok {
+		file, err = g.GetObjInfo(ctx, path)
+		if err != nil {
+			return nil, nil, errors.WithMessage(err, "failed to fetch file")
+		}
+	} else {
+		file, err = GetUnwrap(ctx, storage, path)
+		if err != nil {
+			return nil, nil, errors.WithMessage(err, "failed to get file")
+		}
 	}
 	if file.IsDir() {
 		return nil, nil, errors.WithStack(errs.NotFile)
