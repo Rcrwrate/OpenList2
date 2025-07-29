@@ -41,7 +41,7 @@ func New(webuiUrl string) (Client, error) {
 		MaxIdleConns:        10,
 		MaxIdleConnsPerHost: 2,
 		IdleConnTimeout:     30 * time.Second,
-		DisableKeepAlives:   false, // 启用连接复用
+		DisableKeepAlives:   false, // Enable connection reuse
 	}
 	
 	var c = &client{
@@ -49,7 +49,7 @@ func New(webuiUrl string) (Client, error) {
 		client: http.Client{
 			Jar:       jar,
 			Transport: transport,
-			Timeout:   30 * time.Second, // 设置总体超时
+			Timeout:   30 * time.Second, // Set overall timeout
 		},
 	}
 
