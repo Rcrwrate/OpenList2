@@ -1,8 +1,8 @@
 package aliyundrive_open
 
 import (
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 )
 
 type Addition struct {
@@ -12,6 +12,7 @@ type Addition struct {
 	OrderBy            string `json:"order_by" type:"select" options:"name,size,updated_at,created_at"`
 	OrderDirection     string `json:"order_direction" type:"select" options:"ASC,DESC"`
 	UseOnlineAPI       bool   `json:"use_online_api" default:"true"`
+	AlipanType         string `json:"alipan_type" required:"true" type:"select" default:"default" options:"default,alipanTV"`
 	APIAddress         string `json:"api_url_address" default:"https://api.oplist.org/alicloud/renewapi"`
 	ClientID           string `json:"client_id" help:"Keep it empty if you don't have one"`
 	ClientSecret       string `json:"client_secret" help:"Keep it empty if you don't have one"`
@@ -24,12 +25,6 @@ type Addition struct {
 
 var config = driver.Config{
 	Name:              "AliyundriveOpen",
-	LocalSort:         false,
-	OnlyLocal:         false,
-	OnlyProxy:         false,
-	NoCache:           false,
-	NoUpload:          false,
-	NeedMs:            false,
 	DefaultRoot:       "root",
 	NoOverwriteUpload: true,
 }

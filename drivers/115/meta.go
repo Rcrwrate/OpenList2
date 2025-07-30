@@ -1,8 +1,8 @@
 package _115
 
 import (
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 )
 
 type Addition struct {
@@ -18,7 +18,6 @@ var config = driver.Config{
 	Name:        "115 Cloud",
 	DefaultRoot: "0",
 	// OnlyProxy:   true,
-	// OnlyLocal:         true,
 	// NoOverwriteUpload: true,
 }
 

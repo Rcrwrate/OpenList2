@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/internal/conf"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/xhofe/tache"
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/tache"
 )
 
 type TaskExtension struct {
@@ -20,7 +20,7 @@ type TaskExtension struct {
 
 func (t *TaskExtension) SetCtx(ctx context.Context) {
 	if t.Creator != nil {
-		ctx = context.WithValue(ctx, "user", t.Creator)
+		ctx = context.WithValue(ctx, conf.UserKey, t.Creator)
 	}
 	if len(t.ApiUrl) > 0 {
 		ctx = context.WithValue(ctx, conf.ApiUrlKey, t.ApiUrl)

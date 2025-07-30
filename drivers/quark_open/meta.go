@@ -1,8 +1,8 @@
 package quark_open
 
 import (
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 )
 
 type Addition struct {
@@ -28,7 +28,7 @@ func init() {
 		return &QuarkOpen{
 			config: driver.Config{
 				Name:              "QuarkOpen",
-				OnlyLocal:         true,
+				OnlyProxy:         true,
 				DefaultRoot:       "0",
 				NoOverwriteUpload: true,
 			},

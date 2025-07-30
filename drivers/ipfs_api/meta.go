@@ -1,8 +1,8 @@
 package ipfs
 
 import (
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 )
 
 type Addition struct {
@@ -17,7 +17,6 @@ var config = driver.Config{
 	Name:        "IPFS API",
 	DefaultRoot: "/",
 	LocalSort:   true,
-	OnlyProxy:   false,
 }
 
 func init() {

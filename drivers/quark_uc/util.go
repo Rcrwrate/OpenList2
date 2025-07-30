@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/drivers/base"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/op"
-	"github.com/OpenListTeam/OpenList/pkg/cookie"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/drivers/base"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/pkg/cookie"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
 )
@@ -149,7 +149,12 @@ func (d *QuarkOrUC) getTranscodingLink(file model.Obj) (*model.Link, error) {
 		return nil, err
 	}
 
-	return &model.Link{URL: resp.Data.VideoList[0].VideoInfo.URL}, nil
+	return &model.Link{
+		URL:           resp.Data.VideoList[0].VideoInfo.URL,
+		ContentLength: resp.Data.VideoList[0].VideoInfo.Size,
+		Concurrency:   3,
+		PartSize:      10 * utils.MB,
+	}, nil
 }
 
 func (d *QuarkOrUC) upPre(file model.FileStreamer, parentId string) (UpPreResp, error) {

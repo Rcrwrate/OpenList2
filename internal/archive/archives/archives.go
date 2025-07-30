@@ -7,10 +7,10 @@ import (
 	stdpath "path"
 	"strings"
 
-	"github.com/OpenListTeam/OpenList/internal/archive/tool"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/stream"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/internal/archive/tool"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 )
 
 type Archives struct {
@@ -18,7 +18,8 @@ type Archives struct {
 
 func (Archives) AcceptedExtensions() []string {
 	return []string{
-		".br", ".bz2", ".gz", ".lz4", ".lz", ".sz", ".s2", ".xz", ".zz", ".zst", ".tar",
+		".br", ".bz2", ".gz", ".lz4", ".lz", ".mz", ".sz", ".s2", ".xz", ".zz", ".zst", ".tar",
+		".tgz", ".tlz4", ".tlz", ".tbz2", ".txz", ".tzst",
 	}
 }
 

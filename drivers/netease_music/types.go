@@ -2,19 +2,18 @@ package netease_music
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/sign"
-	"github.com/OpenListTeam/OpenList/pkg/http_range"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
-	"github.com/OpenListTeam/OpenList/pkg/utils/random"
-	"github.com/OpenListTeam/OpenList/server/common"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/sign"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils/random"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 )
 
 type HostsResp struct {
@@ -55,16 +54,9 @@ func (lrc *LyricObj) getProxyLink(ctx context.Context) *model.Link {
 }
 
 func (lrc *LyricObj) getLyricLink() *model.Link {
-	reader := strings.NewReader(lrc.lyric)
 	return &model.Link{
-		RangeReadCloser: &model.RangeReadCloser{
-			RangeReader: func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
-				if httpRange.Length < 0 {
-					return io.NopCloser(reader), nil
-				}
-				sr := io.NewSectionReader(reader, httpRange.Start, httpRange.Length)
-				return io.NopCloser(sr), nil
-			},
+		RangeReader: &model.FileRangeReader{
+			RangeReaderIF: stream.GetRangeReaderFromMFile(int64(len(lrc.lyric)), strings.NewReader(lrc.lyric)),
 		},
 	}
 }

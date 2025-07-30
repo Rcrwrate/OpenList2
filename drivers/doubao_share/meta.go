@@ -1,8 +1,8 @@
 package doubao_share
 
 import (
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 )
 
 type Addition struct {
@@ -12,17 +12,10 @@ type Addition struct {
 }
 
 var config = driver.Config{
-	Name:              "DoubaoShare",
-	LocalSort:         true,
-	OnlyLocal:         false,
-	OnlyProxy:         false,
-	NoCache:           false,
-	NoUpload:          true,
-	NeedMs:            false,
-	DefaultRoot:       "/",
-	CheckStatus:       false,
-	Alert:             "",
-	NoOverwriteUpload: false,
+	Name:        "DoubaoShare",
+	LocalSort:   true,
+	NoUpload:    true,
+	DefaultRoot: "/",
 }
 
 func init() {

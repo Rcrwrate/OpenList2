@@ -3,8 +3,8 @@ package static
 import (
 	"strings"
 
-	"github.com/OpenListTeam/OpenList/internal/conf"
-	"github.com/OpenListTeam/OpenList/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 )
 
 type SiteConfig struct {
@@ -15,7 +15,7 @@ type SiteConfig struct {
 func getSiteConfig() SiteConfig {
 	siteConfig := SiteConfig{
 		BasePath: conf.URL.Path,
-		Cdn:      strings.ReplaceAll(strings.TrimSuffix(conf.Conf.Cdn, "/"), "$version", strings.TrimPrefix(conf.WebVersion, "v"),),
+		Cdn:      strings.ReplaceAll(strings.TrimSuffix(conf.Conf.Cdn, "/"), "$version", strings.TrimPrefix(conf.WebVersion, "v")),
 	}
 	if siteConfig.BasePath != "" {
 		siteConfig.BasePath = utils.FixAndCleanPath(siteConfig.BasePath)

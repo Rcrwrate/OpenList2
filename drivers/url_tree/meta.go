@@ -1,8 +1,8 @@
 package url_tree
 
 import (
-	"github.com/OpenListTeam/OpenList/internal/driver"
-	"github.com/OpenListTeam/OpenList/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/driver"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 )
 
 type Addition struct {
@@ -16,17 +16,10 @@ type Addition struct {
 }
 
 var config = driver.Config{
-	Name:              "UrlTree",
-	LocalSort:         true,
-	OnlyLocal:         false,
-	OnlyProxy:         false,
-	NoCache:           true,
-	NoUpload:          false,
-	NeedMs:            false,
-	DefaultRoot:       "",
-	CheckStatus:       true,
-	Alert:             "",
-	NoOverwriteUpload: false,
+	Name:        "UrlTree",
+	LocalSort:   true,
+	NoCache:     true,
+	CheckStatus: true,
 }
 
 func init() {

@@ -9,13 +9,13 @@ import (
 	stdpath "path"
 	"time"
 
-	"github.com/OpenListTeam/OpenList/internal/conf"
-	"github.com/OpenListTeam/OpenList/internal/errs"
-	"github.com/OpenListTeam/OpenList/internal/fs"
-	"github.com/OpenListTeam/OpenList/internal/model"
-	"github.com/OpenListTeam/OpenList/internal/op"
-	"github.com/OpenListTeam/OpenList/internal/stream"
-	"github.com/OpenListTeam/OpenList/server/common"
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/errs"
+	"github.com/OpenListTeam/OpenList/v4/internal/fs"
+	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 	ftpserver "github.com/fclairamb/ftpserverlib"
 	"github.com/pkg/errors"
 )
@@ -29,14 +29,14 @@ type FileUploadProxy struct {
 }
 
 func uploadAuth(ctx context.Context, path string) error {
-	user := ctx.Value("user").(*model.User)
+	user := ctx.Value(conf.UserKey).(*model.User)
 	meta, err := op.GetNearestMeta(stdpath.Dir(path))
 	if err != nil {
 		if !errors.Is(errors.Cause(err), errs.MetaNotFound) {
 			return err
 		}
 	}
-	if !(common.CanAccess(user, meta, path, ctx.Value("meta_pass").(string)) &&
+	if !(common.CanAccess(user, meta, path, ctx.Value(conf.MetaPassKey).(string)) &&
 		((user.CanFTPManage() && user.CanWrite()) || common.CanWrite(meta, stdpath.Dir(path)))) {
 		return errs.PermissionDenied
 	}
