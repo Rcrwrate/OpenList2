@@ -125,15 +125,19 @@ jobs:
         image: ["latest", "ffmpeg", "aria2", "aio"]
         include:
           - image: "latest"
+            base_image_tag: "base"
             build_arg: ""
             tag_favor: ""
           - image: "ffmpeg"
+            base_image_tag: "ffmpeg"
             build_arg: INSTALL_FFMPEG=true
             tag_favor: "suffix=-ffmpeg,onlatest=true"
           - image: "aria2"
+            base_image_tag: "aria2"
             build_arg: INSTALL_ARIA2=true
             tag_favor: "suffix=-aria2,onlatest=true"
           - image: "aio"
+            base_image_tag: "aio"
             build_arg: |
               INSTALL_FFMPEG=true
               INSTALL_ARIA2=true
@@ -182,24 +186,6 @@ jobs:
             latest=${{ github.event_name == 'push' || github.event.inputs.as_latest == 'true' }}
             ${{ matrix.tag_favor }}
 
-      - name: Prepare Dockerfile for ${{ matrix.image }}
-        run: |
-          # Create a temporary Dockerfile with the correct base image
-          BASE_TAG="${{ matrix.image }}"
-          if [ "$BASE_TAG" = "latest" ]; then
-            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:base"
-          elif [ "$BASE_TAG" = "ffmpeg" ]; then
-            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:ffmpeg"
-          elif [ "$BASE_TAG" = "aria2" ]; then
-            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:aria2"
-          elif [ "$BASE_TAG" = "aio" ]; then
-            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:aio"
-          fi
-          
-          # Replace the FROM line in Dockerfile.ci
-          sed "s|FROM ghcr.io/openlistteam/openlist-base-image:base|FROM $BASE_IMAGE|g" Dockerfile.ci > Dockerfile.ci.tmp
-          mv Dockerfile.ci.tmp Dockerfile.ci
-
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v6
@@ -207,7 +193,9 @@ jobs:
           context: .
           file: Dockerfile.ci
           push: ${{ env.IMAGE_PUSH == 'true' }}
-          build-args: ${{ matrix.build_arg }}
+          build-args: |
+            BASE_IMAGE_TAG=${{ matrix.base_image_tag }}
+            ${{ matrix.build_arg }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ env.RELEASE_PLATFORMS }}
@@ -221,15 +209,19 @@ jobs:
         image: ["latest", "ffmpeg", "aria2", "aio"]
         include:
           - image: "latest"
+            base_image_tag: "base"
             build_arg: ""
             tag_favor: "suffix=-lite,onlatest=true"
           - image: "ffmpeg"
+            base_image_tag: "ffmpeg"
             build_arg: INSTALL_FFMPEG=true
             tag_favor: "suffix=-lite-ffmpeg,onlatest=true"
           - image: "aria2"
+            base_image_tag: "aria2"
             build_arg: INSTALL_ARIA2=true
             tag_favor: "suffix=-lite-aria2,onlatest=true"
           - image: "aio"
+            base_image_tag: "aio"
             build_arg: |
               INSTALL_FFMPEG=true
               INSTALL_ARIA2=true
@@ -278,24 +270,6 @@ jobs:
             latest=${{ github.event_name == 'push' || github.event.inputs.as_latest == 'true' }}
             ${{ matrix.tag_favor }}
 
-      - name: Prepare Dockerfile for ${{ matrix.image }}
-        run: |
-          # Create a temporary Dockerfile with the correct base image
-          BASE_TAG="${{ matrix.image }}"
-          if [ "$BASE_TAG" = "latest" ]; then
-            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:base"
-          elif [ "$BASE_TAG" = "ffmpeg" ]; then
-            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:ffmpeg"
-          elif [ "$BASE_TAG" = "aria2" ]; then
-            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:aria2"
-          elif [ "$BASE_TAG" = "aio" ]; then
-            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:aio"
-          fi
-          
-          # Replace the FROM line in Dockerfile.ci
-          sed "s|FROM ghcr.io/openlistteam/openlist-base-image:base|FROM $BASE_IMAGE|g" Dockerfile.ci > Dockerfile.ci.tmp
-          mv Dockerfile.ci.tmp Dockerfile.ci
-
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v6
@@ -303,7 +277,9 @@ jobs:
           context: .
           file: Dockerfile.ci
           push: ${{ env.IMAGE_PUSH == 'true' }}
-          build-args: ${{ matrix.build_arg }}
+          build-args: |
+            BASE_IMAGE_TAG=${{ matrix.base_image_tag }}
+            ${{ matrix.build_arg }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ env.RELEASE_PLATFORMS }}

@@ -1,6 +1,9 @@
-FROM ghcr.io/openlistteam/openlist-base-image:base
+# Base image tag can be overridden via build-arg
+ARG BASE_IMAGE_TAG=base
+FROM ghcr.io/openlistteam/openlist-base-image:${BASE_IMAGE_TAG}
 
 ARG TARGETPLATFORM
+# These build arguments are used to configure runtime behavior
 ARG INSTALL_FFMPEG=false
 ARG INSTALL_ARIA2=false
 LABEL MAINTAINER="OpenList"
