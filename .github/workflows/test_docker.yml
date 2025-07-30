@@ -130,6 +130,24 @@ jobs:
           flavor: |
             ${{ matrix.tag_favor }}
 
+      - name: Prepare Dockerfile for ${{ matrix.image }}
+        run: |
+          # Create a temporary Dockerfile with the correct base image
+          BASE_TAG="${{ matrix.image }}"
+          if [ "$BASE_TAG" = "latest" ]; then
+            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:base"
+          elif [ "$BASE_TAG" = "ffmpeg" ]; then
+            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:ffmpeg"
+          elif [ "$BASE_TAG" = "aria2" ]; then
+            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:aria2"
+          elif [ "$BASE_TAG" = "aio" ]; then
+            BASE_IMAGE="ghcr.io/openlistteam/openlist-base-image:aio"
+          fi
+          
+          # Replace the FROM line in Dockerfile.ci
+          sed "s|FROM ghcr.io/openlistteam/openlist-base-image:base|FROM $BASE_IMAGE|g" Dockerfile.ci > Dockerfile.ci.tmp
+          mv Dockerfile.ci.tmp Dockerfile.ci
+
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v6
