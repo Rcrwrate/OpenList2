@@ -29,7 +29,7 @@ require (
 	github.com/dlclark/regexp2 v1.11.5
 	github.com/dustinxie/ecc v0.0.0-20210511000915-959544187564
 	github.com/fclairamb/ftpserverlib v0.26.1-0.20250709223522-4a925d79caf6
-	github.com/foxxorcat/mopan-sdk-go v0.1.6
+	github.com/foxxorcat/mopan-sdk-go v1.0.0
 	github.com/foxxorcat/weiyun-sdk-go v0.1.3
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
@@ -129,7 +129,7 @@ require (
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	github.com/yuin/goldmark v1.7.13
 	go4.org v0.0.0-20230225012048-214862532bf5
-	resty.dev/v3 v3.0.0-beta.2 // indirect
+	resty.dev/v3 v3.0.0-beta.3 // indirect
 )
 
 require (
