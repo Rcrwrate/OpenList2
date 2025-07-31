@@ -14,6 +14,8 @@ require (
 	github.com/ProtonMail/go-crypto v1.3.0
 	github.com/SheltonZhu/115driver v1.1.0
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
+	github.com/anacrolix/dms v1.7.1
+	github.com/anacrolix/log v0.16.0
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.55.7
 	github.com/blevesearch/bleve/v2 v2.5.2
@@ -82,6 +84,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.1 // indirect
 	github.com/RoaringBitmap/roaring/v2 v2.4.5 // indirect
+	github.com/anacrolix/generics v0.0.3 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
@@ -92,9 +95,10 @@ require (
 	github.com/minio/xxml v0.0.3 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/otiai10/mint v1.6.3 // indirect
-	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.5 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
+	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476 // indirect
+	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 )
 
 require (
