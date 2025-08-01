@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	stdpath "path"
+	"path/filepath"
 	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/fs"
@@ -127,21 +128,23 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 }
 
 func (d *Strm) getLink(ctx context.Context, path string) string {
-	var encodePath string
+	var finalPath string
 	if d.EncodePath {
-		encodePath = utils.EncodePath(path, true)
+		finalPath = utils.EncodePath(path, true)
+	} else {
+		finalPath = path
+	}
+	if d.LocalModel {
+		if d.LMRootPath != "" {
+			finalPath = filepath.Join(d.LMRootPath, finalPath)
+		}
+		return finalPath
 	}
 	if d.EnableSign {
 		signPath := sign.Sign(path)
-		if len(encodePath) > 0 {
-			path = fmt.Sprintf("%s?sign=%s", encodePath, signPath)
-		} else {
-			path = fmt.Sprintf("%s?sign=%s", path, signPath)
-		}
+		finalPath = fmt.Sprintf("%s?sign=%s", finalPath, signPath)
 	}
-	if d.LocalModel {
-		return path
-	}
+
 	apiUrl := d.SiteUrl
 	if len(apiUrl) > 0 {
 		apiUrl = strings.TrimSuffix(apiUrl, "/")
@@ -151,5 +154,5 @@ func (d *Strm) getLink(ctx context.Context, path string) string {
 
 	return fmt.Sprintf("%s/d%s",
 		apiUrl,
-		path)
+		finalPath)
 }

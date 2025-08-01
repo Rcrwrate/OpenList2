@@ -11,6 +11,7 @@ type Addition struct {
 	FilterFileTypes string `json:"filterFileTypes" type:"text" default:"strm" required:"false" help:"Supports suffix name of strm file"`
 	EncodePath      bool   `json:"encodePath" default:"true" required:"true" help:"encode the path in the strm file"`
 	LocalModel      bool   `json:"localModel" default:"false" help:"enable local mode"`
+	LMRootPath      string `json:"localModel_RootPath" required:"false" help:"root path prefix in local mode"`
 }
 
 var config = driver.Config{
