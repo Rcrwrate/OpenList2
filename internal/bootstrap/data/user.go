@@ -42,6 +42,7 @@ func initUser() {
 				// DO NOT output the password to log file. Only output to console.
 				// utils.Log.Infof("Successfully created the admin user and the initial password is: %s", adminPassword)
 				fmt.Printf("Successfully created the admin user and the initial password is: %s\n", adminPassword)
+				os.Stdout.Sync()
 			}
 		} else {
 			utils.Log.Fatalf("[init user] Failed to get admin user: %v", err)
