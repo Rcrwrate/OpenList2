@@ -200,7 +200,7 @@ type StreamSectionReader struct {
 func NewStreamSectionReader(file model.FileStreamer, bufMaxLen int) (*StreamSectionReader, error) {
 	ss := &StreamSectionReader{file: file}
 	if file.GetFile() == nil {
-		if bufMaxLen > conf.MaxBufferLimit {
+		if bufMaxLen > utils.MaxBufferLimit() {
 			_, err := file.CacheFullInTempFile()
 			if err != nil {
 				return nil, err
@@ -252,27 +252,6 @@ func (ss *StreamSectionReader) RecycleSectionReader(sr *SectionReader) {
 		sr.ReadSeeker = nil
 	}
 }
-
-// func (ss *StreamSectionReader) GetBytes(sr *SectionReader) ([]byte, error) {
-// 	if sr != nil && ss.bufPool != nil {
-// 		ss.mu.Lock()
-// 		defer ss.mu.Unlock()
-// 		buf := sr.buf
-// 		if buf == nil {
-// 			buf := ss.bufPool.Get().([]byte)
-// 			n, err := io.ReadFull(sr, buf)
-// 			if err == io.EOF && n > 0 {
-// 				err = nil
-// 			}
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			sr.buf = buf[:n]
-// 		}
-// 		return sr.buf, nil
-// 	}
-// 	return nil, errors.New("SectionReader is nil")
-// }
 
 type SectionReader struct {
 	io.ReadSeeker

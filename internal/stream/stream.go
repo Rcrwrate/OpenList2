@@ -9,7 +9,6 @@ import (
 	"math"
 	"os"
 
-	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
@@ -120,7 +119,7 @@ func (f *FileStream) RangeRead(httpRange http_range.Range) (io.Reader, error) {
 	if f.peekBuff != nil && size <= int64(f.peekBuff.Len()) {
 		return io.NewSectionReader(f.peekBuff, httpRange.Start, httpRange.Length), nil
 	}
-	if size <= int64(conf.MaxBufferLimit) {
+	if size <= int64(utils.MaxBufferLimit()) {
 		bufSize := min(size, f.GetSize())
 		// 使用bytes.Buffer作为io.CopyBuffer的写入对象，CopyBuffer会调用Buffer.ReadFrom
 		// 即使被写入的数据量与Buffer.Cap一致，Buffer也会扩大
