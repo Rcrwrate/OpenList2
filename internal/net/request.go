@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 
@@ -84,9 +85,8 @@ func (d Downloader) Download(ctx context.Context, p *HttpRequestParams) (readClo
 	if impl.cfg.PartSize == 0 {
 		impl.cfg.PartSize = DefaultDownloadPartSize
 	}
-	maxBufferLimit := utils.MaxBufferLimit()
-	if maxBufferLimit > 0 && impl.cfg.PartSize > maxBufferLimit {
-		impl.cfg.PartSize = maxBufferLimit
+	if conf.MaxBufferLimit > 0 && impl.cfg.PartSize > conf.MaxBufferLimit {
+		impl.cfg.PartSize = conf.MaxBufferLimit
 	}
 	if impl.cfg.HttpClient == nil {
 		impl.cfg.HttpClient = DefaultHttpRequestFunc
