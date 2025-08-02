@@ -146,3 +146,13 @@ func AuthAdmin(c *gin.Context) {
 		c.Next()
 	}
 }
+
+func AuthMustGuest(c *gin.Context) {
+	guest, err := op.GetGuest()
+	if err != nil {
+		common.ErrorResp(c, err, 500)
+		c.Abort()
+		return
+	}
+	common.GinWithValue(c, conf.UserKey, guest)
+}

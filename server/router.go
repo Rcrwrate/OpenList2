@@ -43,17 +43,21 @@ func Init(e *gin.Engine) {
 
 	downloadLimiter := middlewares.DownloadRateLimiter(stream.ClientDownloadLimit)
 	signCheck := middlewares.Down(sign.Verify)
-	g.GET("/d/*path", signCheck, downloadLimiter, handles.Down)
-	g.GET("/p/*path", signCheck, downloadLimiter, handles.Proxy)
-	g.HEAD("/d/*path", signCheck, handles.Down)
-	g.HEAD("/p/*path", signCheck, handles.Proxy)
+	g.GET("/d/*path", middlewares.PathParse, signCheck, downloadLimiter, handles.Down)
+	g.GET("/p/*path", middlewares.PathParse, signCheck, downloadLimiter, handles.Proxy)
+	g.HEAD("/d/*path", middlewares.PathParse, signCheck, handles.Down)
+	g.HEAD("/p/*path", middlewares.PathParse, signCheck, handles.Proxy)
 	archiveSignCheck := middlewares.Down(sign.VerifyArchive)
-	g.GET("/ad/*path", archiveSignCheck, downloadLimiter, handles.ArchiveDown)
-	g.GET("/ap/*path", archiveSignCheck, downloadLimiter, handles.ArchiveProxy)
-	g.GET("/ae/*path", archiveSignCheck, downloadLimiter, handles.ArchiveInternalExtract)
-	g.HEAD("/ad/*path", archiveSignCheck, handles.ArchiveDown)
-	g.HEAD("/ap/*path", archiveSignCheck, handles.ArchiveProxy)
-	g.HEAD("/ae/*path", archiveSignCheck, handles.ArchiveInternalExtract)
+	g.GET("/ad/*path", middlewares.PathParse, archiveSignCheck, downloadLimiter, handles.ArchiveDown)
+	g.GET("/ap/*path", middlewares.PathParse, archiveSignCheck, downloadLimiter, handles.ArchiveProxy)
+	g.GET("/ae/*path", middlewares.PathParse, archiveSignCheck, downloadLimiter, handles.ArchiveInternalExtract)
+	g.HEAD("/ad/*path", middlewares.PathParse, archiveSignCheck, handles.ArchiveDown)
+	g.HEAD("/ap/*path", middlewares.PathParse, archiveSignCheck, handles.ArchiveProxy)
+	g.HEAD("/ae/*path", middlewares.PathParse, archiveSignCheck, handles.ArchiveInternalExtract)
+	g.GET("/sd/:sid", middlewares.EmptyPathParse, middlewares.SharingIdParse, downloadLimiter, handles.SharingDown)
+	g.GET("/sd/:sid/*path", middlewares.PathParse, middlewares.SharingIdParse, downloadLimiter, handles.SharingDown)
+	g.HEAD("/sd/:sid", middlewares.EmptyPathParse, middlewares.SharingIdParse, handles.SharingDown)
+	g.HEAD("/sd/:sid/*path", middlewares.PathParse, middlewares.SharingIdParse, handles.SharingDown)
 
 	api := g.Group("/api")
 	auth := api.Group("", middlewares.Auth)
@@ -93,6 +97,8 @@ func Init(e *gin.Engine) {
 
 	_fs(auth.Group("/fs"))
 	_task(auth.Group("/task", middlewares.AuthNotGuest))
+	_sharing(api.Group("/share", middlewares.AuthMustGuest))
+	sharingManage(auth.Group("/share", middlewares.AuthNotGuest))
 	admin(auth.Group("/admin", middlewares.AuthAdmin))
 	if flags.Debug || flags.Dev {
 		debug(g.Group("/debug"))
@@ -199,6 +205,18 @@ func _fs(g *gin.RouterGroup) {
 
 func _task(g *gin.RouterGroup) {
 	handles.SetupTaskRoute(g)
+}
+
+func _sharing(g *gin.RouterGroup) {
+	g.Any("/list", handles.SharingList)
+	g.Any("/get", handles.SharingGet)
+}
+
+func sharingManage(g *gin.RouterGroup) {
+	g.GET("/list", handles.ListSharings)
+	g.POST("/create", handles.CreateSharing)
+	g.POST("/update", handles.UpdateSharing)
+	g.POST("/delete", handles.DeleteSharing)
 }
 
 func Cors(r *gin.Engine) {
