@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	stdpath "path"
 	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
@@ -11,7 +12,6 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/sign"
-	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 )
@@ -103,10 +103,24 @@ func (d *Strm) Get(ctx context.Context, path string) (model.Obj, error) {
 		return nil, errs.ObjectNotFound
 	}
 	for _, dst := range dsts {
-		obj, err := d.get(ctx, path, dst, sub)
-		if err == nil {
-			return obj, nil
+		reqPath := stdpath.Join(dst, sub)
+		obj, err := fs.Get(ctx, reqPath, &fs.GetArgs{NoLog: true})
+		if err != nil {
+			continue
 		}
+		size := int64(0)
+		if !obj.IsDir() {
+			size = obj.GetSize()
+			path = reqPath
+		}
+		return &model.Object{
+			Path:     path,
+			Name:     obj.GetName(),
+			Size:     size,
+			Modified: obj.ModTime(),
+			IsFolder: obj.IsDir(),
+			HashInfo: obj.GetHash(),
+		}, nil
 	}
 	return nil, errs.ObjectNotFound
 }
@@ -133,17 +147,15 @@ func (d *Strm) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([]
 }
 
 func (d *Strm) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
-	// If in supportSuffix, return the link directly
-	ext := utils.Ext(file.GetName())
-	if _, ok := d.supportSuffix[strings.ToLower(ext)]; ok {
+	if file.GetID() == "strm" {
 		link := d.getLink(ctx, file.GetPath())
 		return &model.Link{
 			MFile: strings.NewReader(link),
 		}, nil
 	}
-	// 到这没必要判断了
+
 	reqPath := file.GetPath()
-	link, file, err := d.link(ctx, reqPath, args)
+	link, _, err := d.link(ctx, reqPath, args)
 	if err != nil {
 		return nil, err
 	}
@@ -157,20 +169,8 @@ func (d *Strm) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*
 		}, nil
 	}
 
-	resultLink := &model.Link{
-		URL:           link.URL,
-		Header:        link.Header,
-		RangeReader:   link.RangeReader,
-		SyncClosers:   utils.NewSyncClosers(link),
-		ContentLength: link.ContentLength,
-	}
-	if link.MFile != nil {
-		resultLink.RangeReader = &model.FileRangeReader{
-			RangeReaderIF: stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile),
-		}
-	}
-	return resultLink, nil
-
+	// 没有修改link的成员，可直接返回
+	return link, nil
 }
 
 var _ driver.Driver = (*Strm)(nil)

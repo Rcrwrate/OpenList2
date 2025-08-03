@@ -52,33 +52,6 @@ func (d *Strm) getRootAndPath(path string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func (d *Strm) get(ctx context.Context, path string, dst, sub string) (model.Obj, error) {
-	reqPath := stdpath.Join(dst, sub)
-	obj, err := fs.Get(ctx, reqPath, &fs.GetArgs{NoLog: true})
-	if err != nil {
-		return nil, err
-	}
-	size := int64(0)
-	if !obj.IsDir() {
-		ext := utils.Ext(obj.GetName())
-		if _, ok := d.downloadSuffix[ext]; ok {
-			size = obj.GetSize()
-			path = reqPath
-		} else {
-			file := stdpath.Join(reqPath, obj.GetName())
-			size = int64(len(d.getLink(ctx, file)))
-		}
-	}
-	return &model.Object{
-		Path:     path,
-		Name:     obj.GetName(),
-		Size:     size,
-		Modified: obj.ModTime(),
-		IsFolder: obj.IsDir(),
-		HashInfo: obj.GetHash(),
-	}, nil
-}
-
 func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]model.Obj, error) {
 	reqPath := stdpath.Join(dst, sub)
 	objs, err := fs.List(ctx, reqPath, args)
@@ -88,47 +61,44 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 
 	var validObjs []model.Obj
 	for _, obj := range objs {
-		if !obj.IsDir() {
-			ext := strings.ToLower(utils.Ext(obj.GetName()))
-			if _, ok := d.supportSuffix[ext]; !ok {
-				if _, ok := d.downloadSuffix[ext]; !ok {
-					continue
-				}
-			}
-		}
-		validObjs = append(validObjs, obj)
-	}
-	return utils.SliceConvert(validObjs, func(obj model.Obj) (model.Obj, error) {
-		name := obj.GetName()
+		id, name := "", obj.GetName()
 		size := int64(0)
 		if !obj.IsDir() {
-			ext := utils.Ext(name)
-			if _, ok := d.downloadSuffix[ext]; ok {
-				size = obj.GetSize()
-			} else {
+			ext := strings.ToLower(utils.Ext(name))
+			if _, ok := d.supportSuffix[ext]; ok {
+				id = "strm"
 				name = strings.TrimSuffix(name, ext) + "strm"
 				file := stdpath.Join(reqPath, obj.GetName())
 				size = int64(len(d.getLink(ctx, file)))
+			} else if _, ok := d.downloadSuffix[ext]; ok {
+				size = obj.GetSize()
+			} else {
+				continue
 			}
 		}
 		objRes := model.Object{
+			ID:       id,
+			Path:     stdpath.Join(reqPath, obj.GetName()),
 			Name:     name,
 			Size:     size,
 			Modified: obj.ModTime(),
 			IsFolder: obj.IsDir(),
-			Path:     stdpath.Join(reqPath, obj.GetName()),
 		}
+
 		thumb, ok := model.GetThumb(obj)
 		if !ok {
-			return &objRes, nil
+			validObjs = append(validObjs, &objRes)
+			continue
 		}
-		return &model.ObjThumb{
+
+		validObjs = append(validObjs, &model.ObjThumb{
 			Object: objRes,
 			Thumbnail: model.Thumbnail{
 				Thumbnail: thumb,
 			},
-		}, nil
-	})
+		})
+	}
+	return validObjs, nil
 }
 
 func (d *Strm) getLink(ctx context.Context, path string) string {
