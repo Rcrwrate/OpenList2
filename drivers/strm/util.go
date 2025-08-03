@@ -61,10 +61,9 @@ func (d *Strm) get(ctx context.Context, path string, dst, sub string) (model.Obj
 	size := int64(0)
 	if !obj.IsDir() {
 		ext := utils.Ext(obj.GetName())
-		if ext == "strm" {
+		if _, ok := d.downloadSuffix[ext]; ok {
 			size = obj.GetSize()
-		} else if _, ok := downloadSuffix[ext]; ok {
-			size = obj.GetSize()
+			path = reqPath
 		} else {
 			file := stdpath.Join(reqPath, obj.GetName())
 			size = int64(len(d.getLink(ctx, file)))
@@ -88,28 +87,26 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 	}
 
 	var validObjs []model.Obj
-	var downloadObjs []model.Obj
 	for _, obj := range objs {
 		if !obj.IsDir() {
 			ext := strings.ToLower(utils.Ext(obj.GetName()))
-			if _, ok := supportSuffix[ext]; !ok {
-				if _, ok := downloadSuffix[ext]; ok {
-					downloadObjs = append(downloadObjs, obj)
+			if _, ok := d.supportSuffix[ext]; !ok {
+				if _, ok := d.downloadSuffix[ext]; !ok {
 					continue
 				}
 			}
 		}
 		validObjs = append(validObjs, obj)
 	}
-	var validObjsResult, validObjsResultErr = utils.SliceConvert(validObjs, func(obj model.Obj) (model.Obj, error) {
+	return utils.SliceConvert(validObjs, func(obj model.Obj) (model.Obj, error) {
 		name := obj.GetName()
 		size := int64(0)
 		if !obj.IsDir() {
 			ext := utils.Ext(name)
-			name = strings.TrimSuffix(name, ext) + "strm"
-			if ext == "strm" {
+			if _, ok := d.downloadSuffix[ext]; ok {
 				size = obj.GetSize()
 			} else {
+				name = strings.TrimSuffix(name, ext) + "strm"
 				file := stdpath.Join(reqPath, obj.GetName())
 				size = int64(len(d.getLink(ctx, file)))
 			}
@@ -132,10 +129,6 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 			},
 		}, nil
 	})
-
-	// Merge results
-	validObjs = append(validObjsResult, downloadObjs...)
-	return validObjs, validObjsResultErr
 }
 
 func (d *Strm) getLink(ctx context.Context, path string) string {

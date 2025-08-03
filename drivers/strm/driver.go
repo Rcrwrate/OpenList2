@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	stdpath "path"
 	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
@@ -23,6 +22,9 @@ type Strm struct {
 	pathMap     map[string][]string
 	autoFlatten bool
 	oneKey      string
+
+	supportSuffix  map[string]struct{}
+	downloadSuffix map[string]struct{}
 }
 
 func (d *Strm) Config() driver.Config {
@@ -56,22 +58,24 @@ func (d *Strm) Init(ctx context.Context) error {
 		d.autoFlatten = false
 	}
 
+	d.supportSuffix = supportSuffix()
 	if d.FilterFileTypes != "" {
 		types := strings.Split(d.FilterFileTypes, ",")
 		for _, ext := range types {
 			ext = strings.ToLower(strings.TrimSpace(ext))
 			if ext != "" {
-				supportSuffix[ext] = struct{}{}
+				d.supportSuffix[ext] = struct{}{}
 			}
 		}
 	}
 
+	d.downloadSuffix = downloadSuffix()
 	if d.DownloadFileTypes != "" {
 		downloadTypes := strings.Split(d.DownloadFileTypes, ",")
 		for _, ext := range downloadTypes {
 			ext = strings.ToLower(strings.TrimSpace(ext))
 			if ext != "" {
-				downloadSuffix[ext] = struct{}{}
+				d.downloadSuffix[ext] = struct{}{}
 			}
 		}
 	}
@@ -80,6 +84,8 @@ func (d *Strm) Init(ctx context.Context) error {
 
 func (d *Strm) Drop(ctx context.Context) error {
 	d.pathMap = nil
+	d.downloadSuffix = nil
+	d.supportSuffix = nil
 	return nil
 }
 
@@ -129,89 +135,42 @@ func (d *Strm) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([]
 func (d *Strm) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
 	// If in supportSuffix, return the link directly
 	ext := utils.Ext(file.GetName())
-	if _, ok := supportSuffix[strings.ToLower(ext)]; ok {
+	if _, ok := d.supportSuffix[strings.ToLower(ext)]; ok {
 		link := d.getLink(ctx, file.GetPath())
 		return &model.Link{
 			MFile: strings.NewReader(link),
 		}, nil
-	// If in downloadSuffix, return the download link
-	} else if _, ok := downloadSuffix[strings.ToLower(ext)]; ok {
-		return d.Link_DownloadFiles(ctx, file, args)
 	}
-	return nil, errs.ObjectNotFound
-}
-
-func (d *Strm) Link_DownloadFiles(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
-	root, sub := d.getRootAndPath(file.GetPath())
-	dsts, ok := d.pathMap[root]
-	if !ok {
-		return nil, errs.ObjectNotFound
+	// 到这没必要判断了
+	reqPath := file.GetPath()
+	link, file, err := d.link(ctx, reqPath, args)
+	if err != nil {
+		return nil, err
 	}
-	for _, dst := range dsts {
-		reqPath := stdpath.Join(dst, sub)
-		link, file, err := d.link(ctx, reqPath, args)
-		if err != nil {
-			continue
-		}
-		var resultLink *model.Link
-		if link != nil {
-			resultLink = &model.Link{
-				URL:           link.URL,
-				Header:        link.Header,
-				RangeReader:   link.RangeReader,
-				SyncClosers:   utils.NewSyncClosers(link),
-				ContentLength: link.ContentLength,
-			}
-			if link.MFile != nil {
-				resultLink.RangeReader = &model.FileRangeReader{
-					RangeReaderIF: stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile),
-				}
-			}
 
-		} else {
-			resultLink = &model.Link{
-				URL: fmt.Sprintf("%s/p%s?sign=%s",
-					common.GetApiUrl(ctx),
-					utils.EncodePath(reqPath, true),
-					sign.Sign(reqPath)),
-			}
-
-		}
-		if !args.Redirect {
-			if d.DownloadConcurrency > 0 {
-				resultLink.Concurrency = d.DownloadConcurrency
-			}
-			if d.DownloadPartSize > 0 {
-				resultLink.PartSize = d.DownloadPartSize * utils.KB
-			}
-		}
-		return resultLink, nil
+	if link == nil {
+		return &model.Link{
+			URL: fmt.Sprintf("%s/p%s?sign=%s",
+				common.GetApiUrl(ctx),
+				utils.EncodePath(reqPath, true),
+				sign.Sign(reqPath)),
+		}, nil
 	}
-	return nil, errs.ObjectNotFound
-}
 
-func (d *Strm) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) error {
-	return errors.New("strm Driver cannot make dir")
-}
+	resultLink := &model.Link{
+		URL:           link.URL,
+		Header:        link.Header,
+		RangeReader:   link.RangeReader,
+		SyncClosers:   utils.NewSyncClosers(link),
+		ContentLength: link.ContentLength,
+	}
+	if link.MFile != nil {
+		resultLink.RangeReader = &model.FileRangeReader{
+			RangeReaderIF: stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile),
+		}
+	}
+	return resultLink, nil
 
-func (d *Strm) Move(ctx context.Context, srcObj, dstDir model.Obj) error {
-	return errors.New("strm Driver cannot move file")
-}
-
-func (d *Strm) Rename(ctx context.Context, srcObj model.Obj, newName string) error {
-	return errors.New("strm Driver cannot rename file")
-}
-
-func (d *Strm) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
-	return errors.New("strm Driver cannot copy file")
-}
-
-func (d *Strm) Remove(ctx context.Context, obj model.Obj) error {
-	return errors.New("strm Driver cannot remove file")
-}
-
-func (d *Strm) Put(ctx context.Context, dstDir model.Obj, s model.FileStreamer, up driver.UpdateProgress) error {
-	return errors.New("strm Driver cannot put file")
 }
 
 var _ driver.Driver = (*Strm)(nil)
