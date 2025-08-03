@@ -3,13 +3,18 @@ package strm
 import (
 	"context"
 	"errors"
+	"fmt"
+	stdpath "path"
 	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/sign"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
+	"github.com/OpenListTeam/OpenList/v4/server/common"
 )
 
 type Strm struct {
@@ -57,6 +62,16 @@ func (d *Strm) Init(ctx context.Context) error {
 			ext = strings.ToLower(strings.TrimSpace(ext))
 			if ext != "" {
 				supportSuffix[ext] = struct{}{}
+			}
+		}
+	}
+
+	if d.DownloadFileTypes != "" {
+		downloadTypes := strings.Split(d.DownloadFileTypes, ",")
+		for _, ext := range downloadTypes {
+			ext = strings.ToLower(strings.TrimSpace(ext))
+			if ext != "" {
+				downloadSuffix[ext] = struct{}{}
 			}
 		}
 	}
@@ -112,10 +127,67 @@ func (d *Strm) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([]
 }
 
 func (d *Strm) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
-	link := d.getLink(ctx, file.GetPath())
-	return &model.Link{
-		MFile: strings.NewReader(link),
-	}, nil
+	// If in supportSuffix, return the link directly
+	ext := utils.Ext(file.GetName())
+	if _, ok := supportSuffix[strings.ToLower(ext)]; ok {
+		link := d.getLink(ctx, file.GetPath())
+		return &model.Link{
+			MFile: strings.NewReader(link),
+		}, nil
+	// If in downloadSuffix, return the download link
+	} else if _, ok := downloadSuffix[strings.ToLower(ext)]; ok {
+		return d.Link_DownloadFiles(ctx, file, args)
+	}
+	return nil, errs.ObjectNotFound
+}
+
+func (d *Strm) Link_DownloadFiles(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
+	root, sub := d.getRootAndPath(file.GetPath())
+	dsts, ok := d.pathMap[root]
+	if !ok {
+		return nil, errs.ObjectNotFound
+	}
+	for _, dst := range dsts {
+		reqPath := stdpath.Join(dst, sub)
+		link, file, err := d.link(ctx, reqPath, args)
+		if err != nil {
+			continue
+		}
+		var resultLink *model.Link
+		if link != nil {
+			resultLink = &model.Link{
+				URL:           link.URL,
+				Header:        link.Header,
+				RangeReader:   link.RangeReader,
+				SyncClosers:   utils.NewSyncClosers(link),
+				ContentLength: link.ContentLength,
+			}
+			if link.MFile != nil {
+				resultLink.RangeReader = &model.FileRangeReader{
+					RangeReaderIF: stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile),
+				}
+			}
+
+		} else {
+			resultLink = &model.Link{
+				URL: fmt.Sprintf("%s/p%s?sign=%s",
+					common.GetApiUrl(ctx),
+					utils.EncodePath(reqPath, true),
+					sign.Sign(reqPath)),
+			}
+
+		}
+		if !args.Redirect {
+			if d.DownloadConcurrency > 0 {
+				resultLink.Concurrency = d.DownloadConcurrency
+			}
+			if d.DownloadPartSize > 0 {
+				resultLink.PartSize = d.DownloadPartSize * utils.KB
+			}
+		}
+		return resultLink, nil
+	}
+	return nil, errs.ObjectNotFound
 }
 
 func (d *Strm) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) error {

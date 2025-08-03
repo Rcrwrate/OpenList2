@@ -9,6 +9,7 @@ import (
 
 	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
+	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/internal/sign"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
@@ -59,7 +60,10 @@ func (d *Strm) get(ctx context.Context, path string, dst, sub string) (model.Obj
 	}
 	size := int64(0)
 	if !obj.IsDir() {
-		if utils.Ext(obj.GetName()) == "strm" {
+		ext := utils.Ext(obj.GetName())
+		if ext == "strm" {
+			size = obj.GetSize()
+		} else if _, ok := downloadSuffix[ext]; ok {
 			size = obj.GetSize()
 		} else {
 			file := stdpath.Join(reqPath, obj.GetName())
@@ -84,16 +88,20 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 	}
 
 	var validObjs []model.Obj
+	var downloadObjs []model.Obj
 	for _, obj := range objs {
 		if !obj.IsDir() {
 			ext := strings.ToLower(utils.Ext(obj.GetName()))
 			if _, ok := supportSuffix[ext]; !ok {
-				continue
+				if _, ok := downloadSuffix[ext]; ok {
+					downloadObjs = append(downloadObjs, obj)
+					continue
+				}
 			}
 		}
 		validObjs = append(validObjs, obj)
 	}
-	return utils.SliceConvert(validObjs, func(obj model.Obj) (model.Obj, error) {
+	var validObjsResult, validObjsResultErr = utils.SliceConvert(validObjs, func(obj model.Obj) (model.Obj, error) {
 		name := obj.GetName()
 		size := int64(0)
 		if !obj.IsDir() {
@@ -124,6 +132,10 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 			},
 		}, nil
 	})
+
+	// Merge results
+	validObjs = append(validObjsResult, downloadObjs...)
+	return validObjs, validObjsResultErr
 }
 
 func (d *Strm) getLink(ctx context.Context, path string) string {
@@ -148,4 +160,23 @@ func (d *Strm) getLink(ctx context.Context, path string) string {
 	return fmt.Sprintf("%s/d%s",
 		apiUrl,
 		finalPath)
+}
+
+func (d *Strm) link(ctx context.Context, reqPath string, args model.LinkArgs) (*model.Link, model.Obj, error) {
+	storage, reqActualPath, err := op.GetStorageAndActualPath(reqPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	// proxy || ftp,s3
+	if !args.Redirect || len(common.GetApiUrl(ctx)) == 0 {
+		return op.Link(ctx, storage, reqActualPath, args)
+	}
+	obj, err := fs.Get(ctx, reqPath, &fs.GetArgs{NoLog: true})
+	if err != nil {
+		return nil, nil, err
+	}
+	if common.ShouldProxy(storage, stdpath.Base(reqPath)) {
+		return nil, obj, nil
+	}
+	return op.Link(ctx, storage, reqActualPath, args)
 }
