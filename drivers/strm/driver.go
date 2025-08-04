@@ -169,7 +169,7 @@ func (d *Strm) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*
 		}, nil
 	}
 
-	// 没有修改link的成员，可直接返回
+	// 没有修改link的字段，可直接返回
 	return link, nil
 }
 
