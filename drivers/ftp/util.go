@@ -1,11 +1,11 @@
 package ftp
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/pkg/singleflight"
@@ -43,11 +43,13 @@ func (d *FTP) _login() error {
 
 // FileReader An FTP file reader that implements io.MFile for seeking.
 type FileReader struct {
-	conn    *ftp.ServerConn
-	respMap sync.Map
-	offset  int64
-	path    string
-	size    int64
+	conn         *ftp.ServerConn
+	resp         *ftp.Response
+	offset       atomic.Int64
+	readAtOffset int64
+	mu           sync.Mutex
+	path         string
+	size         int64
 }
 
 func NewFileReader(conn *ftp.ServerConn, path string, size int64) *FileReader {
@@ -59,8 +61,8 @@ func NewFileReader(conn *ftp.ServerConn, path string, size int64) *FileReader {
 }
 
 func (r *FileReader) Read(buf []byte) (n int, err error) {
-	n, err = r.ReadAt(buf, r.offset)
-	r.offset += int64(n)
+	n, err = r.ReadAt(buf, r.offset.Load())
+	r.offset.Add(int64(n))
 	return
 }
 
@@ -68,24 +70,30 @@ func (r *FileReader) ReadAt(buf []byte, off int64) (n int, err error) {
 	if off < 0 {
 		return -1, os.ErrInvalid
 	}
-	rcRaw, _ := r.respMap.LoadAndDelete(off)
-	resp, ok := rcRaw.(*ftp.Response)
-	if !ok {
-		resp, err = r.conn.RetrFrom(r.path, uint64(off))
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if off != r.readAtOffset {
+		//have to restart the connection, to correct offset
+		_ = r.resp.Close()
+		r.resp = nil
+	}
+
+	if r.resp == nil {
+		r.resp, err = r.conn.RetrFrom(r.path, uint64(off))
+		r.readAtOffset = off
 		if err != nil {
-			return
+			return 0, err
 		}
 	}
-	n, err = resp.Read(buf)
-	off += int64(n)
-	if err == nil {
-		r.respMap.Store(off, resp)
-	}
+
+	n, err = r.resp.Read(buf)
+	r.readAtOffset += int64(n)
 	return
 }
 
 func (r *FileReader) Seek(offset int64, whence int) (int64, error) {
-	oldOffset := r.offset
+	oldOffset := r.offset.Load()
 	var newOffset int64
 	switch whence {
 	case io.SeekStart:
@@ -106,18 +114,13 @@ func (r *FileReader) Seek(offset int64, whence int) (int64, error) {
 		// offset not changed, so return directly
 		return oldOffset, nil
 	}
-	r.offset = newOffset
+	r.offset.Store(newOffset)
 	return newOffset, nil
 }
 
 func (r *FileReader) Close() error {
-	var errs []error
-	r.respMap.Range(func(key, value any) bool {
-		if resp, ok := value.(*ftp.Response); ok {
-			errs = append(errs, resp.Close())
-		}
-		return true
-	})
-	r.respMap.Clear()
-	return errors.Join(errs...)
+	if r.resp != nil {
+		return r.resp.Close()
+	}
+	return nil
 }
