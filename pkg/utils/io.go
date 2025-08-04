@@ -278,11 +278,7 @@ var IoBuffPool = &sync.Pool{
 func CopyWithBuffer(dst io.Writer, src io.Reader) (written int64, err error) {
 	buff := IoBuffPool.Get().([]byte)
 	defer IoBuffPool.Put(buff)
-	written, err = io.CopyBuffer(dst, src, buff)
-	if err != nil {
-		return
-	}
-	return written, nil
+	return io.CopyBuffer(dst, src, buff)
 }
 
 func CopyWithBufferN(dst io.Writer, src io.Reader, n int64) (written int64, err error) {

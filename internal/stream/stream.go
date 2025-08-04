@@ -8,12 +8,12 @@ import (
 	"io"
 	"math"
 	"os"
+	"sync"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
-	"github.com/sirupsen/logrus"
 	"go4.org/readerutil"
 )
 
@@ -127,10 +127,7 @@ func (f *FileStream) RangeRead(httpRange http_range.Range) (io.Reader, error) {
 		// 使用bytes.Buffer作为io.CopyBuffer的写入对象，CopyBuffer会调用Buffer.ReadFrom
 		// 即使被写入的数据量与Buffer.Cap一致，Buffer也会扩大
 		buf := make([]byte, bufSize)
-		n, err := io.ReadFull(f.Reader, buf)
-		if err != nil {
-			return nil, err
-		}
+		n, _ := io.ReadFull(f.Reader, buf)
 		if n != int(bufSize) {
 			return nil, fmt.Errorf("stream RangeRead did not get all data in peek, expect =%d ,actual =%d", bufSize, n)
 		}
@@ -301,70 +298,48 @@ func (r *ReaderUpdatingProgress) Close() error {
 	return r.Reader.Close()
 }
 
-type readerCur struct {
-	reader io.Reader
-	cur    int64
-}
-
 type RangeReadReadAtSeeker struct {
 	ss        *SeekableStream
 	masterOff int64
-	readers   []*readerCur
+	readerMap sync.Map
 	headCache *headCache
 }
 
 type headCache struct {
-	*readerCur
-	bufs [][]byte
+	reader io.Reader
+	bufs   [][]byte
 }
 
-func (c *headCache) read(p []byte) (n int, err error) {
-	pL := len(p)
-	logrus.Debugf("headCache read_%d", pL)
-	if c.cur < int64(pL) {
-		bufL := int64(pL) - c.cur
-		buf := make([]byte, bufL)
-		lr := io.LimitReader(c.reader, bufL)
-		off := 0
-		for c.cur < int64(pL) {
-			n, err = lr.Read(buf[off:])
-			off += n
-			c.cur += int64(n)
-			if err == io.EOF && off == int(bufL) {
-				err = nil
-			}
-			if err != nil {
-				break
-			}
+func (c *headCache) head(p []byte) (n int, err error) {
+	for _, buf := range c.bufs {
+		if len(buf)+n >= len(p) {
+			n += copy(p[n:], buf[:len(p)-n])
+			return
+		} else {
+			n += copy(p[n:], buf)
 		}
-		c.bufs = append(c.bufs, buf)
 	}
-	n = 0
-	if c.cur >= int64(pL) {
-		for i := 0; n < pL; i++ {
-			buf := c.bufs[i]
-			r := len(buf)
-			if n+r > pL {
-				r = pL - n
-			}
-			n += copy(p[n:], buf[:r])
-		}
+	w := 0
+	w, err = io.ReadFull(c.reader, p[n:])
+	if len(p)-n == w {
+		buf := make([]byte, len(p)-n)
+		copy(buf, p[n:])
+		c.bufs = append(c.bufs, buf)
+		n += w
 	}
 	return
 }
+
 func (r *headCache) Close() error {
-	for i := range r.bufs {
-		r.bufs[i] = nil
-	}
+	clear(r.bufs)
 	r.bufs = nil
 	return nil
 }
 
 func (r *RangeReadReadAtSeeker) InitHeadCache() {
 	if r.ss.GetFile() == nil && r.masterOff == 0 {
-		reader := r.readers[0]
-		r.readers = r.readers[1:]
-		r.headCache = &headCache{readerCur: reader}
+		value, _ := r.readerMap.LoadAndDelete(int64(0))
+		r.headCache = &headCache{reader: value.(io.Reader)}
 		r.ss.Closers.Add(r.headCache)
 	}
 }
@@ -390,8 +365,7 @@ func NewReadAtSeeker(ss *SeekableStream, offset int64, forceRange ...bool) (mode
 			return nil, err
 		}
 	} else {
-		rc := &readerCur{reader: ss, cur: offset}
-		r.readers = append(r.readers, rc)
+		r.readerMap.Store(int64(offset), ss)
 	}
 	return r, nil
 }
@@ -408,72 +382,64 @@ func NewMultiReaderAt(ss []*SeekableStream) (readerutil.SizeReaderAt, error) {
 	return readerutil.NewMultiReaderAt(readers...), nil
 }
 
-func (r *RangeReadReadAtSeeker) getReaderAtOffset(off int64) (*readerCur, error) {
-	var rc *readerCur
-	for _, reader := range r.readers {
-		if reader.cur == -1 {
-			continue
+func (r *RangeReadReadAtSeeker) getReaderAtOffset(off int64) (io.Reader, error) {
+	var rr io.Reader
+	var cur int64 = -1
+	r.readerMap.Range(func(key, value any) bool {
+		k := key.(int64)
+		if off == k {
+			cur = k
+			rr = value.(io.Reader)
+			return false
 		}
-		if reader.cur == off {
-			// logrus.Debugf("getReaderAtOffset match_%d", off)
-			return reader, nil
+		if off > k && off-k <= 4*utils.MB && (rr == nil || k < cur) {
+			rr = value.(io.Reader)
+			cur = k
 		}
-		if reader.cur > 0 && off >= reader.cur && (rc == nil || reader.cur < rc.cur) {
-			rc = reader
-		}
+		return true
+	})
+	if cur >= 0 {
+		r.readerMap.Delete(int64(cur))
 	}
-	if rc != nil && off-rc.cur <= utils.MB {
-		n, err := utils.CopyWithBufferN(io.Discard, rc.reader, off-rc.cur)
-		rc.cur += n
-		if err == io.EOF && rc.cur == off {
-			err = nil
-		}
-		if err == nil {
-			logrus.Debugf("getReaderAtOffset old_%d", off)
-			return rc, nil
-		}
-		rc.cur = -1
+	if off == int64(cur) {
+		// logrus.Debugf("getReaderAtOffset match_%d", off)
+		return rr, nil
 	}
-	logrus.Debugf("getReaderAtOffset new_%d", off)
 
-	// Range请求不能超过文件大小，有些云盘处理不了就会返回整个文件
-	reader, err := r.ss.RangeRead(http_range.Range{Start: off, Length: r.ss.GetSize() - off})
+	if rr != nil {
+		n, _ := utils.CopyWithBufferN(io.Discard, rr, off-cur)
+		cur += n
+		if cur == off {
+			// logrus.Debugf("getReaderAtOffset old_%d", off)
+			return rr, nil
+		}
+	}
+	// logrus.Debugf("getReaderAtOffset new_%d", off)
+
+	reader, err := r.ss.RangeRead(http_range.Range{Start: off, Length: -1})
 	if err != nil {
 		return nil, err
 	}
-	rc = &readerCur{reader: reader, cur: off}
-	r.readers = append(r.readers, rc)
-	return rc, nil
+	return reader, nil
 }
 
-func (r *RangeReadReadAtSeeker) ReadAt(p []byte, off int64) (int, error) {
+func (r *RangeReadReadAtSeeker) ReadAt(p []byte, off int64) (n int, err error) {
 	if off == 0 && r.headCache != nil {
-		return r.headCache.read(p)
+		return r.headCache.head(p)
 	}
-	rc, err := r.getReaderAtOffset(off)
+	var rr io.Reader
+	rr, err = r.getReaderAtOffset(off)
 	if err != nil {
 		return 0, err
 	}
-	n, num := 0, 0
-	for num < len(p) {
-		n, err = rc.reader.Read(p[num:])
-		rc.cur += int64(n)
-		num += n
-		if err == nil {
-			continue
-		}
-		if err == io.EOF {
-			// io.EOF是reader读取完了
-			rc.cur = -1
-			// yeka/zip包 没有处理EOF，我们要兼容
-			// https://github.com/yeka/zip/blob/03d6312748a9d6e0bc0c9a7275385c09f06d9c14/reader.go#L433
-			if num == len(p) {
-				err = nil
-			}
-		}
-		break
+	n, err = io.ReadAtLeast(rr, p, 1)
+	off += int64(n)
+	if err == nil {
+		r.readerMap.Store(int64(off), rr)
+	} else {
+		rr = nil
 	}
-	return num, err
+	return n, err
 }
 
 func (r *RangeReadReadAtSeeker) Seek(offset int64, whence int) (int64, error) {
@@ -500,15 +466,7 @@ func (r *RangeReadReadAtSeeker) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (r *RangeReadReadAtSeeker) Read(p []byte) (n int, err error) {
-	if r.masterOff == 0 && r.headCache != nil {
-		return r.headCache.read(p)
-	}
-	rc, err := r.getReaderAtOffset(r.masterOff)
-	if err != nil {
-		return 0, err
-	}
-	n, err = rc.reader.Read(p)
-	rc.cur += int64(n)
+	n, err = r.ReadAt(p, r.masterOff)
 	r.masterOff += int64(n)
 	return n, err
 }

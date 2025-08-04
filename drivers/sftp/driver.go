@@ -77,6 +77,7 @@ func (d *SFTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*
 			Limiter: stream.ServerDownloadLimit,
 			Ctx:     ctx,
 		},
+		SyncClosers: utils.NewSyncClosers(remoteFile),
 	}, nil
 }
 

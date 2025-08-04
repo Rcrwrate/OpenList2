@@ -81,6 +81,7 @@ func (d *FTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 			Limiter: stream.ServerDownloadLimit,
 			Ctx:     ctx,
 		},
+		SyncClosers: utils.NewSyncClosers(remoteFile),
 	}, nil
 }
 

@@ -86,6 +86,7 @@ func (d *SMB) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 			RangeReader: &model.FileRangeReader{
 				RangeReaderIF: stream.RateLimitRangeReaderFunc(stream.GetRangeReaderFromMFile(file.GetSize(), remoteFile)),
 			},
+			SyncClosers: utils.NewSyncClosers(remoteFile),
 		}, nil
 	}
 	return &model.Link{
@@ -94,6 +95,7 @@ func (d *SMB) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 			Limiter: stream.ServerDownloadLimit,
 			Ctx:     ctx,
 		},
+		SyncClosers: utils.NewSyncClosers(remoteFile),
 	}, nil
 }
 

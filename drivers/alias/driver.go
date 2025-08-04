@@ -115,40 +115,39 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 	}
 	for _, dst := range dsts {
 		reqPath := stdpath.Join(dst, sub)
-		link, file, err := d.link(ctx, reqPath, args)
+		link, fi, err := d.link(ctx, reqPath, args)
 		if err != nil {
 			continue
 		}
-		var resultLink *model.Link
-		if link != nil {
-			resultLink = &model.Link{
-				URL:           link.URL,
-				Header:        link.Header,
-				RangeReader:   link.RangeReader,
-				SyncClosers:   utils.NewSyncClosers(link),
-				ContentLength: link.ContentLength,
-			}
-			if link.MFile != nil {
-				resultLink.RangeReader = &model.FileRangeReader{
-					RangeReaderIF: stream.GetRangeReaderFromMFile(file.GetSize(), link.MFile),
-				}
-			}
-
-		} else {
-			resultLink = &model.Link{
+		if link == nil {
+			// 重定向
+			return &model.Link{
 				URL: fmt.Sprintf("%s/p%s?sign=%s",
 					common.GetApiUrl(ctx),
 					utils.EncodePath(reqPath, true),
 					sign.Sign(reqPath)),
-			}
-
+			}, nil
 		}
-		if !args.Redirect {
-			if d.DownloadConcurrency > 0 {
-				resultLink.Concurrency = d.DownloadConcurrency
-			}
-			if d.DownloadPartSize > 0 {
-				resultLink.PartSize = d.DownloadPartSize * utils.KB
+
+		if args.Redirect || link.MFile == nil && d.DownloadConcurrency <= 0 && d.DownloadPartSize <= 0 {
+			// 不修改link的成员，可直接返回
+			return link, nil
+		}
+
+		resultLink := &model.Link{
+			URL:           link.URL,
+			Header:        link.Header,
+			RangeReader:   link.RangeReader,
+			Concurrency:   d.DownloadConcurrency,
+			PartSize:      d.DownloadPartSize * utils.KB,
+			ContentLength: link.ContentLength,
+			SyncClosers:   utils.NewSyncClosers(link),
+		}
+		if link.MFile != nil {
+			resultLink.RangeReader = &model.FileRangeReader{
+				// MFile并发响应 线程不安全
+				// 包装成RangeReader 使用io.ReaderAt接口实现线程安全
+				RangeReaderIF: stream.GetRangeReaderFromMFile(fi.GetSize(), link.MFile),
 			}
 		}
 		return resultLink, nil
