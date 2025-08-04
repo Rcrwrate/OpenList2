@@ -130,7 +130,7 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 		}
 
 		if args.Redirect || link.MFile == nil && d.DownloadConcurrency <= 0 && d.DownloadPartSize <= 0 {
-			// 不修改link的成员，可直接返回
+			// 不修改link的字段，可直接返回
 			return link, nil
 		}
 
