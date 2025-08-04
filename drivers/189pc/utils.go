@@ -17,7 +17,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/drivers/base"
@@ -530,7 +529,6 @@ func (y *Cloud189PC) StreamUpload(ctx context.Context, dstDir model.Obj, file mo
 		fileMd5 = utils.MD5.NewFunc()
 		writers = io.MultiWriter(silceMd5, fileMd5)
 	}
-	mu := &sync.Mutex{}
 	for i := 1; i <= count; i++ {
 		if utils.IsCanceled(upCtx) {
 			break
@@ -543,52 +541,50 @@ func (y *Cloud189PC) StreamUpload(ctx context.Context, dstDir model.Obj, file mo
 		partInfo := ""
 		var reader *stream.SectionReader
 		var rateLimitedRd io.Reader
-		generateSectionReader := func() error {
-			mu.Lock()
-			defer mu.Unlock()
-			if reader == nil {
-				var err error
-				reader, err = ss.GetSectionReader(offset, size)
+		threadG.GoWithLifecycle(errgroup.Lifecycle{
+			Before: func(ctx context.Context) error {
+				if reader == nil {
+					var err error
+					reader, err = ss.GetSectionReader(offset, size)
+					if err != nil {
+						return err
+					}
+					silceMd5.Reset()
+					w, _ := utils.CopyWithBuffer(writers, reader)
+					if w != size {
+						return fmt.Errorf("can't read data, expected=%d, got=%d", size, w)
+					}
+					// 计算块md5并进行hex和base64编码
+					md5Bytes := silceMd5.Sum(nil)
+					silceMd5Hexs = append(silceMd5Hexs, strings.ToUpper(hex.EncodeToString(md5Bytes)))
+					partInfo = fmt.Sprintf("%d-%s", i, base64.StdEncoding.EncodeToString(md5Bytes))
+
+					rateLimitedRd = driver.NewLimitedUploadStream(ctx, reader)
+				}
+				return nil
+			},
+			Do: func(ctx context.Context) error {
+				reader.Seek(0, io.SeekStart)
+				uploadUrls, err := y.GetMultiUploadUrls(ctx, isFamily, initMultiUpload.Data.UploadFileID, partInfo)
 				if err != nil {
 					return err
 				}
-				silceMd5.Reset()
-				w, _ := utils.CopyWithBuffer(writers, reader)
-				if w != size {
-					return fmt.Errorf("stream read did not get all data, expect =%d ,actual =%d", size, w)
+
+				// step.4 上传切片
+				uploadUrl := uploadUrls[0]
+				_, err = y.put(ctx, uploadUrl.RequestURL, uploadUrl.Headers, false,
+					driver.NewLimitedUploadStream(ctx, rateLimitedRd), isFamily)
+				if err != nil {
+					return err
 				}
-				// 计算块md5并进行hex和base64编码
-				md5Bytes := silceMd5.Sum(nil)
-				silceMd5Hexs = append(silceMd5Hexs, strings.ToUpper(hex.EncodeToString(md5Bytes)))
-				partInfo = fmt.Sprintf("%d-%s", i, base64.StdEncoding.EncodeToString(md5Bytes))
-
-				rateLimitedRd = driver.NewLimitedUploadStream(ctx, reader)
-			}
-			return nil
-		}
-		threadG.GoWithResult(func(ctx context.Context) error {
-			err := generateSectionReader()
-			if err != nil {
-				return err
-			}
-			reader.Seek(0, io.SeekStart)
-			uploadUrls, err := y.GetMultiUploadUrls(ctx, isFamily, initMultiUpload.Data.UploadFileID, partInfo)
-			if err != nil {
-				return err
-			}
-
-			// step.4 上传切片
-			uploadUrl := uploadUrls[0]
-			_, err = y.put(ctx, uploadUrl.RequestURL, uploadUrl.Headers, false,
-				driver.NewLimitedUploadStream(ctx, rateLimitedRd), isFamily)
-			if err != nil {
-				return err
-			}
-			up(float64(threadG.Success()) * 100 / float64(count))
-			return nil
-		}, func(err error) {
-			ss.RecycleSectionReader(reader)
-		})
+				up(float64(threadG.Success()) * 100 / float64(count))
+				return nil
+			},
+			After: func(err error) {
+				ss.RecycleSectionReader(reader)
+			},
+		},
+		)
 	}
 	if err = threadG.Wait(); err != nil {
 		return nil, err
@@ -778,7 +774,8 @@ func (y *Cloud189PC) FastUpload(ctx context.Context, dstDir model.Obj, file mode
 				}
 
 				// step.4 上传切片
-				_, err = y.put(ctx, uploadUrl.RequestURL, uploadUrl.Headers, false, io.NewSectionReader(cache, offset, byteSize), isFamily)
+				rateLimitedRd := driver.NewLimitedUploadStream(ctx, io.NewSectionReader(cache, offset, byteSize))
+				_, err = y.put(ctx, uploadUrl.RequestURL, uploadUrl.Headers, false, rateLimitedRd, isFamily)
 				if err != nil {
 					return err
 				}

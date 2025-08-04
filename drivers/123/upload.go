@@ -104,7 +104,7 @@ func (d *Pan123) newUpload(ctx context.Context, upReq *UploadResp, file model.Fi
 		retry.DelayType(retry.BackOffDelay))
 	for i := 1; i <= chunkCount; i += batchSize {
 		if utils.IsCanceled(uploadCtx) {
-			return uploadCtx.Err()
+			break
 		}
 		start := i
 		end := min(i+batchSize, chunkCount+1)
@@ -125,60 +125,65 @@ func (d *Pan123) newUpload(ctx context.Context, upReq *UploadResp, file model.Fi
 			}
 			var reader *stream.SectionReader
 			var rateLimitedRd io.Reader
-			threadG.GoWithResult(func(ctx context.Context) error {
-				if reader == nil {
-					var err error
-					reader, err = ss.GetSectionReader(offset, curSize)
-					if err != nil {
-						return err
-					}
-					rateLimitedRd = driver.NewLimitedUploadStream(ctx, reader)
-				}
-				reader.Seek(0, io.SeekStart)
-				uploadUrl := s3PreSignedUrls.Data.PreSignedUrls[strconv.Itoa(cur)]
-				if uploadUrl == "" {
-					return fmt.Errorf("upload url is empty, s3PreSignedUrls: %+v", s3PreSignedUrls)
-				}
-				reader.Seek(0, io.SeekStart)
-				req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadUrl, rateLimitedRd)
-				if err != nil {
-					return err
-				}
-				req.ContentLength = curSize
-				//req.Header.Set("Content-Length", strconv.FormatInt(curSize, 10))
-				res, err := base.HttpClient.Do(req)
-				if err != nil {
-					return err
-				}
-				defer res.Body.Close()
-				if res.StatusCode == http.StatusForbidden {
-					_, err, _ := uploadG.Do(key, func() (*S3PreSignedURLs, error) {
-						newS3PreSignedUrls, err := getS3UploadUrl(ctx, upReq, cur, end)
+			threadG.GoWithLifecycle(errgroup.Lifecycle{
+				Before: func(ctx context.Context) error {
+					if reader == nil {
+						var err error
+						reader, err = ss.GetSectionReader(offset, curSize)
 						if err != nil {
-							return nil, err
+							return err
 						}
-						s3PreSignedUrls.Data.PreSignedUrls = newS3PreSignedUrls.Data.PreSignedUrls
-						return newS3PreSignedUrls, nil
-					})
+						rateLimitedRd = driver.NewLimitedUploadStream(ctx, reader)
+					}
+					return nil
+				},
+				Do: func(ctx context.Context) error {
+					reader.Seek(0, io.SeekStart)
+					uploadUrl := s3PreSignedUrls.Data.PreSignedUrls[strconv.Itoa(cur)]
+					if uploadUrl == "" {
+						return fmt.Errorf("upload url is empty, s3PreSignedUrls: %+v", s3PreSignedUrls)
+					}
+					reader.Seek(0, io.SeekStart)
+					req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadUrl, rateLimitedRd)
 					if err != nil {
 						return err
 					}
-					return fmt.Errorf("upload s3 chunk %d failed, status code: %d", cur, res.StatusCode)
-				}
-				if res.StatusCode != http.StatusOK {
-					body, err := io.ReadAll(res.Body)
+					req.ContentLength = curSize
+					//req.Header.Set("Content-Length", strconv.FormatInt(curSize, 10))
+					res, err := base.HttpClient.Do(req)
 					if err != nil {
 						return err
 					}
-					return fmt.Errorf("upload s3 chunk %d failed, status code: %d, body: %s", cur, res.StatusCode, body)
-				}
-				progress := 10.0 + 85.0*float64(threadG.Success())/float64(chunkCount)
-				up(progress)
-				return nil
-			}, func(err error) {
-				ss.RecycleSectionReader(reader)
+					defer res.Body.Close()
+					if res.StatusCode == http.StatusForbidden {
+						_, err, _ := uploadG.Do(key, func() (*S3PreSignedURLs, error) {
+							newS3PreSignedUrls, err := getS3UploadUrl(ctx, upReq, cur, end)
+							if err != nil {
+								return nil, err
+							}
+							s3PreSignedUrls.Data.PreSignedUrls = newS3PreSignedUrls.Data.PreSignedUrls
+							return newS3PreSignedUrls, nil
+						})
+						if err != nil {
+							return err
+						}
+						return fmt.Errorf("upload s3 chunk %d failed, status code: %d", cur, res.StatusCode)
+					}
+					if res.StatusCode != http.StatusOK {
+						body, err := io.ReadAll(res.Body)
+						if err != nil {
+							return err
+						}
+						return fmt.Errorf("upload s3 chunk %d failed, status code: %d, body: %s", cur, res.StatusCode, body)
+					}
+					progress := 10.0 + 85.0*float64(threadG.Success())/float64(chunkCount)
+					up(progress)
+					return nil
+				},
+				After: func(err error) {
+					ss.RecycleSectionReader(reader)
+				},
 			})
-			// err = d.uploadS3Chunk(ctx, upReq, s3PreSignedUrls, j, end, reader, curSize, false, getS3UploadUrl)
 		}
 	}
 	if err := threadG.Wait(); err != nil {

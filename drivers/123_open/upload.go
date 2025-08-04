@@ -92,7 +92,7 @@ func (d *Open123) Upload(ctx context.Context, file model.FileStreamer, createRes
 	}
 	for partIndex := int64(0); partIndex < uploadNums; partIndex++ {
 		if utils.IsCanceled(uploadCtx) {
-			return uploadCtx.Err()
+			break
 		}
 		partIndex := partIndex
 		partNumber := partIndex + 1 // 分片号从1开始
@@ -100,38 +100,44 @@ func (d *Open123) Upload(ctx context.Context, file model.FileStreamer, createRes
 		size := min(chunkSize, size-offset)
 		var reader *stream.SectionReader
 		var rateLimitedRd io.Reader
-		threadG.GoWithResult(func(ctx context.Context) error {
-			if reader == nil {
-				var err error
-				reader, err = ss.GetSectionReader(offset, size)
+		threadG.GoWithLifecycle(errgroup.Lifecycle{
+			Before: func(ctx context.Context) error {
+				if reader == nil {
+					var err error
+					reader, err = ss.GetSectionReader(offset, size)
+					if err != nil {
+						return err
+					}
+					rateLimitedRd = driver.NewLimitedUploadStream(ctx, reader)
+				}
+				return nil
+			},
+			Do: func(ctx context.Context) error {
+				reader.Seek(0, io.SeekStart)
+				uploadPartUrl, err := d.url(createResp.Data.PreuploadID, partNumber)
 				if err != nil {
 					return err
 				}
-				rateLimitedRd = driver.NewLimitedUploadStream(ctx, reader)
-			}
-			reader.Seek(0, io.SeekStart)
-			uploadPartUrl, err := d.url(createResp.Data.PreuploadID, partNumber)
-			if err != nil {
-				return err
-			}
 
-			req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadPartUrl, rateLimitedRd)
-			if err != nil {
-				return err
-			}
-			req.ContentLength = size
+				req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadPartUrl, rateLimitedRd)
+				if err != nil {
+					return err
+				}
+				req.ContentLength = size
 
-			res, err := base.HttpClient.Do(req)
-			if err != nil {
-				return err
-			}
-			_ = res.Body.Close()
+				res, err := base.HttpClient.Do(req)
+				if err != nil {
+					return err
+				}
+				_ = res.Body.Close()
 
-			progress := 10.0 + 85.0*float64(threadG.Success())/float64(uploadNums)
-			up(progress)
-			return nil
-		}, func(err error) {
-			ss.RecycleSectionReader(reader)
+				progress := 10.0 + 85.0*float64(threadG.Success())/float64(uploadNums)
+				up(progress)
+				return nil
+			},
+			After: func(err error) {
+				ss.RecycleSectionReader(reader)
+			},
 		})
 	}
 

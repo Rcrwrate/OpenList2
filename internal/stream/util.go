@@ -193,7 +193,6 @@ func CacheFullInTempFileAndHash(stream model.FileStreamer, up model.UpdateProgre
 type StreamSectionReader struct {
 	file    model.FileStreamer
 	off     int64
-	mu      sync.Mutex
 	bufPool *sync.Pool
 }
 
@@ -216,9 +215,8 @@ func NewStreamSectionReader(file model.FileStreamer, bufMaxLen int) (*StreamSect
 	return ss, nil
 }
 
+// 线程不安全
 func (ss *StreamSectionReader) GetSectionReader(off, length int64) (*SectionReader, error) {
-	ss.mu.Lock()
-	defer ss.mu.Unlock()
 	var cache io.ReaderAt = ss.file.GetFile()
 	var buf []byte
 	if cache == nil {
@@ -232,7 +230,7 @@ func (ss *StreamSectionReader) GetSectionReader(off, length int64) (*SectionRead
 			return nil, err
 		}
 		if int64(n) != length {
-			return nil, fmt.Errorf("stream read did not get all data, expect =%d ,actual =%d", length, n)
+			return nil, fmt.Errorf("can't read data, expected=%d, got=%d", length, n)
 		}
 		ss.off += int64(n)
 		off = 0
@@ -243,8 +241,6 @@ func (ss *StreamSectionReader) GetSectionReader(off, length int64) (*SectionRead
 
 func (ss *StreamSectionReader) RecycleSectionReader(sr *SectionReader) {
 	if sr != nil {
-		ss.mu.Lock()
-		defer ss.mu.Unlock()
 		if sr.buf != nil {
 			ss.bufPool.Put(sr.buf[0:cap(sr.buf)])
 			sr.buf = nil

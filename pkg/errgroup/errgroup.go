@@ -28,10 +28,10 @@ func NewGroupWithContext(ctx context.Context, limit int, retryOpts ...retry.Opti
 	return (&Group{cancel: cancel, ctx: ctx, opts: append(retryOpts, retry.Context(ctx))}).SetLimit(limit), ctx
 }
 
+// OrderedGroup
 func NewOrderedGroupWithContext(ctx context.Context, limit int, retryOpts ...retry.Option) (*Group, context.Context) {
 	group, ctx := NewGroupWithContext(ctx, limit, retryOpts...)
 	group.startChan = make(chan token, 1)
-	group.startChan <- token{}
 	return group, ctx
 }
 
@@ -48,30 +48,59 @@ func (g *Group) Wait() error {
 	return context.Cause(g.ctx)
 }
 
-func (g *Group) Go(f func(ctx context.Context) error) {
-	g.GoWithResult(f, nil)
+func (g *Group) Go(do func(ctx context.Context) error) {
+	g.GoWithLifecycle(Lifecycle{Do: do})
 }
 
-func (g *Group) GoWithResult(f func(ctx context.Context) error, result func(err error)) {
+type Lifecycle struct {
+	// Before在OrderedGroup是线程安全的
+	Before func(ctx context.Context) error
+	// 如果Before返回err就不调用Do
+	Do func(ctx context.Context) error
+	// 最后调用After
+	After func(err error)
+}
+
+func (g *Group) GoWithLifecycle(lifecycle Lifecycle) {
 	if g.startChan != nil {
-		<-g.startChan
+		select {
+		case <-g.ctx.Done():
+			return
+		case g.startChan <- token{}:
+		}
 	}
+
 	if g.sem != nil {
-		g.sem <- token{}
+		select {
+		case <-g.ctx.Done():
+			return
+		case g.sem <- token{}:
+		}
 	}
 
 	g.wg.Add(1)
 	go func() {
-		if g.startChan != nil {
-			g.startChan <- token{}
-		}
 		defer g.done()
-		err := retry.Do(func() error { return f(g.ctx) }, g.opts...)
-		if result != nil {
-			result(err)
+		var err error
+		if lifecycle.Before != nil {
+			err = lifecycle.Before(g.ctx)
+		}
+		if err == nil {
+			if g.startChan != nil {
+				<-g.startChan
+			}
+			err = retry.Do(func() error { return lifecycle.Do(g.ctx) }, g.opts...)
+		}
+		if lifecycle.After != nil {
+			lifecycle.After(err)
 		}
 		if err != nil {
-			g.cancel(err)
+			select {
+			case <-g.ctx.Done():
+				return
+			default:
+				g.cancel(err)
+			}
 		}
 	}()
 

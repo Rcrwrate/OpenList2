@@ -551,13 +551,16 @@ func (d *Doubao) UploadByMultipart(ctx context.Context, config *UploadConfig, fi
 	up(10.0) // 更新进度
 	// 设置并行上传
 	thread := min(int(totalParts), d.uploadThread)
-	threadG, uploadCtx := errgroup.NewGroupWithContext(ctx, thread,
-		retry.Attempts(1),
+	threadG, uploadCtx := errgroup.NewOrderedGroupWithContext(ctx, thread,
+		retry.Attempts(MaxRetryAttempts),
 		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay))
+		retry.DelayType(retry.BackOffDelay),
+		retry.MaxJitter(200*time.Millisecond),
+	)
 
 	var partsMutex sync.Mutex
 	// 并行上传所有分片
+	hash := crc32.NewIEEE()
 	for partIndex := range totalParts {
 		if utils.IsCanceled(uploadCtx) {
 			break
@@ -570,21 +573,30 @@ func (d *Doubao) UploadByMultipart(ctx context.Context, config *UploadConfig, fi
 		if partIndex == totalParts-1 {
 			size = fileSize - offset
 		}
-
-		threadG.Go(func(ctx context.Context) error {
-			reader, err := ss.GetSectionReader(offset, size)
-			defer ss.RecycleSectionReader(reader)
-			if err != nil {
-				return err
-			}
-			hash := crc32.NewIEEE()
-			utils.CopyWithBuffer(hash, reader)
-			crc32Value := hex.EncodeToString(hash.Sum(nil))
-			rateLimitedRd := driver.NewLimitedUploadStream(uploadCtx, reader)
-			return d._retryOperation(fmt.Sprintf("Upload part %d", partNumber), func() error {
-				// 使用_retryOperation上传分片
+		var reader *stream.SectionReader
+		var rateLimitedRd io.Reader
+		crc32Value := ""
+		threadG.GoWithLifecycle(errgroup.Lifecycle{
+			Before: func(ctx context.Context) error {
+				if reader == nil {
+					var err error
+					reader, err = ss.GetSectionReader(offset, size)
+					if err != nil {
+						return err
+					}
+					hash.Reset()
+					w, _ := utils.CopyWithBuffer(hash, reader)
+					if w != size {
+						return fmt.Errorf("can't read data, expected=%d, got=%d", size, w)
+					}
+					crc32Value = hex.EncodeToString(hash.Sum(nil))
+					rateLimitedRd = driver.NewLimitedUploadStream(ctx, reader)
+				}
+				return nil
+			},
+			Do: func(ctx context.Context) error {
 				reader.Seek(0, io.SeekStart)
-				req, err := http.NewRequestWithContext(uploadCtx, http.MethodPost, fmt.Sprintf("%s?uploadid=%s&part_number=%d&phase=transfer", uploadUrl, uploadID, partNumber), rateLimitedRd)
+				req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s?uploadid=%s&part_number=%d&phase=transfer", uploadUrl, uploadID, partNumber), rateLimitedRd)
 				if err != nil {
 					return err
 				}
@@ -624,8 +636,10 @@ func (d *Doubao) UploadByMultipart(ctx context.Context, config *UploadConfig, fi
 				progress := 10.0 + 90.0*float64(threadG.Success()+1)/float64(totalParts)
 				up(math.Min(progress, 95.0))
 				return nil
-
-			})
+			},
+			After: func(err error) {
+				ss.RecycleSectionReader(reader)
+			},
 		})
 	}
 
