@@ -256,6 +256,7 @@ func (d *AliyundriveOpen) upload(ctx context.Context, dstDir model.Obj, stream m
 				retry.Attempts(3),
 				retry.DelayType(retry.BackOffDelay),
 				retry.Delay(time.Second))
+			ss.RecycleSectionReader(rd)
 			if err != nil {
 				return nil, err
 			}

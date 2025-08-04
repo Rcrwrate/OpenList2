@@ -454,17 +454,22 @@ func (d *Doubao) Upload(ctx context.Context, config *UploadConfig, dstDir model.
 		return nil, err
 	}
 	reader, err := ss.GetSectionReader(0, file.GetSize())
+	if err != nil {
+		return nil, err
+	}
 
 	// 计算CRC32
 	crc32Hash := crc32.NewIEEE()
-	utils.CopyWithBuffer(crc32Hash, reader)
+	w, _ := utils.CopyWithBuffer(crc32Hash, reader)
+	if w != file.GetSize() {
+		return nil, fmt.Errorf("can't read data, expected=%d, got=%d", file.GetSize(), w)
+	}
 	crc32Value := hex.EncodeToString(crc32Hash.Sum(nil))
 
 	// 构建请求路径
 	uploadNode := config.InnerUploadAddress.UploadNodes[0]
 	storeInfo := uploadNode.StoreInfos[0]
 	uploadUrl := fmt.Sprintf("https://%s/upload/v1/%s", uploadNode.UploadHost, storeInfo.StoreURI)
-	var uploadResp *UploadResp
 	rateLimitedRd := driver.NewLimitedUploadStream(ctx, reader)
 	err = d._retryOperation("Upload", func() error {
 		reader.Seek(0, io.SeekStart)
@@ -496,13 +501,11 @@ func (d *Doubao) Upload(ctx context.Context, config *UploadConfig, dstDir model.
 		} else if resp.Data.Crc32 != crc32Value {
 			return fmt.Errorf("upload part failed: crc32 mismatch, expected %s, got %s", crc32Value, resp.Data.Crc32)
 		}
-
 		return nil
-
 	})
-
-	if uploadResp.Code != 2000 {
-		return nil, fmt.Errorf("upload failed: %s", uploadResp.Message)
+	ss.RecycleSectionReader(reader)
+	if err != nil {
+		return nil, err
 	}
 
 	uploadNodeResp, err := d.uploadNode(config, dstDir, file, dataType)

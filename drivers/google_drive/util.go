@@ -274,8 +274,7 @@ func (d *GoogleDrive) chunkUpload(ctx context.Context, file model.FileStreamer, 
 		limitedReader := driver.NewLimitedUploadStream(ctx, reader)
 		err = retry.Do(func() error {
 			reader.Seek(0, io.SeekStart)
-			req, err := http.NewRequestWithContext(ctx, http.MethodPut, url,
-				limitedReader)
+			req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, limitedReader)
 			if err != nil {
 				return err
 			}
@@ -306,6 +305,7 @@ func (d *GoogleDrive) chunkUpload(ctx context.Context, file model.FileStreamer, 
 			retry.Attempts(3),
 			retry.DelayType(retry.BackOffDelay),
 			retry.Delay(time.Second))
+		ss.RecycleSectionReader(reader)
 		if err != nil {
 			return err
 		}

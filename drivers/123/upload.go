@@ -76,7 +76,7 @@ func (d *Pan123) completeS3(ctx context.Context, upReq *UploadResp, file model.F
 func (d *Pan123) newUpload(ctx context.Context, upReq *UploadResp, file model.FileStreamer, up driver.UpdateProgress) error {
 	// fetch s3 pre signed urls
 	size := file.GetSize()
-	chunkSize := min(size, 16*utils.MB)
+	chunkSize := int64(16 * utils.MB)
 	chunkCount := 1
 	if size > chunkSize {
 		chunkCount = int((size + chunkSize - 1) / chunkSize)
@@ -109,14 +109,13 @@ func (d *Pan123) newUpload(ctx context.Context, upReq *UploadResp, file model.Fi
 		start := i
 		end := min(i+batchSize, chunkCount+1)
 		s3PreSignedUrls, err := getS3UploadUrl(uploadCtx, upReq, start, end)
-		key := fmt.Sprintf("%p", s3PreSignedUrls)
 		if err != nil {
 			return err
 		}
 		// upload each chunk
 		for cur := start; cur < end; cur++ {
 			if utils.IsCanceled(uploadCtx) {
-				return uploadCtx.Err()
+				break
 			}
 			offset := int64(cur-1) * chunkSize
 			curSize := chunkSize
@@ -156,13 +155,13 @@ func (d *Pan123) newUpload(ctx context.Context, upReq *UploadResp, file model.Fi
 					}
 					defer res.Body.Close()
 					if res.StatusCode == http.StatusForbidden {
-						_, err, _ := uploadG.Do(key, func() (*S3PreSignedURLs, error) {
+						singleflight.AnyGroup.Do(fmt.Sprintf("Pan123.newUpload_%p", threadG), func() (any, error) {
 							newS3PreSignedUrls, err := getS3UploadUrl(ctx, upReq, cur, end)
 							if err != nil {
 								return nil, err
 							}
 							s3PreSignedUrls.Data.PreSignedUrls = newS3PreSignedUrls.Data.PreSignedUrls
-							return newS3PreSignedUrls, nil
+							return nil, nil
 						})
 						if err != nil {
 							return err
@@ -193,5 +192,3 @@ func (d *Pan123) newUpload(ctx context.Context, upReq *UploadResp, file model.Fi
 	// complete s3 upload
 	return d.completeS3(ctx, upReq, file, chunkCount > 1)
 }
-
-var uploadG singleflight.Group[*S3PreSignedURLs]

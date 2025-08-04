@@ -70,9 +70,6 @@ func (d *Open115) singleUpload(ctx context.Context, tempF model.File, tokenResp 
 // }
 
 func (d *Open115) multpartUpload(ctx context.Context, stream model.FileStreamer, up driver.UpdateProgress, tokenResp *sdk.UploadGetTokenResp, initResp *sdk.UploadInitResp) error {
-	fileSize := stream.GetSize()
-	chunkSize := calPartSize(fileSize)
-
 	ossClient, err := oss.New(tokenResp.Endpoint, tokenResp.AccessKeyId, tokenResp.AccessKeySecret, oss.SecurityToken(tokenResp.SecurityToken))
 	if err != nil {
 		return err
@@ -87,6 +84,8 @@ func (d *Open115) multpartUpload(ctx context.Context, stream model.FileStreamer,
 		return err
 	}
 
+	fileSize := stream.GetSize()
+	chunkSize := calPartSize(fileSize)
 	partNum := (stream.GetSize() + chunkSize - 1) / chunkSize
 	parts := make([]oss.UploadPart, partNum)
 	offset := int64(0)
