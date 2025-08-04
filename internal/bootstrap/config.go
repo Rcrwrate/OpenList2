@@ -84,9 +84,12 @@ func InitConfig() {
 		m, _ := mem.VirtualMemory()
 		if m != nil {
 			conf.MaxBufferLimit = max(int(float64(m.Total)*0.05), 4*utils.MB)
+			conf.MaxBufferLimit -= conf.MaxBufferLimit % utils.MB
 		} else {
 			conf.MaxBufferLimit = 16 * utils.MB
 		}
+	} else {
+		conf.MaxBufferLimit = conf.Conf.MaxBufferLimit * utils.MB
 	}
 	log.Infof("max buffer limit: %d", conf.MaxBufferLimit)
 	if !conf.Conf.Force {
