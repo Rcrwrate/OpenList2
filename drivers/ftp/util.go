@@ -12,7 +12,7 @@ import (
 // do others that not defined in Driver interface
 
 func (d *FTP) login() error {
-	_, err, _ := singleflight.ErrorGroup.Do(fmt.Sprintf("FTP.login:%p", d), func() (error, error) {
+	_, err, _ := singleflight.AnyGroup.Do(fmt.Sprintf("FTP.login:%p", d), func() (any, error) {
 		var err error
 		if d.conn != nil {
 			err = d.conn.NoOp()
