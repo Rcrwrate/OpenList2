@@ -17,7 +17,7 @@ Fork and clone `OpenList` and `OpenList-Frontend` anywhere:
 
 ```shell
 $ git clone https://github.com/<your-username>/OpenList.git
-$ git clone https://github.com/<your-username>/OpenList-Frontend.git
+$ git clone --recurse-submodules https://github.com/<your-username>/OpenList-Frontend.git
 ```
 
 ## Creating a branch
