@@ -61,15 +61,15 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 
 	var validObjs []model.Obj
 	for _, obj := range objs {
-		id, name := "", obj.GetName()
+		id, name, path := "", obj.GetName(), ""
 		size := int64(0)
 		if !obj.IsDir() {
+			path = stdpath.Join(reqPath, obj.GetName())
 			ext := strings.ToLower(utils.Ext(name))
 			if _, ok := d.supportSuffix[ext]; ok {
 				id = "strm"
 				name = strings.TrimSuffix(name, ext) + "strm"
-				file := stdpath.Join(reqPath, obj.GetName())
-				size = int64(len(d.getLink(ctx, file)))
+				size = int64(len(d.getLink(ctx, path)))
 			} else if _, ok := d.downloadSuffix[ext]; ok {
 				size = obj.GetSize()
 			} else {
@@ -78,7 +78,7 @@ func (d *Strm) list(ctx context.Context, dst, sub string, args *fs.ListArgs) ([]
 		}
 		objRes := model.Object{
 			ID:       id,
-			Path:     stdpath.Join(reqPath, obj.GetName()),
+			Path:     path,
 			Name:     name,
 			Size:     size,
 			Modified: obj.ModTime(),
@@ -130,8 +130,7 @@ func (d *Strm) link(ctx context.Context, reqPath string, args model.LinkArgs) (*
 	if err != nil {
 		return nil, nil, err
 	}
-	// proxy || ftp,s3
-	if !args.Redirect || len(common.GetApiUrl(ctx)) == 0 {
+	if !args.Redirect {
 		return op.Link(ctx, storage, reqActualPath, args)
 	}
 	obj, err := fs.Get(ctx, reqPath, &fs.GetArgs{NoLog: true})

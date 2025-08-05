@@ -108,10 +108,11 @@ func (d *Strm) Get(ctx context.Context, path string) (model.Obj, error) {
 		if err != nil {
 			continue
 		}
+		// fs.Get 没报错，说明不是strm生成的路径，需要直接返回
 		size := int64(0)
 		if !obj.IsDir() {
 			size = obj.GetSize()
-			path = reqPath
+			path = reqPath //把路径设置为真实的，供Link直接读取
 		}
 		return &model.Object{
 			Path:     path,
@@ -153,7 +154,10 @@ func (d *Strm) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*
 			MFile: strings.NewReader(link),
 		}, nil
 	}
-
+	// ftp,s3
+	if common.GetApiUrl(ctx) == "" {
+		args.Redirect = false
+	}
 	reqPath := file.GetPath()
 	link, _, err := d.link(ctx, reqPath, args)
 	if err != nil {
