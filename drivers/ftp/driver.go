@@ -2,12 +2,15 @@ package ftp
 
 import (
 	"context"
+	"io"
 	stdpath "path"
+	"sync"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/stream"
+	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/jlaffaye/ftp"
 )
@@ -16,6 +19,9 @@ type FTP struct {
 	model.Storage
 	Addition
 	conn *ftp.ServerConn
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func (d *FTP) Config() driver.Config {
@@ -27,12 +33,16 @@ func (d *FTP) GetAddition() driver.Additional {
 }
 
 func (d *FTP) Init(ctx context.Context) error {
-	return d._login()
+	d.ctx, d.cancel = context.WithCancel(context.Background())
+	var err error
+	d.conn, err = d._login(ctx)
+	return err
 }
 
 func (d *FTP) Drop(ctx context.Context) error {
 	if d.conn != nil {
 		_ = d.conn.Logout()
+		d.cancel()
 	}
 	return nil
 }
@@ -61,27 +71,52 @@ func (d *FTP) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([]m
 	return res, nil
 }
 
-func (d *FTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
-	if err := d.login(); err != nil {
+func (d *FTP) Link(_ context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	conn, err := d._login(ctx)
+	if err != nil {
+		cancel()
 		return nil, err
 	}
+	conns := []*ftp.ServerConn{conn}
 
-	remoteFile := NewFileReader(d.conn, encode(file.GetPath(), d.Encoding), file.GetSize())
-	if remoteFile != nil && !d.Config().OnlyLinkMFile {
-		return &model.Link{
-			RangeReader: &model.FileRangeReader{
-				RangeReaderIF: stream.RateLimitRangeReaderFunc(stream.GetRangeReaderFromMFile(file.GetSize(), remoteFile)),
-			},
-			SyncClosers: utils.NewSyncClosers(remoteFile),
-		}, nil
-	}
+	path := encode(file.GetPath(), d.Encoding)
+	size := file.GetSize()
+	mu := &sync.Mutex{}
 	return &model.Link{
-		MFile: &stream.RateLimitFile{
-			File:    remoteFile,
-			Limiter: stream.ServerDownloadLimit,
-			Ctx:     ctx,
+		RangeReader: &model.FileRangeReader{
+			RangeReaderIF: stream.RateLimitRangeReaderFunc(func(context context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
+				length := httpRange.Length
+				if length < 0 || httpRange.Start+length > size {
+					length = size - httpRange.Start
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				remoteFile, err := conn.RetrFrom(path, uint64(httpRange.Start))
+				if err != nil {
+					conn, err = d._login(ctx)
+					if err == nil {
+						conns = append(conns, conn)
+						remoteFile, err = conn.RetrFrom(path, uint64(httpRange.Start))
+					}
+					if err != nil {
+						return nil, err
+					}
+				}
+
+				return utils.ReadCloser{
+					Reader: io.LimitReader(remoteFile, length),
+					Closer: remoteFile,
+				}, nil
+			}),
 		},
-		SyncClosers: utils.NewSyncClosers(remoteFile),
+		SyncClosers: utils.NewSyncClosers(utils.CloseFunc(func() error {
+			for _, conn := range conns {
+				_ = conn.Quit()
+			}
+			cancel()
+			return nil
+		})),
 	}, nil
 }
 
