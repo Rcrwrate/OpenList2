@@ -196,11 +196,11 @@ type StreamSectionReader struct {
 	bufPool *sync.Pool
 }
 
-func NewStreamSectionReader(file model.FileStreamer, bufMaxLen int) (*StreamSectionReader, error) {
+func NewStreamSectionReader(file model.FileStreamer, maxBufferSize int) (*StreamSectionReader, error) {
 	ss := &StreamSectionReader{file: file}
 	if file.GetFile() == nil {
-		bufMaxLen = min(bufMaxLen, int(file.GetSize()))
-		if bufMaxLen > conf.MaxBufferLimit {
+		maxBufferSize = min(maxBufferSize, int(file.GetSize()))
+		if maxBufferSize > conf.MaxBufferLimit {
 			_, err := file.CacheFullInTempFile()
 			if err != nil {
 				return nil, err
@@ -208,7 +208,7 @@ func NewStreamSectionReader(file model.FileStreamer, bufMaxLen int) (*StreamSect
 		} else {
 			ss.bufPool = &sync.Pool{
 				New: func() any {
-					return make([]byte, bufMaxLen)
+					return make([]byte, maxBufferSize)
 				},
 			}
 		}
