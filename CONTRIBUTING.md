@@ -70,7 +70,7 @@ At least 1 approving review is required by reviewers with write access. You can 
 
 ## Delete your branch
 
-After your pull request is merged, you can delete your branch.
+(Optional) After your pull request is merged, you can delete your branch.
 
 ---
 
