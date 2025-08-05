@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -191,32 +193,32 @@ type SyncClosersIF interface {
 
 type SyncClosers struct {
 	closers []io.Closer
-	mu      sync.Mutex
-	ref     int
+	ref     atomic.Int32
 }
 
 var _ SyncClosersIF = (*SyncClosers)(nil)
 
 func (c *SyncClosers) AcquireReference() bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if len(c.closers) == 0 {
-		return false
+	ref := c.ref.Add(1)
+	if ref > 0 {
+		log.Debugf("SyncClosers.AcquireReference %p,ref=%d\n", c, ref)
+		return true
 	}
-	c.ref++
-	log.Debugf("SyncClosers.AcquireReference %p,ref=%d\n", c, c.ref)
-	return true
+	c.ref.Store(math.MinInt16)
+	return false
 }
 
 func (c *SyncClosers) Close() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	defer log.Debugf("SyncClosers.Close %p,ref=%d\n", c, c.ref)
-	if c.ref > 1 {
-		c.ref--
+	ref := c.ref.Add(-1)
+	if ref < -1 {
+		c.ref.Store(math.MinInt16)
 		return nil
 	}
-	c.ref = 0
+	log.Debugf("SyncClosers.Close %p,ref=%d\n", c, ref+1)
+	if ref > 0 {
+		return nil
+	}
+	c.ref.Store(math.MinInt16)
 
 	var errs []error
 	for _, closer := range c.closers {
@@ -224,23 +226,25 @@ func (c *SyncClosers) Close() error {
 			errs = append(errs, closer.Close())
 		}
 	}
-	c.closers = c.closers[:0]
+	clear(c.closers)
 	return errors.Join(errs...)
 }
 
 func (c *SyncClosers) Add(closer io.Closer) {
 	if closer != nil {
-		c.mu.Lock()
+		if c.ref.Load() < 0 {
+			panic("Not reusable")
+		}
 		c.closers = append(c.closers, closer)
-		c.mu.Unlock()
 	}
 }
 
 func (c *SyncClosers) AddIfCloser(a any) {
 	if closer, ok := a.(io.Closer); ok {
-		c.mu.Lock()
+		if c.ref.Load() < 0 {
+			panic("Not reusable")
+		}
 		c.closers = append(c.closers, closer)
-		c.mu.Unlock()
 	}
 }
 

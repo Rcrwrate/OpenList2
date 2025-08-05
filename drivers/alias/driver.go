@@ -78,10 +78,18 @@ func (d *Alias) Get(ctx context.Context, path string) (model.Obj, error) {
 		return nil, errs.ObjectNotFound
 	}
 	for _, dst := range dsts {
-		obj, err := d.get(ctx, path, dst, sub)
-		if err == nil {
-			return obj, nil
+		obj, err := fs.Get(ctx, stdpath.Join(dst, sub), &fs.GetArgs{NoLog: true})
+		if err != nil {
+			continue
 		}
+		return &model.Object{
+			Path:     path,
+			Name:     obj.GetName(),
+			Size:     obj.GetSize(),
+			Modified: obj.ModTime(),
+			IsFolder: obj.IsDir(),
+			HashInfo: obj.GetHash(),
+		}, nil
 	}
 	return nil, errs.ObjectNotFound
 }
@@ -99,7 +107,27 @@ func (d *Alias) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([
 	var objs []model.Obj
 	fsArgs := &fs.ListArgs{NoLog: true, Refresh: args.Refresh}
 	for _, dst := range dsts {
-		tmp, err := d.list(ctx, dst, sub, fsArgs)
+		tmp, err := fs.List(ctx, stdpath.Join(dst, sub), fsArgs)
+		if err == nil {
+			tmp, err = utils.SliceConvert(tmp, func(obj model.Obj) (model.Obj, error) {
+				thumb, ok := model.GetThumb(obj)
+				objRes := model.Object{
+					Name:     obj.GetName(),
+					Size:     obj.GetSize(),
+					Modified: obj.ModTime(),
+					IsFolder: obj.IsDir(),
+				}
+				if !ok {
+					return &objRes, nil
+				}
+				return &model.ObjThumb{
+					Object: objRes,
+					Thumbnail: model.Thumbnail{
+						Thumbnail: thumb,
+					},
+				}, nil
+			})
+		}
 		if err == nil {
 			objs = append(objs, tmp...)
 		}
@@ -113,6 +141,10 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 	if !ok {
 		return nil, errs.ObjectNotFound
 	}
+	// proxy || ftp,s3
+	if common.GetApiUrl(ctx) == "" {
+		args.Redirect = false
+	}
 	for _, dst := range dsts {
 		reqPath := stdpath.Join(dst, sub)
 		link, fi, err := d.link(ctx, reqPath, args)
@@ -120,7 +152,7 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 			continue
 		}
 		if link == nil {
-			// 重定向
+			// 重定向且需要通过代理
 			return &model.Link{
 				URL: fmt.Sprintf("%s/p%s?sign=%s",
 					common.GetApiUrl(ctx),
@@ -128,9 +160,7 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 					sign.Sign(reqPath)),
 			}, nil
 		}
-
-		if args.Redirect || link.MFile == nil && d.DownloadConcurrency <= 0 && d.DownloadPartSize <= 0 {
-			// 不修改link的字段，可直接返回
+		if args.Redirect {
 			return link, nil
 		}
 
@@ -138,17 +168,23 @@ func (d *Alias) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 			URL:           link.URL,
 			Header:        link.Header,
 			RangeReader:   link.RangeReader,
-			Concurrency:   d.DownloadConcurrency,
-			PartSize:      d.DownloadPartSize * utils.KB,
+			MFile:         link.MFile,
+			Concurrency:   link.Concurrency,
+			PartSize:      link.PartSize,
 			ContentLength: link.ContentLength,
 			SyncClosers:   utils.NewSyncClosers(link),
 		}
-		if link.MFile != nil {
-			resultLink.RangeReader = &model.FileRangeReader{
-				// MFile并发响应 线程不安全
-				// 包装成RangeReader 使用io.ReaderAt接口实现线程安全
-				RangeReaderIF: stream.GetRangeReaderFromMFile(fi.GetSize(), link.MFile),
-			}
+		if resultLink.ContentLength == 0 {
+			resultLink.ContentLength = fi.GetSize()
+		}
+		if resultLink.MFile != nil {
+			return resultLink, nil
+		}
+		if d.DownloadConcurrency > 0 {
+			resultLink.Concurrency = d.DownloadConcurrency
+		}
+		if d.DownloadPartSize > 0 {
+			resultLink.PartSize = d.DownloadPartSize * utils.KB
 		}
 		return resultLink, nil
 	}
