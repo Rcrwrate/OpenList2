@@ -145,18 +145,14 @@ func ManifestJSON(c *gin.Context) {
 	logoSetting := setting.GetStr(conf.Logo)
 	logoUrl := strings.Split(logoSetting, "\n")[0]
 
-	// Determine scope and start_url based on CDN configuration
-	var scope, startURL string
-	if conf.Conf.Cdn != "" {
-		// When using CDN, don't add custom subdirectory as CDN resources don't need our base path
-		scope = "/"
-		startURL = "/"
-	} else {
-		// When not using CDN, use the configured base path
-		basePath := getBasePath()
-		scope = basePath
-		startURL = basePath
-	}
+	// Get the base path for proper routing
+	basePath := getBasePath()
+
+	// Determine scope and start_url
+	// PWA scope and start_url should always point to our application's base path
+	// regardless of whether static resources come from CDN or local server
+	scope := basePath
+	startURL := basePath
 
 	manifest := Manifest{
 		Display:  "standalone",
@@ -213,27 +209,8 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 						ManifestJSON(c)
 						return
 					}
-					// Serve other static files
-					file, err := sub.Open(strings.TrimPrefix(filepath, "/"))
-					if err != nil {
-						c.Status(404)
-						return
-					}
-					defer file.Close()
-					
-					stat, err := file.Stat()
-					if err != nil {
-						c.Status(404)
-						return
-					}
-					
-					if stat.IsDir() {
-						c.Status(404)
-						return
-					}
-					
-					c.Header("Cache-Control", "public, max-age=15552000")
-					http.ServeContent(c.Writer, c.Request, stat.Name(), stat.ModTime(), file.(io.ReadSeeker))
+					// For other files, serve from filesystem
+					http.StripPrefix("/static/", http.FileServer(http.FS(sub))).ServeHTTP(c.Writer, c.Request)
 				})
 			} else {
 				sub, err := fs.Sub(static, folder)
