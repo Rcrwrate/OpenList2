@@ -84,9 +84,11 @@ func (d *FTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 		if length < 0 || httpRange.Start+length > size {
 			length = size - httpRange.Start
 		}
-		c := conn
-		var err error
-		if ctx != context {
+		var c *ftp.ServerConn
+		if ctx == context {
+			c = conn
+		} else {
+			var err error
 			c, err = d._login(context)
 			if err != nil {
 				return nil, err
@@ -96,11 +98,17 @@ func (d *FTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 		if err != nil {
 			return nil, err
 		}
+		var close utils.CloseFunc
+		if context == ctx {
+			close = resp.Close
+		} else {
+			close = func() error {
+				return errors.Join(resp.Close(), c.Quit())
+			}
+		}
 		return utils.ReadCloser{
 			Reader: io.LimitReader(resp, length),
-			Closer: utils.CloseFunc(func() error {
-				return errors.Join(c.Quit(), resp.Close())
-			}),
+			Closer: close,
 		}, nil
 	}
 
@@ -108,6 +116,7 @@ func (d *FTP) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*m
 		RangeReader: &model.FileRangeReader{
 			RangeReaderIF: stream.RateLimitRangeReaderFunc(resultRangeReader),
 		},
+		SyncClosers: utils.NewSyncClosers(utils.CloseFunc(conn.Quit)),
 	}, nil
 }
 
