@@ -201,12 +201,50 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 			}
 		})
 		for _, folder := range folders {
-			sub, err := fs.Sub(static, folder)
-			if err != nil {
-				utils.Log.Fatalf("can't find folder: %s", folder)
+			if folder == "static" {
+				// Handle static folder specially to avoid conflict with manifest.json
+				sub, err := fs.Sub(static, folder)
+				if err != nil {
+					utils.Log.Fatalf("can't find folder: %s", folder)
+				}
+				utils.Log.Debugf("Setting up custom route for folder: %s", folder)
+				r.GET("/static/*filepath", func(c *gin.Context) {
+					filepath := c.Param("filepath")
+					// Skip manifest.json as it's handled by the specific route
+					if filepath == "/manifest.json" {
+						c.Status(404)
+						return
+					}
+					// Serve other static files
+					file, err := sub.Open(strings.TrimPrefix(filepath, "/"))
+					if err != nil {
+						c.Status(404)
+						return
+					}
+					defer file.Close()
+					
+					stat, err := file.Stat()
+					if err != nil {
+						c.Status(404)
+						return
+					}
+					
+					if stat.IsDir() {
+						c.Status(404)
+						return
+					}
+					
+					c.Header("Cache-Control", "public, max-age=15552000")
+					http.ServeContent(c.Writer, c.Request, stat.Name(), stat.ModTime(), file.(io.ReadSeeker))
+				})
+			} else {
+				sub, err := fs.Sub(static, folder)
+				if err != nil {
+					utils.Log.Fatalf("can't find folder: %s", folder)
+				}
+				utils.Log.Debugf("Setting up route for folder: %s", folder)
+				r.StaticFS(fmt.Sprintf("/%s/", folder), http.FS(sub))
 			}
-			utils.Log.Debugf("Setting up route for folder: %s", folder)
-			r.StaticFS(fmt.Sprintf("/%s/", folder), http.FS(sub))
 		}
 	} else {
 		// Ensure static file redirected to CDN
