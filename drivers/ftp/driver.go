@@ -42,7 +42,7 @@ func (d *FTP) Init(ctx context.Context) error {
 
 func (d *FTP) Drop(ctx context.Context) error {
 	if d.conn != nil {
-		_ = d.conn.Logout()
+		_ = d.conn.Quit()
 		d.cancel()
 	}
 	return nil
