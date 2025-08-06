@@ -19,7 +19,7 @@ import (
 
 func (d *Open123) create(parentFileID int64, filename string, etag string, size int64, duplicate int, containDir bool) (*UploadCreateResp, error) {
 	var resp UploadCreateResp
-	_, err := d.Request(UploadCreate, http.MethodPost, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[preupCreateV1API], http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"parentFileId": parentFileID,
 			"filename":     filename,
@@ -38,7 +38,7 @@ func (d *Open123) create(parentFileID int64, filename string, etag string, size 
 func (d *Open123) url(preuploadID string, sliceNo int64) (string, error) {
 	// get upload url
 	var resp UploadUrlResp
-	_, err := d.Request(UploadUrl, http.MethodPost, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[getUploadURLAPI], http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"preuploadId": preuploadID,
 			"sliceNo":     sliceNo,
@@ -52,7 +52,7 @@ func (d *Open123) url(preuploadID string, sliceNo int64) (string, error) {
 
 func (d *Open123) complete(preuploadID string) (*UploadCompleteResp, error) {
 	var resp UploadCompleteResp
-	_, err := d.Request(UploadComplete, http.MethodPost, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[uploadCompleteV1API], http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"preuploadID": preuploadID,
 		})
@@ -65,7 +65,7 @@ func (d *Open123) complete(preuploadID string) (*UploadCompleteResp, error) {
 
 func (d *Open123) async(preuploadID string) (*UploadAsyncResp, error) {
 	var resp UploadAsyncResp
-	_, err := d.Request(UploadAsync, http.MethodPost, func(req *resty.Request) {
+	_, err := d.Request(d.apiinstance[uploadAsyncResultAPI], http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"preuploadID": preuploadID,
 		})
