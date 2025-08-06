@@ -231,7 +231,7 @@ func (ss *SeekableStream) Read(p []byte) (n int, err error) {
 		}
 		rc, err := ss.rangeReadCloser.RangeRead(ss.Ctx, http_range.Range{Length: -1})
 		if err != nil {
-			return 0, nil
+			return 0, err
 		}
 		ss.Reader = rc
 	}
@@ -320,10 +320,10 @@ func (c *headCache) head(p []byte) (int, error) {
 	}
 	w, err := io.ReadAtLeast(c.reader, p[n:], 1)
 	if w > 0 {
-		n += w
 		buf := make([]byte, w)
-		copy(buf, p[n:])
+		copy(buf, p[n:n+w])
 		c.bufs = append(c.bufs, buf)
+		n += w
 	}
 	return n, err
 }

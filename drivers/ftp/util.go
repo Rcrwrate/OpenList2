@@ -54,16 +54,19 @@ type FileReader struct {
 
 func (r *FileReader) Read(buf []byte) (int, error) {
 	n := 0
-	for {
+	for n < len(buf) {
 		w, err := r.Reader.Read(buf[n:])
 		if utils.IsCanceled(r.ctx) {
-			return 0, r.ctx.Err()
+			return n, r.ctx.Err()
 		}
 		n += w
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			r.Response.SetDeadline(time.Now().Add(time.Second))
 			continue
 		}
-		return n, err
+		if err != nil || w == 0 {
+			return n, err
+		}
 	}
+	return n, nil
 }
