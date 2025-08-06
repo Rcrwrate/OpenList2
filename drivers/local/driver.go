@@ -34,7 +34,7 @@ type Local struct {
 	mkdirPerm int32
 
 	// directory size data
-	directoryMap map[string]*DirectoryNode
+	directoryMap DirectoryMap
 
 	// zero means no limit
 	thumbConcurrency int
@@ -43,12 +43,6 @@ type Local struct {
 	// video thumb position
 	videoThumbPos             float64
 	videoThumbPosIsPercentage bool
-}
-
-type DirectoryNode struct {
-	fileSum int64
-	directorySum int64
-	children []string
 }
 
 func (d *Local) Config() driver.Config {
@@ -76,10 +70,15 @@ func (d *Local) Init(ctx context.Context) error {
 		d.Addition.RootFolderPath = abs
 	}
 	if d.DirectorySize {
-		_, err := d.calculateDirSize(d.GetRootPath())
+		d.directoryMap.root = d.GetRootPath()
+		start := time.Now()
+		_, err := d.directoryMap.CalculateDirSize(d.GetRootPath())
 		if err != nil {
 			return err
 		}
+		fmt.Println("Init Time: ", time.Since(start))
+	} else {
+		d.directoryMap.Clear()
 	}
 	if d.ThumbCacheFolder != "" && !utils.Exists(d.ThumbCacheFolder) {
 		err := os.MkdirAll(d.ThumbCacheFolder, os.FileMode(d.mkdirPerm))
@@ -163,7 +162,7 @@ func (d *Local) FileInfoToObj(ctx context.Context, f fs.FileInfo, reqPath string
 	isFolder := f.IsDir() || isSymlinkDir(f, fullPath)
 	var size int64
 	if isFolder {
-		node, ok := d.directoryMap[filepath.Join(fullPath, f.Name())]
+		node, ok := d.directoryMap.Get(filepath.Join(fullPath, f.Name()))
 		if ok {
 			size = node.fileSum + node.directorySum;
 		}
@@ -206,7 +205,7 @@ func (d *Local) Get(ctx context.Context, path string) (model.Obj, error) {
 	isFolder := f.IsDir() || isSymlinkDir(f, path)
 	size := f.Size()
 	if isFolder {
-		node, ok := d.directoryMap[path]
+		node, ok := d.directoryMap.Get(path)
 		if ok {
 			size = node.fileSum + node.directorySum;
 		}
@@ -312,15 +311,13 @@ func (d *Local) Move(ctx context.Context, srcObj, dstDir model.Obj) error {
 		}
 	} else {
 		if err == nil {
-			_, ok := d.directoryMap[filepath.Dir(srcPath)]
-			if ok {
-				d.updateDirSize(filepath.Dir(srcObj.GetPath()))
-				d.updateDirParents(filepath.Dir(srcObj.GetPath()))
+			if d.directoryMap.Has(filepath.Dir(srcPath)) {
+				d.directoryMap.UpdateDirSize(filepath.Dir(srcObj.GetPath()))
+				d.directoryMap.UpdateDirParents(filepath.Dir(srcObj.GetPath()))
 			}
-			_, ok = d.directoryMap[filepath.Dir(dstPath)]
-			if ok {
-				d.updateDirSize(filepath.Dir(dstPath))
-				d.updateDirParents(filepath.Dir(dstPath))
+			if d.directoryMap.Has(filepath.Dir(dstPath)) {
+				d.directoryMap.UpdateDirSize(filepath.Dir(dstPath))
+				d.directoryMap.UpdateDirParents(filepath.Dir(dstPath))
 			}
 		}
 
@@ -337,9 +334,9 @@ func (d *Local) Rename(ctx context.Context, srcObj model.Obj, newName string) er
 	}
 
 	if srcObj.IsDir() {
-		node, ok := d.directoryMap[srcPath]
-		if ok {
-			d.directoryMap[dstPath] = node
+		if d.directoryMap.Has(srcPath) {
+			d.directoryMap.DeleteDirNode(srcPath)
+			d.directoryMap.CalculateDirSize(dstPath)
 		}
 	}
 
@@ -360,11 +357,11 @@ func (d *Local) Copy(_ context.Context, srcObj, dstDir model.Obj) error {
 	})
 	if err != nil {
 		return err;
-	}	
-	_, ok := d.directoryMap[filepath.Dir(srcObj.GetPath())]
-	if ok {
-		d.updateDirSize(filepath.Dir(srcObj.GetPath()))
-		d.updateDirParents(filepath.Dir(srcObj.GetPath()))
+	}
+
+	if d.directoryMap.Has(filepath.Dir(dstPath)) {
+		d.directoryMap.UpdateDirSize(filepath.Dir(dstPath))
+		d.directoryMap.UpdateDirParents(filepath.Dir(dstPath))
 	}
 
 	return nil
@@ -389,17 +386,15 @@ func (d *Local) Remove(ctx context.Context, obj model.Obj) error {
 		return err
 	}
 	if (obj.IsDir()) {
-		_, ok := d.directoryMap[obj.GetPath()]
-		if ok {
-			d.deleteDirNode(obj.GetPath())
-			d.updateDirSize(filepath.Dir(obj.GetPath()))
-			d.updateDirParents(filepath.Dir(obj.GetPath()))
+		if d.directoryMap.Has(obj.GetPath()) {
+			d.directoryMap.DeleteDirNode(obj.GetPath())
+			d.directoryMap.UpdateDirSize(filepath.Dir(obj.GetPath()))
+			d.directoryMap.UpdateDirParents(filepath.Dir(obj.GetPath()))
 		}
 	} else {
-		_, ok := d.directoryMap[filepath.Dir(obj.GetPath())]
-		if ok {
-			d.updateDirSize(filepath.Dir(obj.GetPath()))
-			d.updateDirParents(filepath.Dir(obj.GetPath()))
+		if d.directoryMap.Has(filepath.Dir(obj.GetPath())) {
+			d.directoryMap.UpdateDirSize(filepath.Dir(obj.GetPath()))
+			d.directoryMap.UpdateDirParents(filepath.Dir(obj.GetPath()))
 		}
 	}
 
@@ -426,10 +421,9 @@ func (d *Local) Put(ctx context.Context, dstDir model.Obj, stream model.FileStre
 	if err != nil {
 		log.Errorf("[local] failed to change time of %s: %s", fullPath, err)
 	}
-	_, ok := d.directoryMap[dstDir.GetPath()]
-	if ok {
-		d.updateDirSize(dstDir.GetPath())
-		d.updateDirParents(dstDir.GetPath())
+	if d.directoryMap.Has(dstDir.GetPath()) {
+		d.directoryMap.UpdateDirSize(dstDir.GetPath())
+		d.directoryMap.UpdateDirParents(dstDir.GetPath())
 	}
 
 	return nil

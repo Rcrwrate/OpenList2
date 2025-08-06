@@ -29,7 +29,7 @@ var config = driver.Config{
 func init() {
 	op.RegisterDriver(func() driver.Driver {
 		return &Local{
-			directoryMap: make(map[string]*DirectoryNode),
+			directoryMap: DirectoryMap{},
 		}
 	})
 }
