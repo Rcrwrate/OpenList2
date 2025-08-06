@@ -14,6 +14,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/setting"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/OpenList/v4/public"
+	"github.com/OpenListTeam/OpenList/v4/server/handles"
 	"github.com/gin-gonic/gin"
 )
 
@@ -116,6 +117,9 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 	initStatic()
 	initIndex(siteConfig)
 	folders := []string{"assets", "images", "streamer", "static"}
+	// Handle manifest.json specially before setting up static file serving
+	r.GET("/static/manifest.json", handles.ManifestJSON)
+	
 	if conf.Conf.Cdn == "" {
 		utils.Log.Debug("Setting up static file serving...")
 		r.Use(func(c *gin.Context) {
@@ -138,6 +142,10 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 		for _, folder := range folders {
 			r.GET(fmt.Sprintf("/%s/*filepath", folder), func(c *gin.Context) {
 				filepath := c.Param("filepath")
+				// manifest.json is handled by the specific route above
+				if folder == "static" && filepath == "/manifest.json" {
+					return // This should not be reached due to route priority
+				}
 				c.Redirect(http.StatusFound, fmt.Sprintf("%s/%s%s", siteConfig.Cdn, folder, filepath))
 			})
 		}

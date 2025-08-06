@@ -32,7 +32,6 @@ func Init(e *gin.Engine) {
 	})
 	g.GET("/favicon.ico", handles.Favicon)
 	g.GET("/robots.txt", handles.Robots)
-	g.GET("/static/manifest.json", handles.ManifestJSON)
 	g.GET("/i/:link_name", handles.Plist)
 	common.SecretKey = []byte(conf.Conf.JwtSecret)
 	g.Use(middlewares.StoragesLoaded)

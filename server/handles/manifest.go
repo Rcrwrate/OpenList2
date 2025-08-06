@@ -38,9 +38,6 @@ func getBasePath() string {
 }
 
 func ManifestJSON(c *gin.Context) {
-	// Get the base path using the same logic as static.go
-	basePath := getBasePath()
-	
 	// Get site title from settings
 	siteTitle := setting.GetStr(conf.SiteTitle)
 	
@@ -48,10 +45,23 @@ func ManifestJSON(c *gin.Context) {
 	logoSetting := setting.GetStr(conf.Logo)
 	logoUrl := strings.Split(logoSetting, "\n")[0]
 
+	// Determine scope and start_url based on CDN configuration
+	var scope, startURL string
+	if conf.Conf.Cdn != "" {
+		// When using CDN, don't add custom subdirectory as CDN resources don't need our base path
+		scope = "/"
+		startURL = "/"
+	} else {
+		// When not using CDN, use the configured base path
+		basePath := getBasePath()
+		scope = basePath
+		startURL = basePath
+	}
+
 	manifest := Manifest{
 		Display:  "standalone",
-		Scope:    basePath,
-		StartURL: basePath,
+		Scope:    scope,
+		StartURL: startURL,
 		Name:     siteTitle,
 		Icons: []ManifestIcon{
 			{
