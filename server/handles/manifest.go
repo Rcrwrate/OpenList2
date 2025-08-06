@@ -3,8 +3,10 @@ package handles
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/setting"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
@@ -23,26 +25,37 @@ type Manifest struct {
 	Icons    []ManifestIcon `json:"icons"`
 }
 
-func ManifestJSON(c *gin.Context) {
-	// Get the base path
+// getBasePath returns the cleaned base path, following the same logic as static.go
+func getBasePath() string {
 	basePath := conf.URL.Path
+	if basePath != "" {
+		basePath = utils.FixAndCleanPath(basePath)
+	}
 	if basePath == "" {
 		basePath = "/"
 	}
+	return basePath
+}
+
+func ManifestJSON(c *gin.Context) {
+	// Get the base path using the same logic as static.go
+	basePath := getBasePath()
 	
-	// Make sure the path ends with /
-	if basePath != "/" && basePath[len(basePath)-1] != '/' {
-		basePath += "/"
-	}
+	// Get site title from settings
+	siteTitle := setting.GetStr(conf.SiteTitle)
+	
+	// Get logo from settings, use the first line (light theme logo)
+	logoSetting := setting.GetStr(conf.Logo)
+	logoUrl := strings.Split(logoSetting, "\n")[0]
 
 	manifest := Manifest{
 		Display:  "standalone",
 		Scope:    basePath,
 		StartURL: basePath,
-		Name:     "OpenList",
+		Name:     siteTitle,
 		Icons: []ManifestIcon{
 			{
-				Src:   "https://cdn.oplist.org/gh/OpenListTeam/Logo@main/logo/512x512.png",
+				Src:   logoUrl,
 				Sizes: "512x512",
 				Type:  "image/png",
 			},
