@@ -7,8 +7,8 @@ import (
 )
 
 func GetSharingById(id string) (*model.SharingDB, error) {
-	var s model.SharingDB
-	if err := db.First(&s, id).Error; err != nil {
+	s := model.SharingDB{ID: id}
+	if err := db.Where(s).First(&s).Error; err != nil {
 		return nil, errors.Wrapf(err, "failed get sharing")
 	}
 	return &s, nil

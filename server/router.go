@@ -54,13 +54,18 @@ func Init(e *gin.Engine) {
 	g.HEAD("/ad/*path", middlewares.PathParse, archiveSignCheck, handles.ArchiveDown)
 	g.HEAD("/ap/*path", middlewares.PathParse, archiveSignCheck, handles.ArchiveProxy)
 	g.HEAD("/ae/*path", middlewares.PathParse, archiveSignCheck, handles.ArchiveInternalExtract)
+
 	g.GET("/sd/:sid", middlewares.EmptyPathParse, middlewares.SharingIdParse, downloadLimiter, handles.SharingDown)
 	g.GET("/sd/:sid/*path", middlewares.PathParse, middlewares.SharingIdParse, downloadLimiter, handles.SharingDown)
 	g.HEAD("/sd/:sid", middlewares.EmptyPathParse, middlewares.SharingIdParse, handles.SharingDown)
 	g.HEAD("/sd/:sid/*path", middlewares.PathParse, middlewares.SharingIdParse, handles.SharingDown)
+	g.GET("/sad/:sid", middlewares.EmptyPathParse, middlewares.SharingIdParse, downloadLimiter, handles.SharingArchiveExtract)
+	g.GET("/sad/:sid/*path", middlewares.PathParse, middlewares.SharingIdParse, downloadLimiter, handles.SharingArchiveExtract)
+	g.HEAD("/sad/:sid", middlewares.EmptyPathParse, middlewares.SharingIdParse, handles.SharingArchiveExtract)
+	g.HEAD("/sad/:sid/*path", middlewares.PathParse, middlewares.SharingIdParse, handles.SharingArchiveExtract)
 
 	api := g.Group("/api")
-	auth := api.Group("", middlewares.Auth)
+	auth := api.Group("", middlewares.Auth(false))
 	webauthn := api.Group("/authn", middlewares.Authn)
 
 	api.POST("/auth/login", handles.Login)
@@ -96,9 +101,9 @@ func Init(e *gin.Engine) {
 	public.Any("/archive_extensions", handles.ArchiveExtensions)
 
 	_fs(auth.Group("/fs"))
+	fsAndShare(api.Group("/fs", middlewares.Auth(true)))
 	_task(auth.Group("/task", middlewares.AuthNotGuest))
-	_sharing(api.Group("/share", middlewares.AuthMustGuest))
-	sharingManage(auth.Group("/share", middlewares.AuthNotGuest))
+	_sharing(auth.Group("/share", middlewares.AuthNotGuest))
 	admin(auth.Group("/admin", middlewares.AuthAdmin))
 	if flags.Debug || flags.Dev {
 		debug(g.Group("/debug"))
@@ -174,10 +179,16 @@ func admin(g *gin.RouterGroup) {
 	index.GET("/progress", middlewares.SearchIndex, handles.GetProgress)
 }
 
+func fsAndShare(g *gin.RouterGroup) {
+	g.Any("/list", handles.FsListSplit)
+	g.Any("/get", handles.FsGetSplit)
+	a := g.Group("/archive")
+	a.Any("/meta", handles.FsArchiveMetaSplit)
+	a.Any("/list", handles.FsArchiveListSplit)
+}
+
 func _fs(g *gin.RouterGroup) {
-	g.Any("/list", handles.FsList)
 	g.Any("/search", middlewares.SearchIndex, handles.Search)
-	g.Any("/get", handles.FsGet)
 	g.Any("/other", handles.FsOther)
 	g.Any("/dirs", handles.FsDirs)
 	g.POST("/mkdir", handles.FsMkdir)
@@ -197,10 +208,7 @@ func _fs(g *gin.RouterGroup) {
 	// g.POST("/add_qbit", handles.AddQbittorrent)
 	// g.POST("/add_transmission", handles.SetTransmission)
 	g.POST("/add_offline_download", handles.AddOfflineDownload)
-	a := g.Group("/archive")
-	a.Any("/meta", handles.FsArchiveMeta)
-	a.Any("/list", handles.FsArchiveList)
-	a.POST("/decompress", handles.FsArchiveDecompress)
+	g.POST("/archive/decompress", handles.FsArchiveDecompress)
 }
 
 func _task(g *gin.RouterGroup) {
@@ -208,15 +216,13 @@ func _task(g *gin.RouterGroup) {
 }
 
 func _sharing(g *gin.RouterGroup) {
-	g.Any("/list", handles.SharingList)
-	g.Any("/get", handles.SharingGet)
-}
-
-func sharingManage(g *gin.RouterGroup) {
 	g.GET("/list", handles.ListSharings)
+	g.GET("/get", handles.GetSharing)
 	g.POST("/create", handles.CreateSharing)
 	g.POST("/update", handles.UpdateSharing)
 	g.POST("/delete", handles.DeleteSharing)
+	g.POST("/enable", handles.SetEnableSharing(false))
+	g.POST("/disable", handles.SetEnableSharing(true))
 }
 
 func Cors(r *gin.Engine) {

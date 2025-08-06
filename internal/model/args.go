@@ -90,6 +90,16 @@ type SharingListArgs struct {
 	Pwd     string
 }
 
+type SharingArchiveMetaArgs struct {
+	ArchiveMetaArgs
+	Pwd string
+}
+
+type SharingArchiveListArgs struct {
+	ArchiveListArgs
+	Pwd string
+}
+
 type SharingLinkArgs struct {
 	Pwd string
 	LinkArgs

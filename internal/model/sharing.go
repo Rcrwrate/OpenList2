@@ -3,14 +3,17 @@ package model
 import "time"
 
 type SharingDB struct {
-	ID          string    `json:"id" gorm:"primary_key"`
-	FilesRaw    string    `json:"-" gorm:"type:text"`
-	Expires     time.Time `json:"expires"`
-	Pwd         string    `json:"pwd"`
-	Accessed    int       `json:"accessed"`
-	MaxAccessed int       `json:"max_accessed"`
-	CreatorId   uint      `json:"-"`
-	Disabled    bool      `json:"disabled"`
+	ID          string     `json:"id" gorm:"primaryKey"`
+	FilesRaw    string     `json:"-" gorm:"type:text"`
+	Expires     *time.Time `json:"expires"`
+	Pwd         string     `json:"pwd"`
+	Accessed    int        `json:"accessed"`
+	MaxAccessed int        `json:"max_accessed"`
+	CreatorId   uint       `json:"-"`
+	Disabled    bool       `json:"disabled"`
+	Remark      string     `json:"remark"`
+	Readme      string     `json:"readme"`
+	Header      string     `json:"header"`
 	Sort
 }
 
@@ -33,7 +36,7 @@ func (s *Sharing) Valid() bool {
 	if !s.Creator.CanShare() {
 		return false
 	}
-	if !s.Expires.IsZero() && s.Expires.Before(time.Now()) {
+	if s.Expires != nil && !s.Expires.IsZero() && s.Expires.Before(time.Now()) {
 		return false
 	}
 	return true

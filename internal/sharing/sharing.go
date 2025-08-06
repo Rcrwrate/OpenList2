@@ -29,24 +29,44 @@ func countAccess(ip string, s *model.Sharing) error {
 	return nil
 }
 
-func List(ctx context.Context, sid, path string, args model.SharingListArgs) ([]model.Obj, error) {
+func List(ctx context.Context, sid, path string, args model.SharingListArgs) (*model.Sharing, []model.Obj, error) {
 	sharing, res, err := list(ctx, sid, path, args)
 	if err != nil {
 		log.Errorf("failed list sharing %s/%s: %+v", sid, path, err)
-		return nil, err
+		return nil, nil, err
 	}
 	_ = countAccess(ctx.Value(conf.ClientIPKey).(string), sharing)
-	return res, nil
+	return sharing, res, nil
 }
 
-func Get(ctx context.Context, sid, path string, args model.SharingListArgs) (model.Obj, error) {
+func Get(ctx context.Context, sid, path string, args model.SharingListArgs) (*model.Sharing, model.Obj, error) {
 	sharing, res, err := get(ctx, sid, path, args)
 	if err != nil {
 		log.Warnf("failed get sharing %s/%s: %s", sid, path, err)
-		return nil, err
+		return nil, nil, err
 	}
 	_ = countAccess(ctx.Value(conf.ClientIPKey).(string), sharing)
-	return res, nil
+	return sharing, res, nil
+}
+
+func ArchiveMeta(ctx context.Context, sid, path string, args model.SharingArchiveMetaArgs) (*model.Sharing, *model.ArchiveMetaProvider, error) {
+	sharing, res, err := archiveMeta(ctx, sid, path, args)
+	if err != nil {
+		log.Warnf("failed get sharing archive meta %s/%s: %s", sid, path, err)
+		return nil, nil, err
+	}
+	_ = countAccess(ctx.Value(conf.ClientIPKey).(string), sharing)
+	return sharing, res, nil
+}
+
+func ArchiveList(ctx context.Context, sid, path string, args model.SharingArchiveListArgs) (*model.Sharing, []model.Obj, error) {
+	sharing, res, err := archiveList(ctx, sid, path, args)
+	if err != nil {
+		log.Warnf("failed list sharing archive %s/%s: %s", sid, path, err)
+		return nil, nil, err
+	}
+	_ = countAccess(ctx.Value(conf.ClientIPKey).(string), sharing)
+	return sharing, res, nil
 }
 
 type LinkArgs struct {
@@ -62,10 +82,4 @@ func Link(ctx context.Context, sid, path string, args *LinkArgs) (driver.Driver,
 	}
 	_ = countAccess(ctx.Value(conf.ClientIPKey).(string), sharing)
 	return storage, res, file, nil
-}
-
-type OtherArgs struct {
-	model.SharingListArgs
-	model.FsOtherArgs
-	SharingId string
 }

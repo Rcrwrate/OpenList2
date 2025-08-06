@@ -46,7 +46,10 @@ const (
 	ForwardDirectLinkParams = "forward_direct_link_params"
 	IgnoreDirectLinkParams  = "ignore_direct_link_params"
 	WebauthnLoginEnabled    = "webauthn_login_enabled"
-	ShareLinkContent        = "share_link_content"
+	SharePreview            = "share_preview"
+	ShareArchivePreview     = "share_archive_preview"
+	ShareForceProxy         = "share_force_proxy"
+	ShareSummaryContent     = "share_summary_content"
 
 	// index
 	SearchIndex     = "search_index"

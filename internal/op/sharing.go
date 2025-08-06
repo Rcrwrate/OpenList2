@@ -53,9 +53,12 @@ func GetSharingById(id string, refresh ...bool) (*model.Sharing, error) {
 	sharing, err, _ := sharingG.Do(id, func() (*model.Sharing, error) {
 		s, err := db.GetSharingById(id)
 		if err != nil {
-			return nil, errors.WithMessagef(err, "failed get sharing [%s]", s)
+			return nil, errors.WithMessagef(err, "failed get sharing [%s]", id)
 		}
-		creator, _ := GetUserById(s.CreatorId)
+		creator, err := GetUserById(s.CreatorId)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "failed get sharing creator [%s]", id)
+		}
 		var files []string
 		if err = utils.Json.UnmarshalFromString(s.FilesRaw, &files); err != nil {
 			files = make([]string, 0)
