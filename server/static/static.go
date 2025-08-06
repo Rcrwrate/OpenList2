@@ -188,8 +188,6 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 	initStatic()
 	initIndex(siteConfig)
 	folders := []string{"assets", "images", "streamer", "static"}
-	// Handle manifest.json specially before setting up static file serving
-	r.GET("/static/manifest.json", ManifestJSON)
 	
 	if conf.Conf.Cdn == "" {
 		utils.Log.Debug("Setting up static file serving...")
@@ -202,7 +200,7 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 		})
 		for _, folder := range folders {
 			if folder == "static" {
-				// Handle static folder specially to avoid conflict with manifest.json
+				// Handle static folder specially to include manifest.json handling
 				sub, err := fs.Sub(static, folder)
 				if err != nil {
 					utils.Log.Fatalf("can't find folder: %s", folder)
@@ -210,9 +208,9 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 				utils.Log.Debugf("Setting up custom route for folder: %s", folder)
 				r.GET("/static/*filepath", func(c *gin.Context) {
 					filepath := c.Param("filepath")
-					// Skip manifest.json as it's handled by the specific route
+					// Handle manifest.json specially
 					if filepath == "/manifest.json" {
-						c.Status(404)
+						ManifestJSON(c)
 						return
 					}
 					// Serve other static files
@@ -251,9 +249,10 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 		for _, folder := range folders {
 			r.GET(fmt.Sprintf("/%s/*filepath", folder), func(c *gin.Context) {
 				filepath := c.Param("filepath")
-				// manifest.json is handled by the specific route above
+				// Handle manifest.json specially
 				if folder == "static" && filepath == "/manifest.json" {
-					return // This should not be reached due to route priority
+					ManifestJSON(c)
+					return
 				}
 				c.Redirect(http.StatusFound, fmt.Sprintf("%s/%s%s", siteConfig.Cdn, folder, filepath))
 			})
