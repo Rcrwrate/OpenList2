@@ -172,8 +172,8 @@ type DirectoryTask struct {
 }
 
 type DirectoryTaskCache struct {
-    fileSum int64
-    children []string
+	fileSum int64
+	children []string
 }
 
 func (m *DirectoryMap) Has(path string) (bool) {
@@ -197,7 +197,7 @@ func (m *DirectoryMap) Get(path string) (*DirectoryNode, bool) {
 }
 
 func (m *DirectoryMap) Set(path string, node *DirectoryNode) {
-	 m.data.Store(path, node)
+	m.data.Store(path, node)
 }
 
 func (m *DirectoryMap) Delete(path string) {
@@ -218,14 +218,14 @@ func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 		stack = stack[:len(stack)-1]
 
 		if (task.cache != nil) {
-			var directorySum int64 = 0	
+			var directorySum int64 = 0
 
 			for _, c := range task.cache.children {
         		child, ok := m.Get(filepath.Join(task.path, c))
         		if !ok {
         			return 0, fmt.Errorf("child node not found")
         		}
-         		directorySum += child.fileSum + child.directorySum;
+         		directorySum += child.fileSum + child.directorySum
 			}
 
 			m.Set(task.path, &DirectoryNode{
@@ -237,7 +237,7 @@ func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 			continue
 		}
 
-		files, err := readDir(task.path);
+		files, err := readDir(task.path)
 		if err != nil {
 			return 0, err
 		}
@@ -254,7 +254,7 @@ func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 
 			if isFolder {
 				if node, ok := m.Get(fullpath); ok {
-					directorySum += node.fileSum + node.directorySum;
+					directorySum += node.fileSum + node.directorySum
 				} else {
 					queue = append(queue, DirectoryTask{
 						path: fullpath,
@@ -301,7 +301,7 @@ func (m *DirectoryMap) UpdateDirSize(dirname string) (int64, error) {
    		return 0, fmt.Errorf("directory node not found")
    	}
 
-    files, err := readDir(dirname);
+    files, err := readDir(dirname)
     if err != nil {
     	return 0, err
     }
@@ -317,7 +317,7 @@ func (m *DirectoryMap) UpdateDirSize(dirname string) (int64, error) {
 
     	if isFolder {
     		if node, ok := m.Get(fullpath); ok {
-    			directorySum += node.fileSum + node.directorySum;
+    			directorySum += node.fileSum + node.directorySum
     		} else {
 				value, err := m.CalculateDirSize(fullpath)
 				if err != nil {
@@ -353,7 +353,7 @@ func (m *DirectoryMap) UpdateDirParents(dirname string) (error) {
 		if !ok {
 			return fmt.Errorf("child node not found")
 		}
- 		directorySum += child.fileSum + child.directorySum;
+ 		directorySum += child.fileSum + child.directorySum
  	}
 
 	node.directorySum = directorySum
@@ -372,7 +372,9 @@ func (m *DirectoryMap) DeleteDirNode(dirname string) (error) {
 	}
 
 	for _, c := range node.children {
-		m.DeleteDirNode(filepath.Join(dirname, c))
+		if err := m.DeleteDirNode(filepath.Join(dirname, c)); err != nil {
+			return err
+		}
 	}
 
 	m.Delete(dirname)

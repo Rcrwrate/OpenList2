@@ -71,12 +71,10 @@ func (d *Local) Init(ctx context.Context) error {
 	}
 	if d.DirectorySize {
 		d.directoryMap.root = d.GetRootPath()
-		start := time.Now()
 		_, err := d.directoryMap.CalculateDirSize(d.GetRootPath())
 		if err != nil {
 			return err
 		}
-		fmt.Println("Init Time: ", time.Since(start))
 	} else {
 		d.directoryMap.Clear()
 	}
@@ -164,7 +162,7 @@ func (d *Local) FileInfoToObj(ctx context.Context, f fs.FileInfo, reqPath string
 	if isFolder {
 		node, ok := d.directoryMap.Get(filepath.Join(fullPath, f.Name()))
 		if ok {
-			size = node.fileSum + node.directorySum;
+			size = node.fileSum + node.directorySum
 		}
 	} else {
 		size = f.Size()
@@ -207,7 +205,7 @@ func (d *Local) Get(ctx context.Context, path string) (model.Obj, error) {
 	if isFolder {
 		node, ok := d.directoryMap.Get(path)
 		if ok {
-			size = node.fileSum + node.directorySum;
+			size = node.fileSum + node.directorySum
 		}
 	} else {
 		size = f.Size()
@@ -296,7 +294,8 @@ func (d *Local) Move(ctx context.Context, srcObj, dstDir model.Obj) error {
 	if utils.IsSubPath(srcPath, dstPath) {
 		return fmt.Errorf("the destination folder is a subfolder of the source folder")
 	}
-	if err := os.Rename(srcPath, dstPath); err != nil && strings.Contains(err.Error(), "invalid cross-device link") {
+	err := os.Rename(srcPath, dstPath)
+	if err != nil && strings.Contains(err.Error(), "invalid cross-device link") {
 		// Handle cross-device file move in local driver
 		if err = d.Copy(ctx, srcObj, dstDir); err != nil {
 			return err
@@ -356,7 +355,7 @@ func (d *Local) Copy(_ context.Context, srcObj, dstDir model.Obj) error {
 		PreserveOwner: true,
 	})
 	if err != nil {
-		return err;
+		return err
 	}
 
 	if d.directoryMap.Has(filepath.Dir(dstPath)) {
@@ -385,7 +384,7 @@ func (d *Local) Remove(ctx context.Context, obj model.Obj) error {
 	if err != nil {
 		return err
 	}
-	if (obj.IsDir()) {
+	if obj.IsDir() {
 		if d.directoryMap.Has(obj.GetPath()) {
 			d.directoryMap.DeleteDirNode(obj.GetPath())
 			d.directoryMap.UpdateDirSize(filepath.Dir(obj.GetPath()))
