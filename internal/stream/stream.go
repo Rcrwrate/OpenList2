@@ -125,9 +125,9 @@ func (f *FileStream) RangeRead(httpRange http_range.Range) (io.Reader, error) {
 		// 使用bytes.Buffer作为io.CopyBuffer的写入对象，CopyBuffer会调用Buffer.ReadFrom
 		// 即使被写入的数据量与Buffer.Cap一致，Buffer也会扩大
 		buf := make([]byte, bufSize)
-		n, _ := io.ReadFull(f.Reader, buf)
-		if n != int(bufSize) {
-			return nil, fmt.Errorf("stream RangeRead did not get all data in peek, expect =%d ,actual =%d", bufSize, n)
+		n, err := io.ReadFull(f.Reader, buf)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read all data: (expect =%d, actual =%d) %w", bufSize, n, err)
 		}
 		f.peekBuff = bytes.NewReader(buf)
 		f.Reader = io.MultiReader(f.peekBuff, f.Reader)
@@ -308,24 +308,24 @@ type headCache struct {
 	bufs   [][]byte
 }
 
-func (c *headCache) head(p []byte) (n int, err error) {
+func (c *headCache) head(p []byte) (int, error) {
+	n := 0
 	for _, buf := range c.bufs {
 		if len(buf)+n >= len(p) {
 			n += copy(p[n:], buf[:len(p)-n])
-			return
+			return n, nil
 		} else {
 			n += copy(p[n:], buf)
 		}
 	}
-	w := 0
-	w, err = io.ReadFull(c.reader, p[n:])
-	if len(p)-n == w {
-		buf := make([]byte, len(p)-n)
+	w, err := io.ReadAtLeast(c.reader, p[n:], 1)
+	if w > 0 {
+		n += w
+		buf := make([]byte, w)
 		copy(buf, p[n:])
 		c.bufs = append(c.bufs, buf)
-		n += w
 	}
-	return
+	return n, err
 }
 
 func (r *headCache) Close() error {

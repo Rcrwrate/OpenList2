@@ -202,7 +202,7 @@ var _ SyncClosersIF = (*SyncClosers)(nil)
 func (c *SyncClosers) AcquireReference() bool {
 	ref := c.ref.Add(1)
 	if ref > 0 {
-		log.Debugf("SyncClosers.AcquireReference %p,ref=%d\n", c, ref)
+		// log.Debugf("SyncClosers.AcquireReference %p,ref=%d\n", c, ref)
 		return true
 	}
 	c.ref.Store(math.MinInt16)
@@ -215,7 +215,7 @@ func (c *SyncClosers) Close() error {
 		c.ref.Store(math.MinInt16)
 		return nil
 	}
-	log.Debugf("SyncClosers.Close %p,ref=%d\n", c, ref+1)
+	// log.Debugf("SyncClosers.Close %p,ref=%d\n", c, ref+1)
 	if ref > 0 {
 		return nil
 	}

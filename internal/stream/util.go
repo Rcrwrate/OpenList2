@@ -101,11 +101,11 @@ func GetRangeReaderFromLink(size int64, link *model.Link) (model.RangeReaderIF, 
 func GetRangeReaderFromMFile(size int64, file model.File) model.RangeReaderIF {
 	return &model.FileRangeReader{
 		RangeReaderIF: RangeReaderFunc(func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
-		length := httpRange.Length
-		if length < 0 || httpRange.Start+length > size {
-			length = size - httpRange.Start
-		}
-		return &model.FileCloser{File: io.NewSectionReader(file, httpRange.Start, length)}, nil
+			length := httpRange.Length
+			if length < 0 || httpRange.Start+length > size {
+				length = size - httpRange.Start
+			}
+			return &model.FileCloser{File: io.NewSectionReader(file, httpRange.Start, length)}, nil
 		}),
 	}
 }
@@ -230,11 +230,8 @@ func (ss *StreamSectionReader) GetSectionReader(off, length int64) (*SectionRead
 		tempBuf := ss.bufPool.Get().([]byte)
 		buf = tempBuf[:length]
 		n, err := io.ReadFull(ss.file, buf)
-		if err != nil {
-			return nil, err
-		}
 		if int64(n) != length {
-			return nil, fmt.Errorf("can't read data, expected=%d, got=%d", length, n)
+			return nil, fmt.Errorf("failed to read all data: (expect =%d, actual =%d) %w", length, n, err)
 		}
 		ss.off += int64(n)
 		off = 0
