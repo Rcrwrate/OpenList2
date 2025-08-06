@@ -166,6 +166,7 @@ func (c *Closers) Close() error {
 			errs = append(errs, closer.Close())
 		}
 	}
+	clear(*c)
 	*c = (*c)[:0]
 	return errors.Join(errs...)
 }
@@ -227,6 +228,7 @@ func (c *SyncClosers) Close() error {
 		}
 	}
 	clear(c.closers)
+	c.closers = nil
 	return errors.Join(errs...)
 }
 

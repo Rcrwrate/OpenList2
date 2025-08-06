@@ -26,7 +26,7 @@ func (f RangeReaderFunc) RangeRead(ctx context.Context, httpRange http_range.Ran
 
 func GetRangeReaderFromLink(size int64, link *model.Link) (model.RangeReaderIF, error) {
 	if link.MFile != nil {
-		return &model.FileRangeReader{RangeReaderIF: GetRangeReaderFromMFile(size, link.MFile)}, nil
+		return GetRangeReaderFromMFile(size, link.MFile), nil
 	}
 	if link.Concurrency > 0 || link.PartSize > 0 {
 		down := net.NewDownloader(func(d *net.Downloader) {
@@ -97,13 +97,16 @@ func GetRangeReaderFromLink(size int64, link *model.Link) (model.RangeReaderIF, 
 	return RateLimitRangeReaderFunc(rangeReader), nil
 }
 
-func GetRangeReaderFromMFile(size int64, file model.File) RangeReaderFunc {
-	return func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
+// RangeReaderIF.RangeRead返回的io.ReadCloser保留file的签名。
+func GetRangeReaderFromMFile(size int64, file model.File) model.RangeReaderIF {
+	return &model.FileRangeReader{
+		RangeReaderIF: RangeReaderFunc(func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
 		length := httpRange.Length
 		if length < 0 || httpRange.Start+length > size {
 			length = size - httpRange.Start
 		}
 		return &model.FileCloser{File: io.NewSectionReader(file, httpRange.Start, length)}, nil
+		}),
 	}
 }
 

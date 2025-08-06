@@ -249,10 +249,8 @@ func (d *Local) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (
 		link.MFile = open
 	}
 	link.AddIfCloser(link.MFile)
-	if link.MFile != nil && !d.Config().OnlyLinkMFile {
-		link.RangeReader = &model.FileRangeReader{
-			RangeReaderIF: stream.GetRangeReaderFromMFile(link.ContentLength, link.MFile),
-		}
+	if !d.Config().OnlyLinkMFile {
+		link.RangeReader = stream.GetRangeReaderFromMFile(link.ContentLength, link.MFile)
 		link.MFile = nil
 	}
 	return link, nil
