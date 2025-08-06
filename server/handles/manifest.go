@@ -2,7 +2,6 @@ package handles
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
