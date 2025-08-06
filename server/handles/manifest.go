@@ -51,7 +51,7 @@ func ManifestJSON(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "application/json")
-	c.Header("Cache-Control", "public, max-age=3600") // 缓存1小时
+	c.Header("Cache-Control", "public, max-age=3600") // cache for 1 hour
 	
 	if err := json.NewEncoder(c.Writer).Encode(manifest); err != nil {
 		utils.Log.Errorf("Failed to encode manifest.json: %v", err)
