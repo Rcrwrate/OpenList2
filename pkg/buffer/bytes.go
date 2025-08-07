@@ -22,14 +22,14 @@ func (b *Bytes) Append(buf []byte) {
 
 func (b *Bytes) Read(p []byte) (int, error) {
 	n, err := b.ReadAt(p, int64(b.offset))
-	if err == nil || err == io.EOF {
+	if n > 0 {
 		b.offset += n
 	}
 	return n, err
 }
 
 func (b *Bytes) ReadAt(p []byte, off int64) (int, error) {
-	if off < 0 || off > int64(b.length) {
+	if off < 0 || off >= int64(b.length) {
 		return 0, io.EOF
 	}
 
