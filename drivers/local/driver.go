@@ -311,8 +311,8 @@ func (d *Local) Move(ctx context.Context, srcObj, dstDir model.Obj) error {
 	} else {
 		if err == nil {
 			if d.directoryMap.Has(filepath.Dir(srcPath)) {
-				d.directoryMap.UpdateDirSize(filepath.Dir(srcObj.GetPath()))
-				d.directoryMap.UpdateDirParents(filepath.Dir(srcObj.GetPath()))
+				d.directoryMap.UpdateDirSize(filepath.Dir(srcPath))
+				d.directoryMap.UpdateDirParents(filepath.Dir(srcPath))
 			}
 			if d.directoryMap.Has(filepath.Dir(dstPath)) {
 				d.directoryMap.UpdateDirSize(filepath.Dir(dstPath))
