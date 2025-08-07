@@ -92,9 +92,15 @@ func initIndex(siteConfig SiteConfig) {
 		utils.Log.Debug("Successfully read index.html from static files system")
 	}
 	utils.Log.Debug("Replacing placeholders in index.html...")
+	// Construct the correct manifest path based on basePath
+	manifestPath := "/static/manifest.json"
+	if siteConfig.BasePath != "/" {
+		manifestPath = siteConfig.BasePath + "/static/manifest.json"
+	}
 	replaceMap := map[string]string{
-		"cdn: undefined":       fmt.Sprintf("cdn: '%s'", siteConfig.Cdn),
-		"base_path: undefined": fmt.Sprintf("base_path: '%s'", siteConfig.BasePath),
+		"cdn: undefined":                    fmt.Sprintf("cdn: '%s'", siteConfig.Cdn),
+		"base_path: undefined":              fmt.Sprintf("base_path: '%s'", siteConfig.BasePath),
+		`href="/static/manifest.json"`:      fmt.Sprintf(`href="%s"`, manifestPath),
 	}
 	conf.RawIndexHtml = replaceStrings(conf.RawIndexHtml, replaceMap)
 	UpdateIndex()
@@ -125,19 +131,10 @@ func UpdateIndex() {
 	utils.Log.Debug("Index.html update completed")
 }
 
-// getBasePath returns the cleaned base path, following the same logic as static.go
-func getBasePath() string {
-	basePath := conf.URL.Path
-	if basePath != "" {
-		basePath = utils.FixAndCleanPath(basePath)
-	}
-	if basePath == "" {
-		basePath = "/"
-	}
-	return basePath
-}
-
 func ManifestJSON(c *gin.Context) {
+	// Get site configuration to ensure consistent base path handling
+	siteConfig := getSiteConfig()
+	
 	// Get site title from settings
 	siteTitle := setting.GetStr(conf.SiteTitle)
 	
@@ -145,8 +142,8 @@ func ManifestJSON(c *gin.Context) {
 	logoSetting := setting.GetStr(conf.Logo)
 	logoUrl := strings.Split(logoSetting, "\n")[0]
 
-	// Get the base path for proper routing
-	basePath := getBasePath()
+	// Use base path from site config for consistency
+	basePath := siteConfig.BasePath
 
 	// Determine scope and start_url
 	// PWA scope and start_url should always point to our application's base path
