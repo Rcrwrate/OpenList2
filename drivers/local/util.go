@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"slices"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
@@ -184,16 +185,16 @@ func (m *DirectoryMap) Has(path string) (bool) {
 
 func (m *DirectoryMap) Get(path string) (*DirectoryNode, bool) {
 	value, ok := m.data.Load(path)
-    if !ok {
-        return &DirectoryNode{}, false
-    }
+	if !ok {
+		return &DirectoryNode{}, false
+	}
 
-    node, ok := value.(*DirectoryNode)
-    if !ok {
-        return &DirectoryNode{}, false
-    }
+	node, ok := value.(*DirectoryNode)
+	if !ok {
+		return &DirectoryNode{}, false
+	}
 
-    return node, true
+	return node, true
 }
 
 func (m *DirectoryMap) Set(path string, node *DirectoryNode) {
@@ -217,11 +218,11 @@ func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 		task := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 
-		if (task.cache != nil) {
+		if task.cache != nil {
 			var directorySum int64 = 0
 
-			for _, c := range task.cache.children {
-        		child, ok := m.Get(filepath.Join(task.path, c))
+			for _, filename := range task.cache.children {
+        		child, ok := m.Get(filepath.Join(task.path, filename))
         		if !ok {
         			return 0, fmt.Errorf("child node not found")
         		}
@@ -332,8 +333,15 @@ func (m *DirectoryMap) UpdateDirSize(dirname string) (int64, error) {
     	}
     }
 
+	for _, c := range node.children {
+		if !slices.Contains(children, c) {
+			m.DeleteDirNode(filepath.Join(dirname, c))
+		}
+	}
+
 	node.fileSum = fileSum
 	node.directorySum = directorySum
+	node.children = children
 
 	return fileSum + directorySum, nil
 }
@@ -341,43 +349,42 @@ func (m *DirectoryMap) UpdateDirSize(dirname string) (int64, error) {
 func (m *DirectoryMap) UpdateDirParents(dirname string) (error) {
 	parentPath := filepath.Dir(dirname)
 
-	node, ok := m.Get(parentPath)
-	if !ok {
-		return fmt.Errorf("directory node not found")
-	}
-
- 	var directorySum int64 = 0
+	for parentPath != m.root {
+		if node, ok := m.Get(parentPath); ok {
+			var directorySum int64 = 0
  
- 	for _, c := range node.children {
-		child, ok := m.Get(filepath.Join(parentPath, c))
-		if !ok {
-			return fmt.Errorf("child node not found")
+		 	for _, c := range node.children {
+				child, ok := m.Get(filepath.Join(parentPath, c))
+				if !ok {
+					return fmt.Errorf("child node not found")
+				}
+ 				directorySum += child.fileSum + child.directorySum
+		 	}
+
+			node.directorySum = directorySum
 		}
- 		directorySum += child.fileSum + child.directorySum
- 	}
 
-	node.directorySum = directorySum
-
-	if parentPath != m.root {
-		return m.UpdateDirParents(parentPath)
+		parentPath = filepath.Dir(parentPath)
 	}
 
 	return  nil
 }
 
 func (m *DirectoryMap) DeleteDirNode(dirname string) (error) {
-	node, ok := m.Get(dirname)
-	if !ok {
-		return fmt.Errorf("directory node not found")
-	}
+	stack := []string{dirname}
 
-	for _, c := range node.children {
-		if err := m.DeleteDirNode(filepath.Join(dirname, c)); err != nil {
-			return err
+	for len(stack) > 0 {
+		current := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		if node, ok := m.Get(dirname); ok {
+			for _, filename := range node.children {
+				stack = append(stack, filepath.Join(dirname, filename))
+			}
+
+			m.Delete(current)
 		}
 	}
-
-	m.Delete(dirname)
 
 	return nil
 }
