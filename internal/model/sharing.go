@@ -3,7 +3,7 @@ package model
 import "time"
 
 type SharingDB struct {
-	ID          string     `json:"id" gorm:"primaryKey"`
+	ID          string     `json:"id" gorm:"type:char(12);primaryKey"`
 	FilesRaw    string     `json:"-" gorm:"type:text"`
 	Expires     *time.Time `json:"expires"`
 	Pwd         string     `json:"pwd"`
@@ -12,8 +12,8 @@ type SharingDB struct {
 	CreatorId   uint       `json:"-"`
 	Disabled    bool       `json:"disabled"`
 	Remark      string     `json:"remark"`
-	Readme      string     `json:"readme"`
-	Header      string     `json:"header"`
+	Readme      string     `json:"readme" gorm:"type:text"`
+	Header      string     `json:"header" gorm:"type:text"`
 	Sort
 }
 

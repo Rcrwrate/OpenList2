@@ -114,11 +114,11 @@ func GetSharingActualPath(sharing *model.Sharing, path string) (storage driver.D
 	return
 }
 
-func CreateSharing(sharing *model.Sharing) (err error) {
+func CreateSharing(sharing *model.Sharing) (id string, err error) {
 	sharing.CreatorId = sharing.Creator.ID
 	sharing.FilesRaw, err = utils.Json.MarshalToString(utils.MustSliceConvert(sharing.Files, utils.FixAndCleanPath))
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 	return db.CreateSharing(sharing.SharingDB)
 }

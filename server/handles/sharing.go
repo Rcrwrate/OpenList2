@@ -300,7 +300,7 @@ func GetSharing(c *gin.Context) {
 	sid := c.Query("id")
 	user := c.Request.Context().Value(conf.UserKey).(*model.User)
 	s, err := op.GetSharingById(sid)
-	if err != nil || s.Creator.ID != user.ID {
+	if err != nil || (!user.IsAdmin() && s.Creator.ID != user.ID) {
 		common.ErrorStrResp(c, "sharing not found", 404)
 		return
 	}
@@ -376,6 +376,14 @@ func UpdateSharing(c *gin.Context) {
 		common.ErrorStrResp(c, "permission denied", 403)
 		return
 	}
+	if !user.IsAdmin() {
+		for _, s := range req.Files {
+			if !strings.HasPrefix(s, user.BasePath) {
+				common.ErrorStrResp(c, fmt.Sprintf("permission denied to share path [%s]", s), 500)
+				return
+			}
+		}
+	}
 	s, err := op.GetSharingById(req.ID)
 	if err != nil || (!user.IsAdmin() && s.CreatorId != user.ID) {
 		common.ErrorStrResp(c, "sharing not found", 404)
@@ -394,13 +402,18 @@ func UpdateSharing(c *gin.Context) {
 	if err = op.UpdateSharing(s); err != nil {
 		common.ErrorResp(c, err, 500)
 	} else {
-		common.SuccessResp(c)
+		common.SuccessResp(c, SharingResp{
+			Sharing:     s,
+			CreatorName: s.Creator.Username,
+			CreatorRole: s.Creator.Role,
+		})
 	}
 }
 
 func CreateSharing(c *gin.Context) {
 	var req CreateSharingReq
-	if err := c.ShouldBind(&req); err != nil {
+	var err error
+	if err = c.ShouldBind(&req); err != nil {
 		common.ErrorResp(c, err, 400)
 		return
 	}
@@ -412,6 +425,14 @@ func CreateSharing(c *gin.Context) {
 	if !user.CanShare() {
 		common.ErrorStrResp(c, "permission denied", 403)
 		return
+	}
+	if !user.IsAdmin() {
+		for _, s := range req.Files {
+			if !strings.HasPrefix(s, user.BasePath) {
+				common.ErrorStrResp(c, fmt.Sprintf("permission denied to share path [%s]", s), 500)
+				return
+			}
+		}
 	}
 	s := &model.Sharing{
 		SharingDB: &model.SharingDB{
@@ -428,10 +449,16 @@ func CreateSharing(c *gin.Context) {
 		Files:   req.Files,
 		Creator: user,
 	}
-	if err := op.CreateSharing(s); err != nil {
+	var id string
+	if id, err = op.CreateSharing(s); err != nil {
 		common.ErrorResp(c, err, 500)
 	} else {
-		common.SuccessResp(c)
+		s.ID = id
+		common.SuccessResp(c, SharingResp{
+			Sharing:     s,
+			CreatorName: s.Creator.Username,
+			CreatorRole: s.Creator.Role,
+		})
 	}
 }
 

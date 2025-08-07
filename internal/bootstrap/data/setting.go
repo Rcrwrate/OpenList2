@@ -167,7 +167,7 @@ func InitialSettings() []model.SettingItem {
 		{Key: conf.SharePreview, Value: "false", Type: conf.TypeBool, Group: model.GLOBAL, Flag: model.PUBLIC},
 		{Key: conf.ShareArchivePreview, Value: "false", Type: conf.TypeBool, Group: model.GLOBAL, Flag: model.PUBLIC},
 		{Key: conf.ShareForceProxy, Value: "true", Type: conf.TypeBool, Group: model.GLOBAL, Flag: model.PRIVATE},
-		{Key: conf.ShareSummaryContent, Value: "@{{username}} shared {{#each files}}{{#if @first}}{{this}}{{/if}}{{#if @last}}{{#if (neq @index 0)}} and {{@index}} more files{{/if}}{{/if}}{{/each}} from {{site_title}}: {{url}}{{#if has_pwd}} , the share code is {{pwd}}{{/if}}", Type: conf.TypeText, Group: model.GLOBAL, Flag: model.PUBLIC},
+		{Key: conf.ShareSummaryContent, Value: "@{{creator}} shared {{#each files}}{{#if @first}}\"{{filename this}}\"{{/if}}{{#if @last}}{{#unless (eq @index 0)}} and {{@index}} more files{{/unless}}{{/if}}{{/each}} from {{site_title}}: {{base_url}}/@s/{{id}}{{#if pwd}} , the share code is {{pwd}}{{/if}}{{#if expires}}, please access before {{dateLocaleString expires}}.{{/if}}", Type: conf.TypeText, Group: model.GLOBAL, Flag: model.PUBLIC},
 
 		// single settings
 		{Key: conf.Token, Value: token, Type: conf.TypeString, Group: model.SINGLE, Flag: model.PRIVATE},
