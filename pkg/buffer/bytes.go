@@ -5,8 +5,9 @@ import (
 	"io"
 )
 
+// Bytes用于存储不复用的[]byte
 type Bytes struct {
-	bytes  [][]byte
+	bufs   [][]byte
 	length int
 	offset int
 }
@@ -17,7 +18,7 @@ func (b *Bytes) Len() int {
 
 func (b *Bytes) Append(buf []byte) {
 	b.length += len(buf)
-	b.bytes = append(b.bytes, buf)
+	b.bufs = append(b.bufs, buf)
 }
 
 func (b *Bytes) Read(p []byte) (int, error) {
@@ -33,29 +34,26 @@ func (b *Bytes) ReadAt(p []byte, off int64) (int, error) {
 		return 0, io.EOF
 	}
 
-	n, right := 0, int64(0)
+	n, length := 0, int64(0)
 	readFrom := false
-	for idx := range b.bytes {
-		newRight := right + int64(len(b.bytes[idx]))
+	for _, buf := range b.bufs {
+		newLength := length + int64(len(buf))
 		if readFrom {
-			w := copy(p[n:], b.bytes[idx])
+			w := copy(p[n:], buf)
 			n += w
-		} else if off < newRight {
+		} else if off < newLength {
 			readFrom = true
-			bufOffset := int(off - right)
-			w := copy(p[n:], b.bytes[idx][bufOffset:])
+			bufOffset := int(off - length)
+			w := copy(p[n:], buf[bufOffset:])
 			n += w
 		}
-		right = newRight
 		if n == len(p) {
 			return n, nil
 		}
+		length = newLength
 	}
 
-	if n < len(p) {
-		return n, io.EOF
-	}
-	return n, nil
+	return n, io.EOF
 }
 
 func (b *Bytes) Seek(offset int64, whence int) (int64, error) {
@@ -80,8 +78,16 @@ func (b *Bytes) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (b *Bytes) Reset() {
-	clear(b.bytes)
-	b.bytes = nil
+	clear(b.bufs)
+	b.bufs = nil
 	b.length = 0
 	b.offset = 0
+}
+
+func NewBytes(buf ...[]byte) *Bytes {
+	b := &Bytes{}
+	for _, b1 := range buf {
+		b.Append(b1)
+	}
+	return b
 }
