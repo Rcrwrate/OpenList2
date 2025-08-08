@@ -298,32 +298,29 @@ func (d *Local) Move(ctx context.Context, srcObj, dstDir model.Obj) error {
 	}
 	err := os.Rename(srcPath, dstPath)
 	if err != nil && strings.Contains(err.Error(), "invalid cross-device link") {
-		// Handle cross-device file move in local driver
-		if err = d.Copy(ctx, srcObj, dstDir); err != nil {
-			return err
-		} else {
-			// Directly remove file without check recycle bin if successfully copied
-			if srcObj.IsDir() {
-				err = os.RemoveAll(srcObj.GetPath())
-			} else {
-				err = os.Remove(srcObj.GetPath())
-			}
+		// 跨设备移动，先复制再删除
+		if err := d.Copy(ctx, srcObj, dstDir); err != nil {
 			return err
 		}
-	} else {
-		if err == nil {
-			if d.directoryMap.Has(filepath.Dir(srcPath)) {
-				d.directoryMap.UpdateDirSize(filepath.Dir(srcPath))
-				d.directoryMap.UpdateDirParents(filepath.Dir(srcPath))
-			}
-			if d.directoryMap.Has(filepath.Dir(dstPath)) {
-				d.directoryMap.UpdateDirSize(filepath.Dir(dstPath))
-				d.directoryMap.UpdateDirParents(filepath.Dir(dstPath))
-			}
+		// 复制成功后直接删除源文件/文件夹
+		if srcObj.IsDir() {
+			return os.RemoveAll(srcObj.GetPath())
 		}
-
-		return err
+		return os.Remove(srcObj.GetPath())
 	}
+	if err == nil {
+		srcParent := filepath.Dir(srcPath)
+		dstParent := filepath.Dir(dstPath)
+		if d.directoryMap.Has(srcParent) {
+			d.directoryMap.UpdateDirSize(srcParent)
+			d.directoryMap.UpdateDirParents(srcParent)
+		}
+		if d.directoryMap.Has(dstParent) {
+			d.directoryMap.UpdateDirSize(dstParent)
+			d.directoryMap.UpdateDirParents(dstParent)
+		}
+	}
+	return err
 }
 
 func (d *Local) Rename(ctx context.Context, srcObj model.Obj, newName string) error {
