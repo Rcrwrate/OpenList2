@@ -32,7 +32,7 @@ func get(ctx context.Context, sid, path string, args model.SharingListArgs) (*mo
 		if unwrapPath != "/" {
 			virtualFiles := op.GetStorageVirtualFilesByPath(stdpath.Dir(unwrapPath))
 			for _, f := range virtualFiles {
-				if f.GetName() == stdpath.Base(path) {
+				if f.GetName() == stdpath.Base(unwrapPath) {
 					return sharing, f, nil
 				}
 			}
