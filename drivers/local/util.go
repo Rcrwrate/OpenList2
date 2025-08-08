@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"slices"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
@@ -162,22 +162,22 @@ type DirectoryMap struct {
 }
 
 type DirectoryNode struct {
-	fileSum int64
+	fileSum      int64
 	directorySum int64
-	children []string
+	children     []string
 }
 
 type DirectoryTask struct {
-	path string
+	path  string
 	cache *DirectoryTaskCache
 }
 
 type DirectoryTaskCache struct {
-	fileSum int64
+	fileSum  int64
 	children []string
 }
 
-func (m *DirectoryMap) Has(path string) (bool) {
+func (m *DirectoryMap) Has(path string) bool {
 	_, ok := m.data.Load(path)
 
 	return ok
@@ -211,7 +211,7 @@ func (m *DirectoryMap) Clear() {
 
 func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 	stack := []DirectoryTask{
-		{ path: dirname },
+		{path: dirname},
 	}
 
 	for len(stack) > 0 {
@@ -230,9 +230,9 @@ func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 			}
 
 			m.Set(task.path, &DirectoryNode{
-				fileSum: task.cache.fileSum,
+				fileSum:      task.cache.fileSum,
 				directorySum: directorySum,
-				children: task.cache.children,
+				children:     task.cache.children,
 			})
 
 			continue
@@ -272,7 +272,7 @@ func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 			stack = append(stack, DirectoryTask{
 				path: task.path,
 				cache: &DirectoryTaskCache{
-					fileSum: fileSum,
+					fileSum:  fileSum,
 					children: children,
 				},
 			})
@@ -283,9 +283,9 @@ func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 		}
 
 		m.Set(task.path, &DirectoryNode{
-			fileSum: fileSum,
+			fileSum:      fileSum,
 			directorySum: directorySum,
-			children: children,
+			children:     children,
 		})
 	}
 
@@ -346,13 +346,12 @@ func (m *DirectoryMap) UpdateDirSize(dirname string) (int64, error) {
 	return fileSum + directorySum, nil
 }
 
-func (m *DirectoryMap) UpdateDirParents(dirname string) (error) {
+func (m *DirectoryMap) UpdateDirParents(dirname string) error {
 	parentPath := filepath.Dir(dirname)
-
-	for parentPath != m.root {
+	for parentPath != m.root || strings.HasPrefix(m.root, parentPath) {
 		if node, ok := m.Get(parentPath); ok {
 			var directorySum int64 = 0
- 
+
 			for _, c := range node.children {
 				child, ok := m.Get(filepath.Join(parentPath, c))
 				if !ok {
@@ -370,7 +369,7 @@ func (m *DirectoryMap) UpdateDirParents(dirname string) (error) {
 	return nil
 }
 
-func (m *DirectoryMap) DeleteDirNode(dirname string) (error) {
+func (m *DirectoryMap) DeleteDirNode(dirname string) error {
 	stack := []string{dirname}
 
 	for len(stack) > 0 {
