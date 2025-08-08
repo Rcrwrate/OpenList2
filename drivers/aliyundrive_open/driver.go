@@ -24,9 +24,17 @@ type AliyundriveOpen struct {
 
 	DriveId string
 
-	limitList func(ctx context.Context, data base.Json) (*Files, error)
-	limitLink func(ctx context.Context, file model.Obj) (*model.Link, error)
-	ref       *AliyundriveOpen
+	limitList    func(ctx context.Context, data base.Json) (*Files, error)
+	limitLink    func(ctx context.Context, file model.Obj) (*model.Link, error)
+	limitRemove  func(ctx context.Context, file model.Obj) (struct{}, error)
+	limitMakeDir func(ctx context.Context, arg makeDirArg) (model.Obj, error)
+	ref          *AliyundriveOpen
+}
+
+// MakeDir need 2 arguments except ctx, create a new struct to avoid create a new rateg.LimitFnCtx
+type makeDirArg struct {
+	parentDir model.Obj
+	dirName   string
 }
 
 func (d *AliyundriveOpen) Config() driver.Config {
@@ -50,11 +58,22 @@ func (d *AliyundriveOpen) Init(ctx context.Context) error {
 	}
 	d.DriveId = utils.Json.Get(res, d.DriveType+"_drive_id").ToString()
 	d.limitList = rateg.LimitFnCtx(d.list, rateg.LimitFnOption{
-		Limit:  4,
+		//Limit:  4,
+		Limit:  3.8,
 		Bucket: 1,
 	})
 	d.limitLink = rateg.LimitFnCtx(d.link, rateg.LimitFnOption{
-		Limit:  1,
+		//Limit:  1,
+		Limit:  0.9,
+		Bucket: 1,
+	})
+	d.limitRemove = rateg.LimitFnCtx(d.remove, rateg.LimitFnOption{
+		// Limit:0.28, got "请求过快，请等待 3306 毫秒后再请求", maybe 1 request per 3.5 seconds?
+		Limit:  0.24,
+		Bucket: 1,
+	})
+	d.limitMakeDir = rateg.LimitFnCtx(d.makeDir, rateg.LimitFnOption{
+		Limit:  0.24,
 		Bucket: 1,
 	})
 	return nil
@@ -139,7 +158,8 @@ func (d *AliyundriveOpen) Link(ctx context.Context, file model.Obj, args model.L
 	return d.limitLink(ctx, file)
 }
 
-func (d *AliyundriveOpen) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) (model.Obj, error) {
+func (d *AliyundriveOpen) makeDir(ctx context.Context, arg makeDirArg) (model.Obj, error) {
+	parentDir, dirName := arg.parentDir, arg.dirName
 	nowTime, _ := getNowTime()
 	newDir := File{CreatedAt: nowTime, UpdatedAt: nowTime}
 	_, err := d.request("/adrive/v1.0/openFile/create", http.MethodPost, func(req *resty.Request) {
@@ -164,6 +184,16 @@ func (d *AliyundriveOpen) MakeDir(ctx context.Context, parentDir model.Obj, dirN
 	}
 
 	return obj, nil
+}
+
+func (d *AliyundriveOpen) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) (model.Obj, error) {
+	if d.limitMakeDir == nil {
+		return nil, fmt.Errorf("driver not init")
+	}
+	return d.limitMakeDir(ctx, makeDirArg{
+		parentDir: parentDir,
+		dirName:   dirName,
+	})
 }
 
 func (d *AliyundriveOpen) Move(ctx context.Context, srcObj, dstDir model.Obj) (model.Obj, error) {
@@ -251,7 +281,7 @@ func (d *AliyundriveOpen) Copy(ctx context.Context, srcObj, dstDir model.Obj) er
 	return nil
 }
 
-func (d *AliyundriveOpen) Remove(ctx context.Context, obj model.Obj) error {
+func (d *AliyundriveOpen) remove(ctx context.Context, obj model.Obj) (struct{}, error) {
 	uri := "/adrive/v1.0/openFile/recyclebin/trash"
 	if d.RemoveWay == "delete" {
 		uri = "/adrive/v1.0/openFile/delete"
@@ -262,6 +292,15 @@ func (d *AliyundriveOpen) Remove(ctx context.Context, obj model.Obj) error {
 			"file_id":  obj.GetID(),
 		})
 	})
+	// Create a struct{} to return an empty value inorder to avoid create a new rateg.LimitFnCtx
+	return struct{}{}, err
+}
+
+func (d *AliyundriveOpen) Remove(ctx context.Context, obj model.Obj) error {
+	if d.limitRemove == nil {
+		return fmt.Errorf("driver not init")
+	}
+	_, err := d.limitRemove(ctx, obj)
 	return err
 }
 
