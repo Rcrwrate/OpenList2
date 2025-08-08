@@ -93,14 +93,14 @@ func initIndex(siteConfig SiteConfig) {
 	}
 	utils.Log.Debug("Replacing placeholders in index.html...")
 	// Construct the correct manifest path based on basePath
-	manifestPath := "/static/manifest.json"
+	manifestPath := "/manifest.json"
 	if siteConfig.BasePath != "/" {
-		manifestPath = siteConfig.BasePath + "/static/manifest.json"
+		manifestPath = siteConfig.BasePath + "/manifest.json"
 	}
 	replaceMap := map[string]string{
 		"cdn: undefined":                    fmt.Sprintf("cdn: '%s'", siteConfig.Cdn),
 		"base_path: undefined":              fmt.Sprintf("base_path: '%s'", siteConfig.BasePath),
-		`href="/static/manifest.json"`:      fmt.Sprintf(`href="%s"`, manifestPath),
+		`href="/manifest.json"`:             fmt.Sprintf(`href="%s"`, manifestPath),
 	}
 	conf.RawIndexHtml = replaceStrings(conf.RawIndexHtml, replaceMap)
 	UpdateIndex()
@@ -192,42 +192,18 @@ func Static(r *gin.RouterGroup, noRoute func(handlers ...gin.HandlerFunc)) {
 			}
 		})
 		for _, folder := range folders {
-			if folder == "static" {
-				// Handle static folder specially to include manifest.json handling
-				sub, err := fs.Sub(static, folder)
-				if err != nil {
-					utils.Log.Fatalf("can't find folder: %s", folder)
-				}
-				utils.Log.Debugf("Setting up custom route for folder: %s", folder)
-				r.GET("/static/*filepath", func(c *gin.Context) {
-					filepath := c.Param("filepath")
-					// Handle manifest.json specially
-					if filepath == "/manifest.json" {
-						ManifestJSON(c)
-						return
-					}
-					// For other files, serve from filesystem
-					http.StripPrefix("/static/", http.FileServer(http.FS(sub))).ServeHTTP(c.Writer, c.Request)
-				})
-			} else {
-				sub, err := fs.Sub(static, folder)
-				if err != nil {
-					utils.Log.Fatalf("can't find folder: %s", folder)
-				}
-				utils.Log.Debugf("Setting up route for folder: %s", folder)
-				r.StaticFS(fmt.Sprintf("/%s/", folder), http.FS(sub))
+			sub, err := fs.Sub(static, folder)
+			if err != nil {
+				utils.Log.Fatalf("can't find folder: %s", folder)
 			}
+			utils.Log.Debugf("Setting up route for folder: %s", folder)
+			r.StaticFS(fmt.Sprintf("/%s/", folder), http.FS(sub))
 		}
 	} else {
 		// Ensure static file redirected to CDN
 		for _, folder := range folders {
 			r.GET(fmt.Sprintf("/%s/*filepath", folder), func(c *gin.Context) {
 				filepath := c.Param("filepath")
-				// Handle manifest.json specially
-				if folder == "static" && filepath == "/manifest.json" {
-					ManifestJSON(c)
-					return
-				}
 				c.Redirect(http.StatusFound, fmt.Sprintf("%s/%s%s", siteConfig.Cdn, folder, filepath))
 			})
 		}
