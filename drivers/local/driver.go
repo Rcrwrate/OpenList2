@@ -136,7 +136,7 @@ func (d *Local) GetAddition() driver.Additional {
 func (d *Local) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([]model.Obj, error) {
 	fullPath := dir.GetPath()
 	rawFiles, err := readDir(fullPath)
-	if args.Refresh {
+	if d.DirectorySize && args.Refresh {
 		d.directoryMap.Clear()
 		d.directoryMap.CalculateDirSize(d.directoryMap.root)
 	}
