@@ -292,7 +292,7 @@ func (d *AliyundriveOpen) remove(ctx context.Context, obj model.Obj) (struct{}, 
 			"file_id":  obj.GetID(),
 		})
 	})
-	// Create a struct{} to return an empty value inorder to avoid create a new rateg.LimitFnCtx
+	// Create a struct{} to return an empty value in order to avoid creating a new rateg.LimitFnCtx
 	return struct{}{}, err
 }
 
