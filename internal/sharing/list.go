@@ -24,8 +24,12 @@ func list(ctx context.Context, sid, path string, args model.SharingListArgs) (*m
 	}
 	path = utils.FixAndCleanPath(path)
 	if len(sharing.Files) == 1 || path != "/" {
-		virtualFiles := op.GetStorageVirtualFilesByPath(path)
-		storage, actualPath, err := op.GetSharingActualPath(sharing, path)
+		unwrapPath, err := op.GetSharingUnwrapPath(sharing, path)
+		if err != nil {
+			return nil, nil, errors.WithMessage(err, "failed get sharing unwrap path")
+		}
+		virtualFiles := op.GetStorageVirtualFilesByPath(unwrapPath)
+		storage, actualPath, err := op.GetStorageAndActualPath(unwrapPath)
 		if err != nil && len(virtualFiles) == 0 {
 			return nil, nil, errors.WithMessage(err, "failed list sharing")
 		}

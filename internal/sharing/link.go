@@ -26,7 +26,11 @@ func link(ctx context.Context, sid, path string, args *LinkArgs) (*model.Sharing
 	}
 	path = utils.FixAndCleanPath(path)
 	if len(sharing.Files) == 1 || path != "/" {
-		storage, actualPath, err := op.GetSharingActualPath(sharing, path)
+		unwrapPath, err := op.GetSharingUnwrapPath(sharing, path)
+		if err != nil {
+			return nil, nil, nil, nil, errors.WithMessage(err, "failed get sharing unwrap path")
+		}
+		storage, actualPath, err := op.GetStorageAndActualPath(unwrapPath)
 		if err != nil {
 			return nil, nil, nil, nil, errors.WithMessage(err, "failed get sharing link")
 		}

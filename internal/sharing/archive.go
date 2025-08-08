@@ -23,7 +23,11 @@ func archiveMeta(ctx context.Context, sid, path string, args model.SharingArchiv
 	}
 	path = utils.FixAndCleanPath(path)
 	if len(sharing.Files) == 1 || path != "/" {
-		storage, actualPath, err := op.GetSharingActualPath(sharing, path)
+		unwrapPath, err := op.GetSharingUnwrapPath(sharing, path)
+		if err != nil {
+			return nil, nil, errors.WithMessage(err, "failed get sharing unwrap path")
+		}
+		storage, actualPath, err := op.GetStorageAndActualPath(unwrapPath)
 		if err != nil {
 			return nil, nil, errors.WithMessage(err, "failed get sharing file")
 		}
@@ -46,7 +50,11 @@ func archiveList(ctx context.Context, sid, path string, args model.SharingArchiv
 	}
 	path = utils.FixAndCleanPath(path)
 	if len(sharing.Files) == 1 || path != "/" {
-		storage, actualPath, err := op.GetSharingActualPath(sharing, path)
+		unwrapPath, err := op.GetSharingUnwrapPath(sharing, path)
+		if err != nil {
+			return nil, nil, errors.WithMessage(err, "failed get sharing unwrap path")
+		}
+		storage, actualPath, err := op.GetStorageAndActualPath(unwrapPath)
 		if err != nil {
 			return nil, nil, errors.WithMessage(err, "failed get sharing file")
 		}

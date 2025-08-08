@@ -25,8 +25,12 @@ func get(ctx context.Context, sid, path string, args model.SharingListArgs) (*mo
 	}
 	path = utils.FixAndCleanPath(path)
 	if len(sharing.Files) == 1 || path != "/" {
-		if path != "/" {
-			virtualFiles := op.GetStorageVirtualFilesByPath(stdpath.Dir(path))
+		unwrapPath, err := op.GetSharingUnwrapPath(sharing, path)
+		if err != nil {
+			return nil, nil, errors.WithMessage(err, "failed get sharing unwrap path")
+		}
+		if unwrapPath != "/" {
+			virtualFiles := op.GetStorageVirtualFilesByPath(stdpath.Dir(unwrapPath))
 			for _, f := range virtualFiles {
 				if f.GetName() == stdpath.Base(path) {
 					return sharing, f, nil
@@ -40,7 +44,7 @@ func get(ctx context.Context, sid, path string, args model.SharingListArgs) (*mo
 				IsFolder: true,
 			}, nil
 		}
-		storage, actualPath, err := op.GetSharingActualPath(sharing, path)
+		storage, actualPath, err := op.GetStorageAndActualPath(unwrapPath)
 		if err != nil {
 			return nil, nil, errors.WithMessage(err, "failed get sharing file")
 		}

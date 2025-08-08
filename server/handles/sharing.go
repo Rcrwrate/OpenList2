@@ -239,7 +239,12 @@ func SharingArchiveExtract(c *gin.Context) {
 	if dealError(c, err) {
 		return
 	}
-	storage, actualPath, err := op.GetSharingActualPath(s, path)
+	unwrapPath, err := op.GetSharingUnwrapPath(s, path)
+	if err != nil {
+		common.ErrorStrResp(c, "failed get sharing unwrap path", 500)
+		return
+	}
+	storage, actualPath, err := op.GetStorageAndActualPath(unwrapPath)
 	if dealError(c, err) {
 		return
 	}

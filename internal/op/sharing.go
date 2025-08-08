@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/db"
-	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/pkg/singleflight"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
@@ -88,16 +87,16 @@ func GetSharingsByCreatorId(userId uint, pageIndex, pageSize int) ([]model.Shari
 	return makeJoined(s), cnt, nil
 }
 
-func GetSharingActualPath(sharing *model.Sharing, path string) (storage driver.Driver, actualPath string, err error) {
+func GetSharingUnwrapPath(sharing *model.Sharing, path string) (unwrapPath string, err error) {
 	if len(sharing.Files) == 0 {
-		return nil, "", errors.New("cannot get actual path of an invalid sharing")
+		return "", errors.New("cannot get actual path of an invalid sharing")
 	}
 	if len(sharing.Files) == 1 {
-		return GetStorageAndActualPath(stdpath.Join(sharing.Files[0], path))
+		return stdpath.Join(sharing.Files[0], path), nil
 	}
 	path = utils.FixAndCleanPath(path)[1:]
 	if len(path) == 0 {
-		return nil, "", errors.New("cannot get actual path of a sharing root path")
+		return "", errors.New("cannot get actual path of a sharing root path")
 	}
 	mapPath := ""
 	child, rest, _ := strings.Cut(path, "/")
@@ -108,10 +107,9 @@ func GetSharingActualPath(sharing *model.Sharing, path string) (storage driver.D
 		}
 	}
 	if mapPath == "" {
-		return nil, "", fmt.Errorf("failed find child [%s] of sharing [%s]", child, sharing.ID)
+		return "", fmt.Errorf("failed find child [%s] of sharing [%s]", child, sharing.ID)
 	}
-	storage, actualPath, err = GetStorageAndActualPath(stdpath.Join(mapPath, rest))
-	return
+	return stdpath.Join(mapPath, rest), nil
 }
 
 func CreateSharing(sharing *model.Sharing) (id string, err error) {
