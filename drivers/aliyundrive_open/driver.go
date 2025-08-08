@@ -31,7 +31,7 @@ type AliyundriveOpen struct {
 	ref          *AliyundriveOpen
 }
 
-// MakeDir need 2 arguments except ctx, create a new struct to avoid create a new rateg.LimitFnCtx
+// MakeDir needs 2 arguments except ctx, create a new struct to avoid creating a new rateg.LimitFnCtx
 type makeDirArg struct {
 	parentDir model.Obj
 	dirName   string
