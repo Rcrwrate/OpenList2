@@ -1,12 +1,14 @@
 package stream
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
@@ -24,7 +26,7 @@ func (f RangeReaderFunc) RangeRead(ctx context.Context, httpRange http_range.Ran
 
 func GetRangeReaderFromLink(size int64, link *model.Link) (model.RangeReaderIF, error) {
 	if link.MFile != nil {
-		return &model.FileRangeReader{RangeReaderIF: GetRangeReaderFromMFile(size, link.MFile)}, nil
+		return GetRangeReaderFromMFile(size, link.MFile), nil
 	}
 	if link.Concurrency > 0 || link.PartSize > 0 {
 		down := net.NewDownloader(func(d *net.Downloader) {
@@ -95,13 +97,16 @@ func GetRangeReaderFromLink(size int64, link *model.Link) (model.RangeReaderIF, 
 	return RateLimitRangeReaderFunc(rangeReader), nil
 }
 
-func GetRangeReaderFromMFile(size int64, file model.File) RangeReaderFunc {
-	return func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
-		length := httpRange.Length
-		if length < 0 || httpRange.Start+length > size {
-			length = size - httpRange.Start
-		}
-		return &model.FileCloser{File: io.NewSectionReader(file, httpRange.Start, length)}, nil
+// RangeReaderIF.RangeRead返回的io.ReadCloser保留file的签名。
+func GetRangeReaderFromMFile(size int64, file model.File) model.RangeReaderIF {
+	return &model.FileRangeReader{
+		RangeReaderIF: RangeReaderFunc(func(ctx context.Context, httpRange http_range.Range) (io.ReadCloser, error) {
+			length := httpRange.Length
+			if length < 0 || httpRange.Start+length > size {
+				length = size - httpRange.Start
+			}
+			return &model.FileCloser{File: io.NewSectionReader(file, httpRange.Start, length)}, nil
+		}),
 	}
 }
 
@@ -186,4 +191,66 @@ func CacheFullInTempFileAndHash(stream model.FileStreamer, up model.UpdateProgre
 		return nil, "", err
 	}
 	return tmpF, hex.EncodeToString(h.Sum(nil)), err
+}
+
+type StreamSectionReader struct {
+	file    model.FileStreamer
+	off     int64
+	bufPool *sync.Pool
+}
+
+func NewStreamSectionReader(file model.FileStreamer, maxBufferSize int) (*StreamSectionReader, error) {
+	ss := &StreamSectionReader{file: file}
+	if file.GetFile() == nil {
+		maxBufferSize = min(maxBufferSize, int(file.GetSize()))
+		if maxBufferSize > conf.MaxBufferLimit {
+			_, err := file.CacheFullInTempFile()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			ss.bufPool = &sync.Pool{
+				New: func() any {
+					return make([]byte, maxBufferSize)
+				},
+			}
+		}
+	}
+	return ss, nil
+}
+
+// 线程不安全
+func (ss *StreamSectionReader) GetSectionReader(off, length int64) (*SectionReader, error) {
+	var cache io.ReaderAt = ss.file.GetFile()
+	var buf []byte
+	if cache == nil {
+		if off != ss.off {
+			return nil, fmt.Errorf("stream not cached: request offset %d != current offset %d", off, ss.off)
+		}
+		tempBuf := ss.bufPool.Get().([]byte)
+		buf = tempBuf[:length]
+		n, err := io.ReadFull(ss.file, buf)
+		if int64(n) != length {
+			return nil, fmt.Errorf("failed to read all data: (expect =%d, actual =%d) %w", length, n, err)
+		}
+		ss.off += int64(n)
+		off = 0
+		cache = bytes.NewReader(buf)
+	}
+	return &SectionReader{io.NewSectionReader(cache, off, length), buf}, nil
+}
+
+func (ss *StreamSectionReader) RecycleSectionReader(sr *SectionReader) {
+	if sr != nil {
+		if sr.buf != nil {
+			ss.bufPool.Put(sr.buf[0:cap(sr.buf)])
+			sr.buf = nil
+		}
+		sr.ReadSeeker = nil
+	}
+}
+
+type SectionReader struct {
+	io.ReadSeeker
+	buf []byte
 }
