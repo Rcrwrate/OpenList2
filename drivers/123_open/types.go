@@ -74,20 +74,20 @@ func (f File) GetName() string {
 
 func (f File) CreateTime() time.Time {
 	// 返回的时间没有时区信息，默认 UTC+8
-	loc, _ := time.LoadLocation("Asia/Shanghai")
+	loc := time.FixedZone("UTC+8", 8*60*60)
 	parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", f.CreateAt, loc)
 	if err != nil {
-		return time.Now().In(loc)
+		return time.Now()
 	}
 	return parsedTime
 }
 
 func (f File) ModTime() time.Time {
 	// 返回的时间没有时区信息，默认 UTC+8
-	loc, _ := time.LoadLocation("Asia/Shanghai")
+	loc := time.FixedZone("UTC+8", 8*60*60)
 	parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", f.UpdateAt, loc)
 	if err != nil {
-		return time.Now().In(loc)
+		return time.Now()
 	}
 	return parsedTime
 }
