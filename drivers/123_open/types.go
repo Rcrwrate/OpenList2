@@ -73,17 +73,21 @@ func (f File) GetName() string {
 }
 
 func (f File) CreateTime() time.Time {
-	parsedTime, err := time.Parse("2006-01-02 15:04:05", f.CreateAt)
+	// 返回的时间没有时区信息，默认 UTF+8
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", f.CreateAt, loc)
 	if err != nil {
-		return time.Now()
+		return time.Now().In(loc)
 	}
 	return parsedTime
 }
 
 func (f File) ModTime() time.Time {
-	parsedTime, err := time.Parse("2006-01-02 15:04:05", f.UpdateAt)
+	// 返回的时间没有时区信息，默认 UTF+8
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", f.UpdateAt, loc)
 	if err != nil {
-		return time.Now()
+		return time.Now().In(loc)
 	}
 	return parsedTime
 }
