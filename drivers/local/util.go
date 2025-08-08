@@ -209,6 +209,25 @@ func (m *DirectoryMap) Clear() {
 	m.data.Clear()
 }
 
+func (m *DirectoryMap) RecalculateDirSize() error {
+	m.Clear()
+	if m.root == "" {
+		return fmt.Errorf("root path is not set")
+	}
+
+	size, err := m.CalculateDirSize(m.root)
+	if err != nil {
+		return err
+	}
+
+	if node, ok := m.Get(m.root); ok {
+		node.fileSum = size
+		node.directorySum = size
+	}
+
+	return nil
+}
+
 func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 	stack := []DirectoryTask{
 		{path: dirname},
@@ -219,7 +238,7 @@ func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 		stack = stack[:len(stack)-1]
 
 		if task.cache != nil {
-			var directorySum int64 = 0
+			directorySum := int64(0)
 
 			for _, filename := range task.cache.children {
 				child, ok := m.Get(filepath.Join(task.path, filename))
@@ -243,8 +262,8 @@ func (m *DirectoryMap) CalculateDirSize(dirname string) (int64, error) {
 			return 0, err
 		}
 
-		var fileSum int64 = 0
-		var directorySum int64 = 0
+		fileSum := int64(0)
+		directorySum := int64(0)
 
 		children := []string{}
 		queue := []DirectoryTask{}
@@ -306,9 +325,8 @@ func (m *DirectoryMap) UpdateDirSize(dirname string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-
-	var fileSum int64 = 0
-	var directorySum int64 = 0
+	fileSum := int64(0)
+	directorySum := int64(0)
 
 	children := []string{}
 
@@ -348,9 +366,9 @@ func (m *DirectoryMap) UpdateDirSize(dirname string) (int64, error) {
 
 func (m *DirectoryMap) UpdateDirParents(dirname string) error {
 	parentPath := filepath.Dir(dirname)
-	for parentPath != m.root || strings.HasPrefix(m.root, parentPath) {
+	for parentPath != m.root && !strings.HasPrefix(m.root, parentPath) {
 		if node, ok := m.Get(parentPath); ok {
-			var directorySum int64 = 0
+			directorySum := int64(0)
 
 			for _, c := range node.children {
 				child, ok := m.Get(filepath.Join(parentPath, c))

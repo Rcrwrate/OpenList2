@@ -137,8 +137,7 @@ func (d *Local) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([
 	fullPath := dir.GetPath()
 	rawFiles, err := readDir(fullPath)
 	if d.DirectorySize && args.Refresh {
-		d.directoryMap.Clear()
-		d.directoryMap.CalculateDirSize(d.directoryMap.root)
+		d.directoryMap.RecalculateDirSize()
 	}
 	if err != nil {
 		return nil, err
