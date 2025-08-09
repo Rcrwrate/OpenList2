@@ -22,7 +22,7 @@ const (
 
 const (
 	listRateLimit       = 3.9  // 4 per second in document, but we use 3.9 per second to be safe
-	linkRateLimit       = 0.9  // 3 per second in document, but we use 0.9 per second to be safe
+	linkRateLimit       = 0.9  // 1 per second in document, but we use 0.9 per second to be safe
 	otherRateLimit      = 14.9 // 15 per second in document, but we use 14.9 per second to be safe
 	globalLimiterUserID = ""   // Global limiter user ID, used to limit the initial requests.
 )
