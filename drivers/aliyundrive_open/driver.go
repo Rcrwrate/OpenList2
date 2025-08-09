@@ -3,7 +3,6 @@ package aliyundrive_open
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/errs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
-	"github.com/OpenListTeam/rateg"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
 )
@@ -24,17 +22,8 @@ type AliyundriveOpen struct {
 
 	DriveId string
 
-	limitList    func(ctx context.Context, data base.Json) (*Files, error)
-	limitLink    func(ctx context.Context, file model.Obj) (*model.Link, error)
-	limitRemove  func(ctx context.Context, file model.Obj) (struct{}, error)
-	limitMakeDir func(ctx context.Context, arg makeDirArg) (model.Obj, error)
-	ref          *AliyundriveOpen
-}
-
-// MakeDir needs 2 arguments except ctx, create a new struct to avoid creating a new rateg.LimitFnCtx
-type makeDirArg struct {
-	parentDir model.Obj
-	dirName   string
+	limiter *limiter
+	ref     *AliyundriveOpen
 }
 
 func (d *AliyundriveOpen) Config() driver.Config {
@@ -46,36 +35,20 @@ func (d *AliyundriveOpen) GetAddition() driver.Additional {
 }
 
 func (d *AliyundriveOpen) Init(ctx context.Context) error {
+	d.limiter = getLimiterForUser("") // First create a globally shared limiter to limit the initial requests.
 	if d.LIVPDownloadFormat == "" {
 		d.LIVPDownloadFormat = "jpeg"
 	}
 	if d.DriveType == "" {
 		d.DriveType = "default"
 	}
-	res, err := d.request("/adrive/v1.0/user/getDriveInfo", http.MethodPost, nil)
+	res, err := d.request(ctx, limiterOther, "/adrive/v1.0/user/getDriveInfo", http.MethodPost, nil)
 	if err != nil {
 		return err
 	}
 	d.DriveId = utils.Json.Get(res, d.DriveType+"_drive_id").ToString()
-	d.limitList = rateg.LimitFnCtx(d.list, rateg.LimitFnOption{
-		//Limit:  4,
-		Limit:  3.8,
-		Bucket: 1,
-	})
-	d.limitLink = rateg.LimitFnCtx(d.link, rateg.LimitFnOption{
-		//Limit:  1,
-		Limit:  0.9,
-		Bucket: 1,
-	})
-	d.limitRemove = rateg.LimitFnCtx(d.remove, rateg.LimitFnOption{
-		// Limit:0.28, got "请求过快，请等待 3306 毫秒后再请求", maybe 1 request per 3.5 seconds?
-		Limit:  0.24,
-		Bucket: 1,
-	})
-	d.limitMakeDir = rateg.LimitFnCtx(d.makeDir, rateg.LimitFnOption{
-		Limit:  0.24,
-		Bucket: 1,
-	})
+	userid := utils.Json.Get(res, "user_id").ToString()
+	d.limiter = getLimiterForUser(userid) // Allocate a corresponding limiter for each user.
 	return nil
 }
 
@@ -106,9 +79,6 @@ func (d *AliyundriveOpen) GetRoot(ctx context.Context) (model.Obj, error) {
 }
 
 func (d *AliyundriveOpen) List(ctx context.Context, dir model.Obj, args model.ListArgs) ([]model.Obj, error) {
-	if d.limitList == nil {
-		return nil, fmt.Errorf("driver not init")
-	}
 	files, err := d.getFiles(ctx, dir.GetID())
 	if err != nil {
 		return nil, err
@@ -126,8 +96,8 @@ func (d *AliyundriveOpen) List(ctx context.Context, dir model.Obj, args model.Li
 	return objs, err
 }
 
-func (d *AliyundriveOpen) link(ctx context.Context, file model.Obj) (*model.Link, error) {
-	res, err := d.request("/adrive/v1.0/openFile/getDownloadUrl", http.MethodPost, func(req *resty.Request) {
+func (d *AliyundriveOpen) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
+	res, err := d.request(ctx, limiterLink, "/adrive/v1.0/openFile/getDownloadUrl", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"drive_id":   d.DriveId,
 			"file_id":    file.GetID(),
@@ -151,18 +121,10 @@ func (d *AliyundriveOpen) link(ctx context.Context, file model.Obj) (*model.Link
 	}, nil
 }
 
-func (d *AliyundriveOpen) Link(ctx context.Context, file model.Obj, args model.LinkArgs) (*model.Link, error) {
-	if d.limitLink == nil {
-		return nil, fmt.Errorf("driver not init")
-	}
-	return d.limitLink(ctx, file)
-}
-
-func (d *AliyundriveOpen) makeDir(ctx context.Context, arg makeDirArg) (model.Obj, error) {
-	parentDir, dirName := arg.parentDir, arg.dirName
+func (d *AliyundriveOpen) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) (model.Obj, error) {
 	nowTime, _ := getNowTime()
 	newDir := File{CreatedAt: nowTime, UpdatedAt: nowTime}
-	_, err := d.request("/adrive/v1.0/openFile/create", http.MethodPost, func(req *resty.Request) {
+	_, err := d.request(ctx, limiterOther, "/adrive/v1.0/openFile/create", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"drive_id":        d.DriveId,
 			"parent_file_id":  parentDir.GetID(),
@@ -186,19 +148,9 @@ func (d *AliyundriveOpen) makeDir(ctx context.Context, arg makeDirArg) (model.Ob
 	return obj, nil
 }
 
-func (d *AliyundriveOpen) MakeDir(ctx context.Context, parentDir model.Obj, dirName string) (model.Obj, error) {
-	if d.limitMakeDir == nil {
-		return nil, fmt.Errorf("driver not init")
-	}
-	return d.limitMakeDir(ctx, makeDirArg{
-		parentDir: parentDir,
-		dirName:   dirName,
-	})
-}
-
 func (d *AliyundriveOpen) Move(ctx context.Context, srcObj, dstDir model.Obj) (model.Obj, error) {
 	var resp MoveOrCopyResp
-	_, err := d.request("/adrive/v1.0/openFile/move", http.MethodPost, func(req *resty.Request) {
+	_, err := d.request(ctx, limiterOther, "/adrive/v1.0/openFile/move", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"drive_id":          d.DriveId,
 			"file_id":           srcObj.GetID(),
@@ -228,7 +180,7 @@ func (d *AliyundriveOpen) Move(ctx context.Context, srcObj, dstDir model.Obj) (m
 
 func (d *AliyundriveOpen) Rename(ctx context.Context, srcObj model.Obj, newName string) (model.Obj, error) {
 	var newFile File
-	_, err := d.request("/adrive/v1.0/openFile/update", http.MethodPost, func(req *resty.Request) {
+	_, err := d.request(ctx, limiterOther, "/adrive/v1.0/openFile/update", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"drive_id": d.DriveId,
 			"file_id":  srcObj.GetID(),
@@ -260,7 +212,7 @@ func (d *AliyundriveOpen) Rename(ctx context.Context, srcObj model.Obj, newName 
 
 func (d *AliyundriveOpen) Copy(ctx context.Context, srcObj, dstDir model.Obj) error {
 	var resp MoveOrCopyResp
-	_, err := d.request("/adrive/v1.0/openFile/copy", http.MethodPost, func(req *resty.Request) {
+	_, err := d.request(ctx, limiterOther, "/adrive/v1.0/openFile/copy", http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"drive_id":          d.DriveId,
 			"file_id":           srcObj.GetID(),
@@ -281,26 +233,17 @@ func (d *AliyundriveOpen) Copy(ctx context.Context, srcObj, dstDir model.Obj) er
 	return nil
 }
 
-func (d *AliyundriveOpen) remove(ctx context.Context, obj model.Obj) (struct{}, error) {
+func (d *AliyundriveOpen) Remove(ctx context.Context, obj model.Obj) error {
 	uri := "/adrive/v1.0/openFile/recyclebin/trash"
 	if d.RemoveWay == "delete" {
 		uri = "/adrive/v1.0/openFile/delete"
 	}
-	_, err := d.request(uri, http.MethodPost, func(req *resty.Request) {
+	_, err := d.request(ctx, limiterOther, uri, http.MethodPost, func(req *resty.Request) {
 		req.SetBody(base.Json{
 			"drive_id": d.DriveId,
 			"file_id":  obj.GetID(),
 		})
 	})
-	// Create a struct{} to return an empty value in order to avoid creating a new rateg.LimitFnCtx
-	return struct{}{}, err
-}
-
-func (d *AliyundriveOpen) Remove(ctx context.Context, obj model.Obj) error {
-	if d.limitRemove == nil {
-		return fmt.Errorf("driver not init")
-	}
-	_, err := d.limitRemove(ctx, obj)
 	return err
 }
 
@@ -334,7 +277,7 @@ func (d *AliyundriveOpen) Other(ctx context.Context, args model.OtherArgs) (inte
 	default:
 		return nil, errs.NotSupport
 	}
-	_, err := d.request(uri, http.MethodPost, func(req *resty.Request) {
+	_, err := d.request(ctx, limiterOther, uri, http.MethodPost, func(req *resty.Request) {
 		req.SetBody(data).SetResult(&resp)
 	})
 	if err != nil {
