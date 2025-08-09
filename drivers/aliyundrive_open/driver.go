@@ -45,6 +45,7 @@ func (d *AliyundriveOpen) Init(ctx context.Context) error {
 	res, err := d.request(ctx, limiterOther, "/adrive/v1.0/user/getDriveInfo", http.MethodPost, nil)
 	if err != nil {
 		d.limiter.free()
+		d.limiter = nil
 		return err
 	}
 	d.DriveId = utils.Json.Get(res, d.DriveType+"_drive_id").ToString()
@@ -65,6 +66,7 @@ func (d *AliyundriveOpen) InitReference(storage driver.Driver) error {
 
 func (d *AliyundriveOpen) Drop(ctx context.Context) error {
 	d.limiter.free()
+	d.limiter = nil
 	d.ref = nil
 	return nil
 }
