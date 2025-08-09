@@ -381,12 +381,12 @@ func UpdateSharing(c *gin.Context) {
 		common.ErrorStrResp(c, "permission denied", 403)
 		return
 	}
-	if !user.IsAdmin() {
-		for _, s := range req.Files {
-			if !strings.HasPrefix(s, user.BasePath) {
-				common.ErrorStrResp(c, fmt.Sprintf("permission denied to share path [%s]", s), 500)
-				return
-			}
+	for i, s := range req.Files {
+		s = utils.FixAndCleanPath(s)
+		req.Files[i] = s
+		if !user.IsAdmin() && !strings.HasPrefix(s, user.BasePath) {
+			common.ErrorStrResp(c, fmt.Sprintf("permission denied to share path [%s]", s), 500)
+			return
 		}
 	}
 	s, err := op.GetSharingById(req.ID)
@@ -431,12 +431,12 @@ func CreateSharing(c *gin.Context) {
 		common.ErrorStrResp(c, "permission denied", 403)
 		return
 	}
-	if !user.IsAdmin() {
-		for _, s := range req.Files {
-			if !strings.HasPrefix(s, user.BasePath) {
-				common.ErrorStrResp(c, fmt.Sprintf("permission denied to share path [%s]", s), 500)
-				return
-			}
+	for i, s := range req.Files {
+		s = utils.FixAndCleanPath(s)
+		req.Files[i] = s
+		if !user.IsAdmin() && !strings.HasPrefix(s, user.BasePath) {
+			common.ErrorStrResp(c, fmt.Sprintf("permission denied to share path [%s]", s), 500)
+			return
 		}
 	}
 	s := &model.Sharing{
