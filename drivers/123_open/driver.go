@@ -184,3 +184,4 @@ func (d *Open123) Put(ctx context.Context, dstDir model.Obj, file model.FileStre
 }
 
 var _ driver.Driver = (*Open123)(nil)
+var _ driver.PutResult = (*Open123)(nil)
