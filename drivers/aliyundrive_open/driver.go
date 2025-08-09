@@ -35,7 +35,7 @@ func (d *AliyundriveOpen) GetAddition() driver.Additional {
 }
 
 func (d *AliyundriveOpen) Init(ctx context.Context) error {
-	d.limiter = getLimiterForUser("") // First create a globally shared limiter to limit the initial requests.
+	d.limiter = getLimiterForUser(globalLimiterUserID) // First create a globally shared limiter to limit the initial requests.
 	if d.LIVPDownloadFormat == "" {
 		d.LIVPDownloadFormat = "jpeg"
 	}
@@ -44,10 +44,12 @@ func (d *AliyundriveOpen) Init(ctx context.Context) error {
 	}
 	res, err := d.request(ctx, limiterOther, "/adrive/v1.0/user/getDriveInfo", http.MethodPost, nil)
 	if err != nil {
+		d.limiter.free()
 		return err
 	}
 	d.DriveId = utils.Json.Get(res, d.DriveType+"_drive_id").ToString()
 	userid := utils.Json.Get(res, "user_id").ToString()
+	d.limiter.free()
 	d.limiter = getLimiterForUser(userid) // Allocate a corresponding limiter for each user.
 	return nil
 }
@@ -62,6 +64,7 @@ func (d *AliyundriveOpen) InitReference(storage driver.Driver) error {
 }
 
 func (d *AliyundriveOpen) Drop(ctx context.Context) error {
+	d.limiter.free()
 	d.ref = nil
 	return nil
 }
