@@ -216,7 +216,7 @@ func _task(g *gin.RouterGroup) {
 }
 
 func _sharing(g *gin.RouterGroup) {
-	g.GET("/list", handles.ListSharings)
+	g.Any("/list", handles.ListSharings)
 	g.GET("/get", handles.GetSharing)
 	g.POST("/create", handles.CreateSharing)
 	g.POST("/update", handles.UpdateSharing)
