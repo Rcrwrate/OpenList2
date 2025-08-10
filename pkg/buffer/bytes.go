@@ -43,8 +43,7 @@ func (b *Bytes) ReadAt(p []byte, off int64) (int, error) {
 			n += w
 		} else if off < newLength {
 			readFrom = true
-			bufOffset := int(off - length)
-			w := copy(p[n:], buf[bufOffset:])
+			w := copy(p[n:], buf[int(off-length):])
 			n += w
 		}
 		if n == len(p) {

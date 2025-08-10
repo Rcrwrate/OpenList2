@@ -64,7 +64,7 @@ func TestBytes_ReadAt(t *testing.T) {
 			},
 		},
 		{
-			name: "readAt len 50 offset 11",
+			name: "readAt len 50 offset 24",
 			b:    bs,
 			args: args{
 				p:   make([]byte, 50),
@@ -88,7 +88,7 @@ func TestBytes_ReadAt(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.b.ReadAt(tt.args.p, tt.args.off)
 			if err := tt.want(tt.args, got, err); err != nil {
-				t.Errorf("Bytes.ReadAt() = %v", err)
+				t.Errorf("Bytes.ReadAt() error = %v", err)
 			}
 		})
 	}

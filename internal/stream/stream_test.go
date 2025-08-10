@@ -9,7 +9,6 @@ import (
 
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/pkg/http_range"
-	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 )
 
 func TestFileStream_RangeRead(t *testing.T) {
@@ -24,11 +23,10 @@ func TestFileStream_RangeRead(t *testing.T) {
 		Reader: io.NopCloser(bytes.NewReader(buf)),
 	}
 	tests := []struct {
-		name    string
-		f       *FileStream
-		args    args
-		wantErr bool
-		want    func(f *FileStream, got io.Reader, err error) error
+		name string
+		f    *FileStream
+		args args
+		want func(f *FileStream, got io.Reader, err error) error
 	}{
 		{
 			name: "range 11-12",
@@ -41,8 +39,8 @@ func TestFileStream_RangeRead(t *testing.T) {
 					return errors.New("cached")
 				}
 				b, _ := io.ReadAll(got)
-				if !utils.SliceEqual(buf[11:11+12], b) {
-					return fmt.Errorf("expect =%s ,actual =%s", buf[11:11+12], b)
+				if !bytes.Equal(buf[11:11+12], b) {
+					return fmt.Errorf("=%s ,want =%s", b, buf[11:11+12])
 				}
 				return nil
 			},
@@ -58,8 +56,8 @@ func TestFileStream_RangeRead(t *testing.T) {
 					return errors.New("not cached")
 				}
 				b, _ := io.ReadAll(got)
-				if !utils.SliceEqual(buf[11:11+21], b) {
-					return fmt.Errorf("expect =%s ,actual =%s", buf[11:11+21], b)
+				if !bytes.Equal(buf[11:11+21], b) {
+					return fmt.Errorf("=%s ,want =%s", b, buf[11:11+21])
 				}
 				return nil
 			},
@@ -68,16 +66,21 @@ func TestFileStream_RangeRead(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.f.RangeRead(tt.args.httpRange)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FileStream.RangeRead() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.want == nil {
-				return
-			}
 			if err := tt.want(tt.f, got, err); err != nil {
 				t.Errorf("FileStream.RangeRead() %v", err)
 			}
 		})
 	}
+	t.Run("after check", func(t *testing.T) {
+		if f.GetFile() == nil {
+			t.Error("not cached")
+		}
+		buf2 := make([]byte, len(buf))
+		if _, err := io.ReadFull(f, buf2); err != nil {
+			t.Errorf("FileStream.Read() error = %v", err)
+		}
+		if !bytes.Equal(buf, buf2) {
+			t.Errorf("FileStream.Read() = %s, want %s", buf2, buf)
+		}
+	})
 }
