@@ -15,12 +15,12 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/sharing"
 	"github.com/OpenListTeam/OpenList/v4/pkg/utils"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
+	"github.com/OpenListTeam/go-cache"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 )
 
 func SharingGet(c *gin.Context, req *FsGetReq) {
-	common.GinWithValue(c, conf.ClientIPKey, c.ClientIP())
 	sid, path, _ := strings.Cut(strings.TrimPrefix(req.Path, "/"), "/")
 	if sid == "" {
 		common.ErrorStrResp(c, "invalid share id", 400)
@@ -33,6 +33,7 @@ func SharingGet(c *gin.Context, req *FsGetReq) {
 	if dealError(c, err) {
 		return
 	}
+	_ = countAccess(c.ClientIP(), s)
 	fakePath := fmt.Sprintf("/%s/%s", sid, path)
 	url := ""
 	if !obj.IsDir() {
@@ -66,7 +67,6 @@ func SharingGet(c *gin.Context, req *FsGetReq) {
 }
 
 func SharingList(c *gin.Context, req *ListReq) {
-	common.GinWithValue(c, conf.ClientIPKey, c.ClientIP())
 	sid, path, _ := strings.Cut(strings.TrimPrefix(req.Path, "/"), "/")
 	if sid == "" {
 		common.ErrorStrResp(c, "invalid share id", 400)
@@ -79,6 +79,7 @@ func SharingList(c *gin.Context, req *ListReq) {
 	if dealError(c, err) {
 		return
 	}
+	_ = countAccess(c.ClientIP(), s)
 	fakePath := fmt.Sprintf("/%s/%s", sid, path)
 	total, objs := pagination(objs, &req.PageReq)
 	common.SuccessResp(c, FsListResp{
@@ -108,7 +109,6 @@ func SharingList(c *gin.Context, req *ListReq) {
 }
 
 func SharingArchiveMeta(c *gin.Context, req *ArchiveMetaReq) {
-	common.GinWithValue(c, conf.ClientIPKey, c.ClientIP())
 	if !setting.GetBool(conf.ShareArchivePreview) {
 		common.ErrorStrResp(c, "sharing archives previewing is not allowed", 403)
 		return
@@ -135,6 +135,7 @@ func SharingArchiveMeta(c *gin.Context, req *ArchiveMetaReq) {
 	if dealError(c, err) {
 		return
 	}
+	_ = countAccess(c.ClientIP(), s)
 	fakePath := fmt.Sprintf("/%s/%s", sid, path)
 	url := fmt.Sprintf("%s/sad%s", common.GetApiUrl(c), utils.EncodePath(fakePath, true))
 	if s.Pwd != "" {
@@ -151,7 +152,6 @@ func SharingArchiveMeta(c *gin.Context, req *ArchiveMetaReq) {
 }
 
 func SharingArchiveList(c *gin.Context, req *ArchiveListReq) {
-	common.GinWithValue(c, conf.ClientIPKey, c.ClientIP())
 	if !setting.GetBool(conf.ShareArchivePreview) {
 		common.ErrorStrResp(c, "sharing archives previewing is not allowed", 403)
 		return
@@ -171,7 +171,7 @@ func SharingArchiveList(c *gin.Context, req *ArchiveListReq) {
 		},
 		InnerPath: utils.FixAndCleanPath(req.InnerPath),
 	}
-	_, objs, err := sharing.ArchiveList(c.Request.Context(), sid, path, model.SharingArchiveListArgs{
+	s, objs, err := sharing.ArchiveList(c.Request.Context(), sid, path, model.SharingArchiveListArgs{
 		ArchiveListArgs: model.ArchiveListArgs{
 			ArchiveInnerArgs: innerArgs,
 			Refresh:          req.Refresh,
@@ -181,6 +181,7 @@ func SharingArchiveList(c *gin.Context, req *ArchiveListReq) {
 	if dealError(c, err) {
 		return
 	}
+	_ = countAccess(c.ClientIP(), s)
 	total, objs := pagination(objs, &req.PageReq)
 	ret, _ := utils.SliceConvert(objs, func(src model.Obj) (ObjResp, error) {
 		return toObjsRespWithoutSignAndThumb(src), nil
@@ -192,37 +193,65 @@ func SharingArchiveList(c *gin.Context, req *ArchiveListReq) {
 }
 
 func SharingDown(c *gin.Context) {
-	common.GinWithValue(c, conf.ClientIPKey, c.ClientIP())
 	sid := c.Request.Context().Value(conf.SharingIDKey).(string)
 	path := c.Request.Context().Value(conf.PathKey).(string)
 	pwd := c.Query("pwd")
-	storage, link, obj, err := sharing.Link(c.Request.Context(), sid, path, &sharing.LinkArgs{
-		SharingListArgs: model.SharingListArgs{
-			Pwd: pwd,
-		},
-		LinkArgs: model.LinkArgs{
-			Header: c.Request.Header,
-			Type:   c.Query("type"),
-		},
-	})
+	s, err := op.GetSharingById(sid)
+	if err == nil {
+		if !s.Valid() {
+			err = errs.InvalidSharing
+		} else if !s.Verify(pwd) {
+			err = errs.WrongShareCode
+		} else if len(s.Files) != 1 && path == "/" {
+			err = errors.New("cannot extract sharing root")
+		}
+	}
 	if dealError(c, err) {
 		return
 	}
-	if setting.GetBool(conf.ShareForceProxy) || common.ShouldProxy(storage, stdpath.Base(obj.GetName())) {
+	unwrapPath, err := op.GetSharingUnwrapPath(s, path)
+	if err != nil {
+		common.ErrorStrResp(c, "failed get sharing unwrap path", 500)
+		return
+	}
+	storage, actualPath, err := op.GetStorageAndActualPath(unwrapPath)
+	if dealError(c, err) {
+		return
+	}
+	if setting.GetBool(conf.ShareForceProxy) || common.ShouldProxy(storage, stdpath.Base(actualPath)) {
+		link, obj, err := op.Link(c.Request.Context(), storage, actualPath, model.LinkArgs{
+			Header: c.Request.Header,
+			Type:   c.Query("type"),
+		})
+		if err != nil {
+			common.ErrorResp(c, errors.WithMessage(err, "failed get sharing link"), 500)
+			return
+		}
+		_ = countAccess(c.ClientIP(), s)
 		proxy(c, link, obj, storage.GetStorage().ProxyRange)
 	} else {
+		link, _, err := op.Link(c.Request.Context(), storage, actualPath, model.LinkArgs{
+			IP:       c.ClientIP(),
+			Header:   c.Request.Header,
+			Type:     c.Query("type"),
+			Redirect: true,
+		})
+		if err != nil {
+			common.ErrorResp(c, errors.WithMessage(err, "failed get sharing link"), 500)
+			return
+		}
+		_ = countAccess(c.ClientIP(), s)
 		redirect(c, link)
 	}
 }
 
 func SharingArchiveExtract(c *gin.Context) {
-	common.GinWithValue(c, conf.ClientIPKey, c.ClientIP())
 	if !setting.GetBool(conf.ShareArchivePreview) {
 		common.ErrorStrResp(c, "sharing archives previewing is not allowed", 403)
 		return
 	}
 	sid := c.Request.Context().Value(conf.SharingIDKey).(string)
-	path := utils.FixAndCleanPath(c.Request.Context().Value(conf.PathKey).(string))
+	path := c.Request.Context().Value(conf.PathKey).(string)
 	pwd := c.Query("pwd")
 	innerPath := utils.FixAndCleanPath(c.Query("inner"))
 	archivePass := c.Query("pass")
@@ -259,13 +288,18 @@ func SharingArchiveExtract(c *gin.Context) {
 		InnerPath: innerPath,
 	}
 	if _, ok := storage.(driver.ArchiveReader); ok {
-		link, obj, err := op.DriverExtract(c.Request.Context(), storage, actualPath, args)
-		if dealError(c, err) {
-			return
-		}
-		if setting.GetBool(conf.ShareForceProxy) || common.ShouldProxy(storage, stdpath.Base(obj.GetName())) {
+		if setting.GetBool(conf.ShareForceProxy) || common.ShouldProxy(storage, stdpath.Base(actualPath)) {
+			link, obj, err := op.DriverExtract(c.Request.Context(), storage, actualPath, args)
+			if dealError(c, err) {
+				return
+			}
 			proxy(c, link, obj, storage.GetStorage().ProxyRange)
 		} else {
+			args.Redirect = true
+			link, _, err := op.DriverExtract(c.Request.Context(), storage, actualPath, args)
+			if dealError(c, err) {
+				return
+			}
 			redirect(c, link)
 		}
 	} else {
@@ -498,4 +532,20 @@ func SetEnableSharing(disable bool) func(ctx *gin.Context) {
 			common.SuccessResp(c)
 		}
 	}
+}
+
+var (
+	AccessCache      = cache.NewMemCache[interface{}]()
+	AccessCountDelay = 30 * time.Minute
+)
+
+func countAccess(ip string, s *model.Sharing) error {
+	key := fmt.Sprintf("%s:%s", s.ID, ip)
+	_, ok := AccessCache.Get(key)
+	if !ok {
+		AccessCache.Set(key, struct{}{}, cache.WithEx[interface{}](AccessCountDelay))
+		s.Accessed += 1
+		return op.UpdateSharing(s, true)
+	}
+	return nil
 }
