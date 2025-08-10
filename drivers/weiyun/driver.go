@@ -317,9 +317,7 @@ func (d *WeiYun) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 	if folder, ok = dstDir.(*Folder); !ok {
 		return nil, errs.NotSupport
 	}
-	cacheProgress := model.UpdateProgressWithRange(up, 0, 50)
-	up = model.UpdateProgressWithRange(up, 50, 100)
-	file, err := stream.CacheFullAndWriter(cacheProgress, nil)
+	file, err := stream.CacheFullAndWriter(&up, nil)
 	if err != nil {
 		return nil, err
 	}

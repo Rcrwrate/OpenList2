@@ -157,9 +157,7 @@ func (d *QuarkOpen) Put(ctx context.Context, dstDir model.Obj, stream model.File
 	}
 
 	if len(writers) > 0 {
-		cacheProgress := model.UpdateProgressWithRange(up, 0, 50)
-		up = model.UpdateProgressWithRange(up, 50, 100)
-		_, err := stream.CacheFullAndWriter(cacheProgress, io.MultiWriter(writers...))
+		_, err := stream.CacheFullAndWriter(&up, io.MultiWriter(writers...))
 		if err != nil {
 			return err
 		}

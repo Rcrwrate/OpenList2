@@ -319,27 +319,24 @@ func (d *Alias) Put(ctx context.Context, dstDir model.Obj, s model.FileStreamer,
 				return err
 			}
 			return op.Put(ctx, storage, reqActualPath, &stream.FileStream{
-				Obj:          s,
-				Mimetype:     s.GetMimetype(),
-				WebPutAsTask: s.NeedStore(),
-				Reader:       s,
+				Obj:      s,
+				Mimetype: s.GetMimetype(),
+				Reader:   s,
 			}, up)
 		} else {
-			end := 100 / float64(len(reqPath)+1)
-			cacheProgress := model.UpdateProgressWithRange(up, 0, end)
-			file, err := s.CacheFullAndWriter(cacheProgress, nil)
+			file, err := s.CacheFullAndWriter(nil, nil)
 			if err != nil {
 				return err
 			}
-			up = model.UpdateProgressWithRange(up, end, 100)
+			count := float64(len(reqPath) + 1)
+			up(100 / count)
 			for i, path := range reqPath {
 				err = errors.Join(err, fs.PutDirectly(ctx, *path, &stream.FileStream{
-					Obj:          s,
-					Mimetype:     s.GetMimetype(),
-					WebPutAsTask: s.NeedStore(),
-					Reader:       file,
+					Obj:      s,
+					Mimetype: s.GetMimetype(),
+					Reader:   file,
 				}))
-				up(float64(i+1) / float64(len(reqPath)) * 100)
+				up(float64(i+2) / float64(count) * 100)
 				_, e := file.Seek(0, io.SeekStart)
 				if e != nil {
 					return errors.Join(err, e)

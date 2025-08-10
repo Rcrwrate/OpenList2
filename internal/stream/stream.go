@@ -92,7 +92,7 @@ func (f *FileStream) SetExist(obj model.Obj) {
 
 // CacheFullAndWriter save all data into tmpFile or memory.
 // It's not thread-safe!
-func (f *FileStream) CacheFullAndWriter(up model.UpdateProgress, writer io.Writer) (model.File, error) {
+func (f *FileStream) CacheFullAndWriter(up *model.UpdateProgress, writer io.Writer) (model.File, error) {
 	if cache := f.GetFile(); cache != nil {
 		if writer == nil {
 			return cache, nil
@@ -101,9 +101,11 @@ func (f *FileStream) CacheFullAndWriter(up model.UpdateProgress, writer io.Write
 		if err == nil {
 			var reader io.Reader = f
 			if up != nil {
+				cacheProgress := model.UpdateProgressWithRange(*up, 0, 50)
+				*up = model.UpdateProgressWithRange(*up, 50, 100)
 				reader = &ReaderUpdatingProgress{
 					Reader:         f,
-					UpdateProgress: up,
+					UpdateProgress: cacheProgress,
 				}
 			}
 			_, err = utils.CopyWithBuffer(writer, reader)
@@ -119,9 +121,11 @@ func (f *FileStream) CacheFullAndWriter(up model.UpdateProgress, writer io.Write
 
 	var reader io.Reader = f
 	if up != nil {
+		cacheProgress := model.UpdateProgressWithRange(*up, 0, 50)
+		*up = model.UpdateProgressWithRange(*up, 50, 100)
 		reader = &ReaderUpdatingProgress{
 			Reader:         f,
-			UpdateProgress: up,
+			UpdateProgress: cacheProgress,
 		}
 	}
 	if writer != nil {
@@ -312,7 +316,7 @@ func (ss *SeekableStream) generateReader() error {
 	return nil
 }
 
-func (ss *SeekableStream) CacheFullAndWriter(up model.UpdateProgress, writer io.Writer) (model.File, error) {
+func (ss *SeekableStream) CacheFullAndWriter(up *model.UpdateProgress, writer io.Writer) (model.File, error) {
 	if err := ss.generateReader(); err != nil {
 		return nil, err
 	}

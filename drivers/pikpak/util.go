@@ -438,7 +438,7 @@ func (d *PikPak) UploadByOSS(ctx context.Context, params *S3Params, s model.File
 }
 
 func (d *PikPak) UploadByMultipart(ctx context.Context, params *S3Params, fileSize int64, s model.FileStreamer, up driver.UpdateProgress) error {
-	tmpF, err := s.CacheFullAndWriter(nil, nil)
+	tmpF, err := s.CacheFullAndWriter(&up, nil)
 	if err != nil {
 		return err
 	}

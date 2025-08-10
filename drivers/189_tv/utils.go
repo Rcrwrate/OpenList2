@@ -317,13 +317,9 @@ func (y *Cloud189TV) OldUpload(ctx context.Context, dstDir model.Obj, file model
 	var tempFile = file.GetFile()
 	var err error
 	if len(fileMd5) != utils.MD5.Width {
-		cacheProgress := model.UpdateProgressWithRange(up, 0, 50)
-		up = model.UpdateProgressWithRange(up, 50, 100)
-		tempFile, fileMd5, err = stream.CacheFullAndHash(file, cacheProgress, utils.MD5)
+		tempFile, fileMd5, err = stream.CacheFullAndHash(file, &up, utils.MD5)
 	} else if tempFile == nil {
-		cacheProgress := model.UpdateProgressWithRange(up, 0, 50)
-		up = model.UpdateProgressWithRange(up, 50, 100)
-		tempFile, err = file.CacheFullAndWriter(cacheProgress, nil)
+		tempFile, err = file.CacheFullAndWriter(&up, nil)
 	}
 	if err != nil {
 		return nil, err

@@ -141,7 +141,7 @@ func (r *ReaderWithCtx) Close() error {
 	return nil
 }
 
-func CacheFullAndHash(stream model.FileStreamer, up model.UpdateProgress, hashType *utils.HashType, hashParams ...any) (model.File, string, error) {
+func CacheFullAndHash(stream model.FileStreamer, up *model.UpdateProgress, hashType *utils.HashType, hashParams ...any) (model.File, string, error) {
 	h := hashType.NewFunc(hashParams...)
 	tmpF, err := stream.CacheFullAndWriter(up, h)
 	if err != nil {
@@ -161,12 +161,7 @@ func NewStreamSectionReader(file model.FileStreamer, maxBufferSize int, up *mode
 	if file.GetFile() == nil {
 		maxBufferSize = min(maxBufferSize, int(file.GetSize()))
 		if maxBufferSize > conf.MaxBufferLimit {
-			var cacheProgress model.UpdateProgress
-			if up != nil {
-				cacheProgress = model.UpdateProgressWithRange(*up, 0, 50)
-				*up = model.UpdateProgressWithRange(*up, 50, 100)
-			}
-			_, err := file.CacheFullAndWriter(cacheProgress, nil)
+			_, err := file.CacheFullAndWriter(up, nil)
 			if err != nil {
 				return nil, err
 			}

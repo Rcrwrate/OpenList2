@@ -217,12 +217,10 @@ func (d *PikPak) Put(ctx context.Context, dstDir model.Obj, stream model.FileStr
 
 	if len(sha1Str) < hash_extend.GCID.Width {
 		var err error
-		cacheProgress := model.UpdateProgressWithRange(up, 0, 50)
-		_, sha1Str, err = streamPkg.CacheFullAndHash(stream, cacheProgress, hash_extend.GCID, stream.GetSize())
+		_, sha1Str, err = streamPkg.CacheFullAndHash(stream, &up, hash_extend.GCID, stream.GetSize())
 		if err != nil {
 			return err
 		}
-		up = model.UpdateProgressWithRange(up, 50, 100)
 	}
 
 	var resp UploadTaskData
