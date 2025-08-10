@@ -69,7 +69,7 @@ func (b *Bytes) Seek(offset int64, whence int) (int64, error) {
 		return 0, errors.New("Seek: invalid whence")
 	}
 
-	if abs < 0 {
+	if abs < 0 || abs > b.length {
 		return 0, errors.New("Seek: invalid offset")
 	}
 

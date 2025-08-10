@@ -144,11 +144,14 @@ func (f *FileStream) Read(p []byte) (n int, err error) {
 	if f.offset >= f.GetSize() {
 		return 0, io.EOF
 	}
-	remain := f.GetSize() - f.offset
-	if int64(len(p)) > remain {
-		p = p[:remain]
+	if max := f.GetSize() - f.offset; int64(len(p)) > max {
+		n, err = f.Reader.Read(p[:max])
+		if err == nil {
+			err = io.EOF
+		}
+	} else {
+		n, err = f.Reader.Read(p)
 	}
-	n, err = f.Reader.Read(p)
 	f.offset += int64(n)
 	return
 }
@@ -372,19 +375,20 @@ type headCache struct {
 func (c *headCache) head(p []byte) (int, error) {
 	n := 0
 	for _, buf := range c.bufs {
-		if len(buf)+n >= len(p) {
-			n += copy(p[n:], buf[:len(p)-n])
+		n += copy(p[n:], buf)
+		if n == len(p) {
 			return n, nil
-		} else {
-			n += copy(p[n:], buf)
 		}
 	}
-	w, err := io.ReadAtLeast(c.reader, p[n:], 1)
-	if w > 0 {
-		buf := make([]byte, w)
-		copy(buf, p[n:n+w])
+	nn, err := io.ReadFull(c.reader, p[n:])
+	if nn > 0 {
+		buf := make([]byte, nn)
+		copy(buf, p[n:])
 		c.bufs = append(c.bufs, buf)
-		n += w
+		n += nn
+		if err == io.ErrUnexpectedEOF {
+			err = io.EOF
+		}
 	}
 	return n, err
 }
@@ -483,6 +487,9 @@ func (r *RangeReadReadAtSeeker) getReaderAtOffset(off int64) (io.Reader, error) 
 }
 
 func (r *RangeReadReadAtSeeker) ReadAt(p []byte, off int64) (n int, err error) {
+	if off < 0 || off >= r.ss.GetSize() {
+		return 0, io.EOF
+	}
 	if off == 0 && r.headCache != nil {
 		return r.headCache.head(p)
 	}
@@ -491,12 +498,15 @@ func (r *RangeReadReadAtSeeker) ReadAt(p []byte, off int64) (n int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	n, err = io.ReadAtLeast(rr, p, 1)
-	off += int64(n)
-	if err == nil {
-		r.readerMap.Store(int64(off), rr)
-	} else {
-		rr = nil
+	n, err = io.ReadFull(rr, p)
+	if n > 0 {
+		off += int64(n)
+		switch err {
+		case nil:
+			r.readerMap.Store(int64(off), rr)
+		case io.ErrUnexpectedEOF:
+			err = io.EOF
+		}
 	}
 	return n, err
 }
@@ -505,9 +515,6 @@ func (r *RangeReadReadAtSeeker) Seek(offset int64, whence int) (int64, error) {
 	switch whence {
 	case io.SeekStart:
 	case io.SeekCurrent:
-		if offset == 0 {
-			return r.masterOff, nil
-		}
 		offset += r.masterOff
 	case io.SeekEnd:
 		offset += r.ss.GetSize()
@@ -523,6 +530,8 @@ func (r *RangeReadReadAtSeeker) Seek(offset int64, whence int) (int64, error) {
 
 func (r *RangeReadReadAtSeeker) Read(p []byte) (n int, err error) {
 	n, err = r.ReadAt(p, r.masterOff)
-	r.masterOff += int64(n)
+	if n > 0 {
+		r.masterOff += int64(n)
+	}
 	return n, err
 }
