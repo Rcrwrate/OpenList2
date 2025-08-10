@@ -258,8 +258,4 @@ func (d *CnbReleases) Put(ctx context.Context, dstDir model.Obj, file model.File
 	return d.Request(http.MethodPost, resp.VerifyURL, nil, nil)
 }
 
-//func (d *Template) Other(ctx context.Context, args model.OtherArgs) (interface{}, error) {
-//	return nil, errs.NotSupport
-//}
-
 var _ driver.Driver = (*CnbReleases)(nil)
