@@ -690,13 +690,13 @@ func PutURL(ctx context.Context, storage driver.Driver, dstDirPath, dstName, url
 			if newObj != nil {
 				addCacheObj(storage, dstDirPath, model.WrapObjName(newObj))
 			} else if !utils.IsBool(lazyCache...) {
-				DeleteCache(storage, dstDirPath)
+		//		DeleteCache(storage, dstDirPath)
 			}
 		}
 	case driver.PutURL:
 		err = s.PutURL(ctx, dstDir, dstName, url)
 		if err == nil && !utils.IsBool(lazyCache...) {
-			DeleteCache(storage, dstDirPath)
+		//	DeleteCache(storage, dstDirPath)
 		}
 	default:
 		return errs.NotImplement
