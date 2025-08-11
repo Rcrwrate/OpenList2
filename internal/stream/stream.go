@@ -29,7 +29,7 @@ type FileStream struct {
 	utils.Closers
 
 	tmpFile   model.File //if present, tmpFile has full content, it will be deleted at last
-	peekBuff  *buffer.Bytes
+	peekBuff  *buffer.Reader
 	size      int64
 	oriReader io.Reader // the original reader, used for caching
 }
@@ -184,7 +184,7 @@ func (f *FileStream) cache(maxCacheSize int64) (model.File, error) {
 	}
 
 	if f.peekBuff == nil {
-		f.peekBuff = &buffer.Bytes{}
+		f.peekBuff = &buffer.Reader{}
 		f.oriReader = f.Reader
 	}
 	bufSize := maxCacheSize - int64(f.peekBuff.Len())

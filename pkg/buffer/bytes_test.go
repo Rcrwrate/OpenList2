@@ -11,7 +11,7 @@ func TestBytes_ReadAt(t *testing.T) {
 		p   []byte
 		off int64
 	}
-	bs := &Bytes{}
+	bs := &Reader{}
 	bs.Append([]byte("github.com"))
 	bs.Append([]byte("/"))
 	bs.Append([]byte("OpenList"))
@@ -19,7 +19,7 @@ func TestBytes_ReadAt(t *testing.T) {
 	bs.Append([]byte("OpenList"))
 	tests := []struct {
 		name string
-		b    *Bytes
+		b    *Reader
 		args args
 		want func(a args, n int, err error) error
 	}{
