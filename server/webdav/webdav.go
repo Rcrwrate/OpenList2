@@ -361,18 +361,18 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 	}
 
 	// TODO(rost): Returning 405 Method Not Allowed might not be appropriate.
-	if err != nil {
-		return http.StatusMethodNotAllowed, err
-	}
-	fi, err := fs.Get(ctx, reqPath, &fs.GetArgs{})
-	if err != nil {
-		fi = &obj
-	}
-	etag, err := findETag(ctx, h.LockSystem, reqPath, fi)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-	w.Header().Set("Etag", etag)
+	// if err != nil {
+	// 	return http.StatusMethodNotAllowed, err
+	// }
+	// fi, err := fs.Get(ctx, reqPath, &fs.GetArgs{})
+	// if err != nil {
+	// 	fi = &obj
+	// }
+	// etag, err := findETag(ctx, h.LockSystem, reqPath, fi)
+	// if err != nil {
+	// 	return http.StatusInternalServerError, err
+	// }
+	// w.Header().Set("Etag", etag)
 	return http.StatusCreated, nil
 }
 
