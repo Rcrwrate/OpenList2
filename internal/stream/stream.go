@@ -30,14 +30,13 @@ type FileStream struct {
 
 	tmpFile   model.File //if present, tmpFile has full content, it will be deleted at last
 	peekBuff  *buffer.Bytes
-	offset    int64
-	limit     int64     // limit for the stream, if set, it will limit the size of the stream
+	size      int64
 	oriReader io.Reader // the original reader, used for caching
 }
 
 func (f *FileStream) GetSize() int64 {
-	if f.limit > 0 {
-		return f.limit
+	if f.size > 0 {
+		return f.size
 	}
 	if file, ok := f.tmpFile.(*os.File); ok {
 		info, err := file.Stat()
@@ -131,7 +130,8 @@ func (f *FileStream) CacheFullAndWriter(up *model.UpdateProgress, writer io.Writ
 	if writer != nil {
 		reader = io.TeeReader(reader, writer)
 	}
-	return f.cache(reader, f.GetSize())
+	f.Reader = reader
+	return f.cache(f.GetSize())
 }
 
 func (f *FileStream) GetFile() model.File {
@@ -142,22 +142,6 @@ func (f *FileStream) GetFile() model.File {
 		return file
 	}
 	return nil
-}
-
-func (f *FileStream) Read(p []byte) (n int, err error) {
-	if f.offset >= f.GetSize() {
-		return 0, io.EOF
-	}
-	if max := f.GetSize() - f.offset; int64(len(p)) > max {
-		n, err = f.Reader.Read(p[:max])
-		if err == nil {
-			err = io.EOF
-		}
-	} else {
-		n, err = f.Reader.Read(p)
-	}
-	f.offset += int64(n)
-	return
 }
 
 // RangeRead have to cache all data first since only Reader is provided.
@@ -175,7 +159,7 @@ func (f *FileStream) RangeRead(httpRange http_range.Range) (io.Reader, error) {
 		return io.NewSectionReader(f.peekBuff, httpRange.Start, httpRange.Length), nil
 	}
 
-	cache, err := f.cache(f.Reader, size)
+	cache, err := f.cache(size)
 	if err != nil {
 		return nil, err
 	}
@@ -187,26 +171,21 @@ func (f *FileStream) RangeRead(httpRange http_range.Range) (io.Reader, error) {
 // 使用bytes.Buffer作为io.CopyBuffer的写入对象，CopyBuffer会调用Buffer.ReadFrom
 // 即使被写入的数据量与Buffer.Cap一致，Buffer也会扩大
 
-func (f *FileStream) cache(reader io.Reader, maxCacheSize int64) (model.File, error) {
-	if f.offset > 0 {
-		return nil, fmt.Errorf("stream incomplete: offset %d", f.offset)
-	}
-
+func (f *FileStream) cache(maxCacheSize int64) (model.File, error) {
 	if maxCacheSize > int64(conf.MaxBufferLimit) {
-		tmpF, err := utils.CreateTempFile(reader, f.GetSize())
+		tmpF, err := utils.CreateTempFile(f.Reader, f.GetSize())
 		if err != nil {
 			return nil, err
 		}
 		f.Add(tmpF)
 		f.tmpFile = tmpF
 		f.Reader = tmpF
-		f.offset = 0
 		return tmpF, nil
 	}
 
 	if f.peekBuff == nil {
 		f.peekBuff = &buffer.Bytes{}
-		f.oriReader = reader
+		f.oriReader = f.Reader
 	}
 	bufSize := maxCacheSize - int64(f.peekBuff.Len())
 	buf := make([]byte, bufSize)
@@ -217,10 +196,10 @@ func (f *FileStream) cache(reader io.Reader, maxCacheSize int64) (model.File, er
 	f.peekBuff.Append(buf)
 	if int64(f.peekBuff.Len()) >= f.GetSize() {
 		f.Reader = f.peekBuff
+		f.oriReader = nil
 	} else {
 		f.Reader = io.MultiReader(f.peekBuff, f.oriReader)
 	}
-	f.offset = 0
 	return f.peekBuff, nil
 }
 
@@ -274,7 +253,7 @@ func NewSeekableStream(fs *FileStream, link *model.Link) (*SeekableStream, error
 				return nil, err
 			}
 		}
-		fs.limit = size
+		fs.size = size
 		fs.Add(link)
 		fs.Add(rrc)
 		return &SeekableStream{FileStream: fs, rangeReadCloser: rrc}, nil
